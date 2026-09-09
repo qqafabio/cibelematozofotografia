@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de link — uso interno</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#FBF9F4;--paper-raised:#FFFFFF;--ink:#221F1C;--ink-soft:#6B6459;--rule:#DCD4C4;--gold:#A8791E;--gold-soft:#F1E6CC;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif;}
+  .app{max-width:520px;margin:0 auto;padding:36px 20px 60px;}
+  h1{font-family:'Fraunces',serif;font-weight:500;font-size:24px;margin:0 0 6px;}
+  .sub{font-size:13.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 26px;}
+  .field{margin-bottom:18px;}
+  .field label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:6px;}
+  .field input, .field textarea{width:100%;font-family:'Work Sans',sans-serif;font-size:15px;color:var(--ink);
+    background:var(--paper-raised);border:1px solid var(--rule);border-radius:3px;padding:11px 12px;}
+  .field textarea{min-height:110px;resize:vertical;}
+  button{font-family:'Work Sans',sans-serif;cursor:pointer;border-radius:3px;border:none;padding:12px 18px;font-size:14px;}
+  .btn-primary{background:var(--ink);color:var(--paper);width:100%;}
+  .btn-primary:hover{opacity:.88;}
+  .result{margin-top:26px;padding:18px;border:1px solid #E7D6A4;background:var(--gold-soft);border-radius:3px;}
+  .result label{display:block;font-size:12.5px;color:#6B5316;margin-bottom:8px;}
+  .result input{width:100%;font-size:13.5px;padding:10px 11px;border:1px solid #E7D6A4;border-radius:3px;background:var(--paper-raised);margin-bottom:10px;}
+  .btn-copy{background:var(--paper-raised);border:1px solid #E7D6A4;color:var(--ink);}
+  .hint{font-size:12px;color:#6B5316;margin:10px 0 0;line-height:1.5;}
+  .warn{font-size:12px;color:var(--ink-soft);margin-top:26px;line-height:1.5;border-top:1px solid var(--rule);padding-top:16px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Gerador de link personalizado</h1>
+  <p class="sub">Uso interno da Cibele Matozo Fotografia — não é para enviar esta página ao cliente, apenas o link que ela gera abaixo. Use depois de negociar as condições de pagamento com o cliente, antes de mandar o formulário.</p>
+
+  <div class="field">
+    <label>Link da página do contrato (GitHub Pages)</label>
+    <input id="base" value="https://qqafabio.github.io/cibelematozofotografia/" placeholder="https://seuusuario.github.io/repositorio/">
+  </div>
+
+  <div class="field">
+    <label>Condições especiais combinadas com este cliente</label>
+    <textarea id="cond" placeholder="Ex.: 10% de desconto para pagamento à vista via PIX, ou parcelamento em até 3x combinado por fora."></textarea>
+  </div>
+
+  <button class="btn-primary" id="gerar" type="button">Gerar link para este cliente</button>
+
+  <div class="result" id="resultado" hidden>
+    <label>Link para enviar a este cliente</label>
+    <input id="linkFinal" readonly>
+    <button class="btn-copy" id="copiar" type="button">Copiar link</button>
+    <p class="hint">Ficou grande? Cole este link em tinyurl.com ou is.gd (gratuitos, sem cadastro) para gerar uma versão curta só para este cliente.</p>
+  </div>
+
+  <p class="warn">Se deixar o campo de condições em branco, o link gerado é igual ao link acima — o cliente verá o campo de condições especiais normal, como opcional, para preencher se quiser.<br><br>Na primeira vez que usar, cole a URL real da sua página no campo "Link da página do contrato" acima (ela fica salva no navegador para as próximas vezes, mas confira sempre que copiar este arquivo para outro computador).</p>
+</div>
+<script>
+const baseInput = document.getElementById('base');
+const SAVED_KEY = 'cmf_link_base';
+const salvo = localStorage.getItem(SAVED_KEY);
+if (salvo) baseInput.value = salvo;
+baseInput.addEventListener('change', () => localStorage.setItem(SAVED_KEY, baseInput.value.trim()));
+
+document.getElementById('gerar').addEventListener('click', () => {
+  localStorage.setItem(SAVED_KEY, baseInput.value.trim());
+  const base = baseInput.value.trim().split('?')[0];
+  const cond = document.getElementById('cond').value.trim();
+  const url = cond ? (base + '?cond=' + encodeURIComponent(cond)) : base;
+  const linkInput = document.getElementById('linkFinal');
+  linkInput.value = url;
+  document.getElementById('resultado').hidden = false;
+});
+document.getElementById('copiar').addEventListener('click', () => {
+  const input = document.getElementById('linkFinal');
+  input.select();
+  const btn = document.getElementById('copiar');
+  navigator.clipboard.writeText(input.value).then(() => {
+    const original = btn.textContent;
+    btn.textContent = 'Copiado!';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
+});
+</script>
+</body>
+</html>
