@@ -136,7 +136,7 @@
 /* Cole aqui a URL do seu Web App do Apps Script (a mesma de sempre, .../exec).
    Esta página não abre mais essa URL diretamente — ela só faz uma chamada de
    fundo (fetch) para essa mesma URL quando o cliente finaliza a contratação. */
-const APPS_SCRIPT_EXEC_URL = 'https://script.google.com/macros/s/AKfycbzitSUuL8pRu2UVuFxJYR475Vix9IwUjLsHiONB-Cbv0t7BSsaxnvfR3dwJ8-jXSZ43Cg/exec';
+const APPS_SCRIPT_EXEC_URL = 'COLE_AQUI_A_URL_DO_SEU_APP_DA_WEB';
 
 /* ============================================================
    DADOS DE PACOTES E PREÇOS
@@ -239,6 +239,7 @@ function ensaioLocalLabel(){
   if(state.ensaioLocal==='festa') return 'No local da festa';
   if(state.ensaioLocal==='curitiba') return 'Em Curitiba';
   if(state.ensaioLocal==='outro') return 'Outro local';
+  if(state.ensaioLocal==='nao_desejo') return 'Ensaio pré-evento dispensado pelo CONTRATANTE';
   return '—';
 }
 
@@ -528,6 +529,7 @@ function renderEnsaio(el){
       <div class="option-card ${state.ensaioLocal==='festa'?'selected':''}" data-k="festa"><div class="oc-row"><span class="oc-title">No local da festa</span></div></div>
       <div class="option-card ${state.ensaioLocal==='curitiba'?'selected':''}" data-k="curitiba"><div class="oc-row"><span class="oc-title">Em Curitiba</span></div></div>
       <div class="option-card ${state.ensaioLocal==='outro'?'selected':''}" data-k="outro"><div class="oc-row"><span class="oc-title">Outro local</span></div></div>
+      <div class="option-card ${state.ensaioLocal==='nao_desejo'?'selected':''}" data-k="nao_desejo"><div class="oc-row"><span class="oc-title">Não desejo esse serviço</span></div></div>
     </div>
     <div class="field" id="ensaioEnderecoField" style="margin-top:14px;display:${state.ensaioLocal==='outro'?'block':'none'};">
       <label>Endereço do ensaio</label>
