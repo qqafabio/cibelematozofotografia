@@ -171,6 +171,7 @@ const state = {
   categoria:'', pacote:'', storymakerAdicional:null, modalidadeVideo:'',
   ensaioLocal:'', ensaioEndereco:'',
   formaPagamento:'', condicoesEspeciais:'', condicoesBloqueadas:false, observacoes:'',
+  planoParcelas:null, planoBloqueado:false,
   autorizacaoImagem:null,
   declaracoes:{d1:false,d2:false,d3:false,d4:false,d5:false,d6:false,d7:false},
   contratoLido:false,
@@ -185,6 +186,10 @@ const state = {
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function formatBRL(n){ return (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function formatDate(iso){ if(!iso) return '—'; const p=iso.split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : iso; }
+function formaPagamentoLabel(codigo){
+  const rotulos = { pix:'PIX', cartao:'Cartão de crédito', debito:'Cartão de débito', dinheiro:'Dinheiro' };
+  return rotulos[codigo] || codigo;
+}
 function maskCPF(v){ v=v.replace(/\D/g,'').slice(0,11); v=v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2'); return v; }
 function maskPhone(v){ v=v.replace(/\D/g,'').slice(0,11); if(v.length>10) v=v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3'); else v=v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3'); return v; }
 
@@ -266,7 +271,7 @@ function buildClauses(){
     {t:'CLÁUSULA 2ª – DOS PACOTES E SERVIÇOS DISPONÍVEIS', b:`SOMENTE FOTOGRAFIA\nPacote Digital — R$ 1.300,00: 01 fotógrafo; ensaio pré-evento no local da festa; arquivos digitais editados em alta resolução via link; sem álbum.\nPacote Essencial — R$ 2.400,00: 01 fotógrafo; ensaio pré-evento no local da festa; álbum livro 40 páginas / 50 imagens; arquivos digitais editados em alta resolução via link.\nEnsaio Pré-Evento — R$ 400,00: 01 fotógrafo; ensaio em Curitiba ou até 15 km de distância; arquivos digitais editados em alta resolução via link; sem álbum.\n\nFOTOGRAFIA E FILMAGEM\nPacote Premium — R$ 3.400,00: 01 fotógrafo; 01 cinegrafista; ensaio pré-evento em Curitiba ou até 15 km; ensaio pré-evento no local da festa; álbum livro 40 páginas / 60 imagens; pendrive com arquivos editados e vídeo em 4K; arquivos editados em alta resolução via link.\nPacote Completo — R$ 3.000,00: 01 fotógrafo; 01 cinegrafista; ensaio pré-evento no local da festa; álbum livro 30 páginas / 50 imagens; arquivos editados em alta resolução e vídeo em 4K via link.\n\nSOMENTE VÍDEO: 01 cinegrafista — R$ 1.500,00; 02 cinegrafistas — R$ 2.500,00. Condições de pagamento a combinar.\n\nSTORYMAKER: com vídeo — R$ 400,00, 25 a 30 stories; somente Storymaker — R$ 500,00, 25 a 30 stories + making of da criança aniversariante.`},
     {t:'CLÁUSULA 3ª – DA ESCOLHA DO PACOTE E DOS SERVIÇOS', b:`Pacote e serviços selecionados:\n${itemsTxt}\n\nValor total contratado: ${formatBRL(total)}`},
     {t:'CLÁUSULA 4ª – DA COBERTURA DO EVENTO', b:`A cobertura do evento será realizada conforme o pacote contratado e durante o período previamente acordado entre as partes.\n\nA expressão "cobertura completa do evento", quando utilizada na descrição de determinado pacote, refere-se à cobertura realizada durante o período contratado, não representando obrigação de registro contínuo e ininterrupto de todos os segundos do evento.\n\nAtrasos decorrentes de responsabilidade do CONTRATANTE, convidados, familiares, cerimonial, buffet, espaço de eventos, fornecedores ou terceiros não implicarão automaticamente na extensão do período contratado. Horas adicionais poderão ser contratadas mediante disponibilidade e pagamento correspondente.`},
-    {t:'CLÁUSULA 5ª – DO VALOR E DAS CONDIÇÕES DE PAGAMENTO', b:`O valor total será aquele indicado na Cláusula 3ª, podendo ser alterado mediante negociação expressamente registrada neste contrato.\n\nCartão de crédito: até 10x, com taxas da operadora sob responsabilidade do CONTRATANTE.\n\nPIX: Digital em 2x (entrada para reserva + saldo até o evento); Essencial em até 3x (entrada + parcela no dia do evento + parcela na entrega); Premium e Completo via PIX a combinar. Vídeo: condições a combinar.\n\nForma escolhida: ${state.formaPagamento==='pix'?'PIX':'Cartão de crédito'}${state.condicoesEspeciais?('\nCondição registrada: '+state.condicoesEspeciais):''}`},
+    {t:'CLÁUSULA 5ª – DO VALOR E DAS CONDIÇÕES DE PAGAMENTO', b:`O valor total será aquele indicado na Cláusula 3ª, podendo ser alterado mediante negociação expressamente registrada neste contrato.\n\nCartão de crédito: até 10x, com taxas da operadora sob responsabilidade do CONTRATANTE.\n\nCartão de débito e dinheiro: pagamento à vista.\n\nPIX: Digital em 2x (entrada para reserva + saldo até o evento); Essencial em até 3x (entrada + parcela no dia do evento + parcela na entrega); Premium e Completo via PIX a combinar. Vídeo: condições a combinar.\n\nForma escolhida: ${formaPagamentoLabel(state.formaPagamento)}${state.planoBloqueado ? '\nPlano de pagamento combinado:\n' + state.planoParcelas.map((p,i)=>`${i+1}) ${p.rotulo||'Parcela'}${p.vencimento?(' — vencimento '+p.vencimento):''} — ${formatBRL(p.valor)}`).join('\n') : ''}${state.condicoesEspeciais?('\nCondição registrada: '+state.condicoesEspeciais):''}`},
     {t:'CLÁUSULA 6ª – DA RESERVA DA DATA', b:`A data somente será considerada efetivamente reservada após a confirmação do pagamento da entrada ou do valor estabelecido para reserva. Enquanto não houver confirmação, a data poderá ser disponibilizada para outros interessados.`},
     {t:'CLÁUSULA 7ª – DO CANCELAMENTO, DESISTÊNCIA E REEMBOLSO', b:`O cancelamento deverá ser solicitado por escrito, preferencialmente por WhatsApp ou e-mail. Quando aplicável, será observado o direito de arrependimento previsto na legislação de proteção ao consumidor.\n\nCancelamento com antecedência igual ou superior a 60 dias: restituição de 80% dos valores pagos, com retenção de 20% pela reserva da data e custos administrativos. Entre 30 e 59 dias: restituição de 50%. Inferior a 30 dias: restituição de 20%, sem prejuízo da análise de custos comprovadamente realizados e não recuperáveis.\n\nEm caso de cancelamento imputável à CONTRATADA, sem substituição por profissional compatível ou nova data acordada, serão restituídos os valores correspondentes aos serviços não prestados, observada a legislação aplicável.`},
     {t:'CLÁUSULA 8ª – DA REMARCAÇÃO DO EVENTO', b:`A remarcação dependerá de comunicação prévia e disponibilidade da agenda da CONTRATADA. Havendo disponibilidade, os valores pagos poderão ser aproveitados para a nova data. Em caso de caso fortuito ou força maior, as partes buscarão de boa-fé a realização do serviço em nova data.`},
@@ -323,14 +328,27 @@ STEPS.forEach(s=>{ if(!s.active) s.active=()=>true; });
 let currentIndex = 0;
 function activeSteps(){ return STEPS.filter(s=>s.active()); }
 
-/* Lê a condição especial pré-definida pela Cibele, se o link tiver "?cond=...".
-   Como esta página roda no próprio domínio (não mais dentro do Apps Script),
-   basta ler a URL diretamente — sem truques de sandbox de iframe. */
+/* Lê a condição especial pré-definida e o plano de pagamento pré-definido pela
+   Cibele, se o link tiver "?cond=..." e/ou "?plano=...". Como esta página roda
+   no próprio domínio (não mais dentro do Apps Script), basta ler a URL
+   diretamente — sem truques de sandbox de iframe. */
 (function initPreset(){
-  const raw = new URLSearchParams(window.location.search).get('cond') || '';
-  if (raw.trim().length > 0) {
-    state.condicoesEspeciais = raw;
+  const params = new URLSearchParams(window.location.search);
+  const rawCond = params.get('cond') || '';
+  if (rawCond.trim().length > 0) {
+    state.condicoesEspeciais = rawCond;
     state.condicoesBloqueadas = true;
+  }
+  const rawPlano = params.get('plano') || '';
+  if (rawPlano.trim().length > 0) {
+    try {
+      const plano = JSON.parse(rawPlano);
+      if (plano && plano.forma && Array.isArray(plano.parcelas) && plano.parcelas.length) {
+        state.formaPagamento = plano.forma;
+        state.planoParcelas = plano.parcelas;
+        state.planoBloqueado = true;
+      }
+    } catch (e) { /* link mal formado — ignora e deixa o cliente escolher normalmente */ }
   }
 })();
 
@@ -568,6 +586,24 @@ function renderResumo(el){
 }
 
 function renderPagamento(el){
+  if (state.planoBloqueado) {
+    const total = state.planoParcelas.reduce((s,p) => s + Number(p.valor||0), 0);
+    el.innerHTML = `
+      <h2>Forma de pagamento</h2>
+      <p class="step-sub">Este plano já foi combinado com a Cibele Matozo Fotografia. <span style="color:var(--gold);">Definido pela Cibele — não editável.</span></p>
+      <div class="summary-table">
+        <div class="li"><span>Forma de pagamento</span><span>${formaPagamentoLabel(state.formaPagamento)}</span></div>
+        ${state.planoParcelas.map(p => `<div class="li"><span>${esc(p.rotulo || 'Parcela')}${p.vencimento?(' — '+esc(p.vencimento)):''}</span><span>${formatBRL(p.valor)}</span></div>`).join('')}
+        <div class="li total"><span>Total do plano</span><span>${formatBRL(total)}</span></div>
+      </div>
+      <div class="field" style="margin-top:16px;">
+        <label>Condições especiais combinadas${state.condicoesBloqueadas?' <span style="color:var(--gold);">· definidas pela Cibele</span>':' (opcional)'}</label>
+        <textarea id="f_condicoes" ${state.condicoesBloqueadas?'readonly':''} placeholder="Ex.: desconto combinado, cortesia...">${esc(state.condicoesEspeciais)}</textarea>
+      </div>
+    `;
+    if(!state.condicoesBloqueadas){ bindText(el,'f_condicoes','condicoesEspeciais'); }
+    return;
+  }
   el.innerHTML = `
     <h2>Forma de pagamento</h2>
     <p class="step-sub">Como você prefere pagar.</p>
@@ -579,6 +615,14 @@ function renderPagamento(el){
       <div class="option-card ${state.formaPagamento==='cartao'?'selected':''}" data-k="cartao">
         <div class="oc-row"><span class="oc-title">Cartão de crédito</span></div>
         <div class="oc-desc">Pagamento em até 10x, com taxas da operadora.</div>
+      </div>
+      <div class="option-card ${state.formaPagamento==='debito'?'selected':''}" data-k="debito">
+        <div class="oc-row"><span class="oc-title">Cartão de débito</span></div>
+        <div class="oc-desc">Pagamento à vista.</div>
+      </div>
+      <div class="option-card ${state.formaPagamento==='dinheiro'?'selected':''}" data-k="dinheiro">
+        <div class="oc-row"><span class="oc-title">Dinheiro</span></div>
+        <div class="oc-desc">Pagamento à vista, mediante recibo.</div>
       </div>
     </div>
     <div class="field" style="margin-top:16px;">
@@ -821,7 +865,8 @@ function buildPayload(){
     pacoteLabel: PACOTES[state.pacote]?PACOTES[state.pacote].label:'',
     valorPacote: PACOTES[state.pacote]?PACOTES[state.pacote].valor:0,
     storymakerAdicional: !!(state.categoria!=='storymaker' && state.storymakerAdicional),
-    total: total, formaPagamento: state.formaPagamento==='pix'?'PIX':'Cartão de crédito',
+    total: total, formaPagamento: formaPagamentoLabel(state.formaPagamento),
+    parcelas: state.planoBloqueado ? state.planoParcelas : null,
     autorizacaoImagem: state.autorizacaoImagem,
     metodoAssinatura: state.metodoAssinatura,
     aceiteNome: state.aceiteNome, aceiteCpf: state.cpf,
