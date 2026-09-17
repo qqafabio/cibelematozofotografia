@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM — Cibele Matozo Fotografia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBF9F4; --paper-raised:#FFFFFF; --ink:#221F1C; --ink-soft:#6B6459;
+    --rule:#DCD4C4; --gold:#A8791E; --gold-soft:#F1E6CC; --error:#B23B2E; --ok:#5C7A52; --ok-soft:#E7EEE1;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif;-webkit-font-smoothing:antialiased;}
+  .shell{display:flex;min-height:100vh;}
+
+  /* ---- Sidebar ---- */
+  .sidebar{width:220px;flex-shrink:0;background:var(--paper-raised);border-right:1px solid var(--rule);padding:20px 14px;}
+  .brand{display:flex;align-items:center;gap:9px;padding:0 6px 18px;border-bottom:1px solid var(--rule);margin-bottom:16px;}
+  .brand .wordmark{font-size:12px;letter-spacing:.08em;color:var(--ink-soft);line-height:1.3;}
+  .brand .wordmark strong{display:block;color:var(--ink);font-size:12.5px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:3px;font-size:14px;cursor:pointer;color:var(--ink);margin-bottom:2px;}
+  .nav-item:hover{background:var(--gold-soft);}
+  .nav-item.active{background:var(--ink);color:var(--paper);}
+  .nav-item.disabled{color:#B7B2A6;cursor:default;}
+  .nav-item.disabled:hover{background:none;}
+  .nav-soon{font-size:10px;background:var(--rule);color:var(--ink-soft);padding:1px 6px;border-radius:8px;margin-left:auto;}
+
+  /* ---- Main ---- */
+  .main{flex:1;min-width:0;padding:28px 32px 60px;}
+  .view-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+  .view-header h1{font-family:'Fraunces',serif;font-weight:500;font-size:26px;margin:0;}
+  .view-header p{color:var(--ink-soft);font-size:13.5px;margin:4px 0 0;}
+
+  button{font-family:'Work Sans',sans-serif;cursor:pointer;border-radius:3px;border:none;transition:opacity .15s ease;}
+  .btn-primary{background:var(--ink);color:var(--paper);padding:10px 16px;font-size:13.5px;}
+  .btn-primary:hover{opacity:.88;}
+  .btn-ghost{background:transparent;border:1px solid var(--rule);color:var(--ink);padding:9px 14px;font-size:13.5px;}
+  .btn-ghost:hover{border-color:var(--ink-soft);}
+
+  /* ---- KPI cards ---- */
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:28px;}
+  .kpi-card{background:var(--paper-raised);border:1px solid var(--rule);border-radius:3px;padding:16px 18px;}
+  .kpi-card .kpi-label{font-size:12px;color:var(--ink-soft);}
+  .kpi-card .kpi-value{font-family:'Fraunces',serif;font-size:26px;margin-top:4px;}
+
+  .panel{background:var(--paper-raised);border:1px solid var(--rule);border-radius:3px;}
+  .panel h2{font-family:'Fraunces',serif;font-weight:500;font-size:16px;margin:0;padding:14px 18px;border-bottom:1px solid var(--rule);}
+
+  /* ---- Tables ---- */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-weight:500;color:var(--ink-soft);font-size:11.5px;letter-spacing:.03em;padding:10px 16px;border-bottom:1px solid var(--rule);}
+  td{padding:11px 16px;border-bottom:1px solid var(--rule);}
+  tr:last-child td{border-bottom:none;}
+  tr.clickable{cursor:pointer;}
+  tr.clickable:hover{background:var(--gold-soft);}
+  .status-pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:10px;background:var(--gold-soft);color:#6B5316;}
+  .status-pill.confirmado{background:var(--ok-soft);color:#3E5636;}
+
+  .empty-state{padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
+
+  /* ---- Search ---- */
+  .search-box{margin-bottom:16px;}
+  .search-box input{width:100%;max-width:320px;font-size:14px;padding:10px 12px;border:1px solid var(--rule);border-radius:3px;background:var(--paper-raised);}
+
+  /* ---- Form panel (create/edit) ---- */
+  .form-overlay{position:fixed;inset:0;background:rgba(34,31,28,.35);display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;z-index:20;}
+  .form-panel{background:var(--paper-raised);border-radius:4px;width:100%;max-width:560px;padding:26px 28px 24px;}
+  .form-panel h2{font-family:'Fraunces',serif;font-weight:500;font-size:19px;margin:0 0 18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:5px;}
+  .field input,.field select,.field textarea{width:100%;font-size:14px;padding:9px 11px;border:1px solid var(--rule);border-radius:3px;background:var(--paper);font-family:'Work Sans',sans-serif;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  .form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--rule);}
+  .form-err{color:var(--error);font-size:12.5px;margin-bottom:12px;}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:20px;font-size:13px;z-index:30;}
+  .loading-note{color:var(--ink-soft);font-size:13px;padding:20px 0;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="7" width="20" height="14" rx="2" stroke="#221F1C" stroke-width="1.4"/>
+        <path d="M8 7L9.6 4.4H14.4L16 7" stroke="#221F1C" stroke-width="1.4" stroke-linejoin="round"/>
+        <circle cx="12" cy="14" r="4.2" stroke="#221F1C" stroke-width="1.4"/>
+      </svg>
+      <span class="wordmark"><strong>CIBELE MATOZO</strong>CRM</span>
+    </div>
+    <div id="navList"></div>
+  </aside>
+  <main class="main" id="mainArea"></main>
+</div>
+<div id="overlayRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+/* ============ CONFIGURAÇÃO ============ */
+const CRM_API_URL = 'https://script.google.com/macros/s/AKfycbz_VIaZZXgLF4qxhplwcG3bKo85J5yeyPxUItTzfMbIoQQPcJRwCBFDffwXp6v6gGCl/exec';
+
+/* ============ NAVEGAÇÃO ============ */
+const NAV = [
+  { id:'dashboard', label:'Dashboard', ready:true },
+  { id:'clientes', label:'Clientes', ready:true },
+  { id:'eventos', label:'Eventos · Agenda', ready:true },
+  { id:'leads', label:'CRM · Orçamentos', ready:true },
+  { id:'financeiro', label:'Financeiro', ready:true },
+  { id:'producao', label:'Produção', ready:true },
+  { id:'custos', label:'Custos', ready:true },
+];
+let currentView = 'dashboard';
+let clientes = [];
+let eventos = [];
+let leads = [];
+let financeiro = [];
+let producao = [];
+let custos = [];
+let loaded = false;
+
+function renderNav(){
+  const el = document.getElementById('navList');
+  el.innerHTML = NAV.map(n => `
+    <div class="nav-item ${n.id===currentView?'active':''} ${!n.ready?'disabled':''}" data-id="${n.id}">
+      <span>${n.label}</span>
+      ${!n.ready ? '<span class="nav-soon">em breve</span>' : ''}
+    </div>
+  `).join('');
+  el.querySelectorAll('.nav-item').forEach(item => {
+    const nav = NAV.find(n => n.id === item.dataset.id);
+    if (!nav.ready) return;
+    item.addEventListener('click', () => { currentView = nav.id; renderNav(); renderMain(); });
+  });
+}
+
+/* ============ API ============ */
+function isConfigurado(){ return CRM_API_URL && CRM_API_URL.indexOf('COLE_AQUI') === -1; }
+async function apiCall(action, dados){
+  const res = await fetch(CRM_API_URL, { method:'POST', body: JSON.stringify({ action, dados: dados||{} }) });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Erro desconhecido');
+  return json.dados;
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function formatBRL(n){ return (Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function showToast(msg){
+  const root = document.getElementById('toastRoot');
+  root.innerHTML = `<div class="toast">${esc(msg)}</div>`;
+  setTimeout(() => { root.innerHTML=''; }, 2600);
+}
+async function carregarTudo(){
+  const [c, e, l, f, p, cu] = await Promise.all([
+    apiCall('listarClientes'), apiCall('listarEventos'), apiCall('listarLeads'),
+    apiCall('listarFinanceiro'), apiCall('listarProducao'), apiCall('listarCustos')
+  ]);
+  clientes = c; eventos = e; leads = l; financeiro = f; producao = p; custos = cu;
+  loaded = true;
+}
+
+/* ============ RENDER PRINCIPAL ============ */
+async function renderMain(){
+  const main = document.getElementById('mainArea');
+  if (!isConfigurado()){
+    main.innerHTML = `<div class="panel"><div class="loading-note" style="padding:24px;">Configure a constante <code>CRM_API_URL</code> no topo do arquivo com o link do backend do CRM (Apps Script) para começar a usar.</div></div>`;
+    return;
+  }
+  if (!loaded){
+    main.innerHTML = `<div class="loading-note">Carregando dados…</div>`;
+    try { await carregarTudo(); } catch(err){ main.innerHTML = `<div class="form-err">Não foi possível carregar os dados: ${esc(err.message)}</div>`; return; }
+  }
+  if (currentView === 'dashboard') renderDashboard(main);
+  else if (currentView === 'clientes') renderClientes(main);
+  else if (currentView === 'eventos') renderEventos(main);
+  else if (currentView === 'leads') renderLeads(main);
+  else if (currentView === 'financeiro') renderFinanceiro(main);
+  else if (currentView === 'producao') renderProducao(main);
+  else if (currentView === 'custos') renderCustos(main);
+}
+
+/* ============ DASHBOARD ============ */
+function renderDashboard(main){
+  const confirmados = eventos.filter(e => e.Status === 'Confirmado').length;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const proximos = eventos
+    .filter(e => e['Data do evento'])
+    .map(e => ({ ...e, _data: parseDataBR(e['Data do evento']) }))
+    .filter(e => e._data && e._data >= hoje)
+    .sort((a,b) => a._data - b._data)
+    .slice(0, 8);
+
+  main.innerHTML = `
+    <div class="view-header"><div><h1>Dashboard</h1><p>Panorama geral do negócio.</p></div></div>
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Clientes cadastrados</div><div class="kpi-value">${clientes.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Eventos no total</div><div class="kpi-value">${eventos.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Eventos confirmados</div><div class="kpi-value">${confirmados}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Próximos eventos</div><div class="kpi-value">${proximos.length}</div></div>
+    </div>
+    <div class="panel">
+      <h2>Próximos eventos</h2>
+      ${proximos.length ? `<table>
+        <thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Pacote</th><th>Status</th></tr></thead>
+        <tbody>${proximos.map(e => `
+          <tr><td>${esc(e['Data do evento'])}</td><td>${esc(e['Cliente / Responsável'])}</td><td>${esc(e['Tipo de evento'])}</td><td>${esc(e['Pacote'])}</td><td><span class="status-pill ${String(e.Status).toLowerCase()==='confirmado'?'confirmado':''}">${esc(e.Status)}</span></td></tr>
+        `).join('')}</tbody></table>` : `<div class="empty-state">Nenhum evento futuro cadastrado ainda.</div>`}
+    </div>
+  `;
+}
+function parseDataBR(s){
+  const p = String(s).split('/');
+  if (p.length !== 3) return null;
+  return new Date(p[2], p[1]-1, p[0]);
+}
+
+/* ============ CLIENTES ============ */
+function renderClientes(main){
+  main.innerHTML = `
+    <div class="view-header">
+      <div><h1>Clientes</h1><p>${clientes.length} cadastrados.</p></div>
+      <button class="btn-primary" id="novoClienteBtn">+ Novo cliente</button>
+    </div>
+    <div class="search-box"><input type="text" id="buscaCliente" placeholder="Buscar por nome ou WhatsApp…"></div>
+    <div class="panel"><div id="tabelaClientes"></div></div>
+  `;
+  document.getElementById('novoClienteBtn').addEventListener('click', () => abrirFormCliente(null));
+  document.getElementById('buscaCliente').addEventListener('input', e => desenharTabelaClientes(e.target.value));
+  desenharTabelaClientes('');
+}
+function desenharTabelaClientes(filtro){
+  const f = filtro.trim().toLowerCase();
+  const lista = clientes.filter(c => !f ||
+    String(c['Nome / Responsável']||'').toLowerCase().includes(f) ||
+    String(c['WhatsApp']||'').toLowerCase().includes(f));
+  const el = document.getElementById('tabelaClientes');
+  if (!lista.length){ el.innerHTML = `<div class="empty-state">Nenhum cliente encontrado.</div>`; return; }
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Cidade</th><th>Eventos</th></tr></thead>
+      <tbody>${lista.map(c => `
+        <tr class="clickable" data-id="${esc(c['ID Cliente'])}">
+          <td>${esc(c['Nome / Responsável'])}</td><td>${esc(c['WhatsApp'])}</td><td>${esc(c['E-mail'])}</td>
+          <td>${esc(c['Cidade'])}</td><td>${esc(c['Qtd. eventos']||0)}</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+  el.querySelectorAll('tr.clickable').forEach(row => {
+    row.addEventListener('click', () => {
+      const cliente = clientes.find(c => String(c['ID Cliente']) === row.dataset.id);
+      abrirFormCliente(cliente);
+    });
+  });
+}
+function abrirFormCliente(cliente){
+  const editando = !!cliente;
+  const root = document.getElementById('overlayRoot');
+  root.innerHTML = `
+    <div class="form-overlay" id="overlay">
+      <div class="form-panel">
+        <h2>${editando ? 'Editar cliente' : 'Novo cliente'}</h2>
+        <div class="form-err" id="clienteErr" style="display:none;"></div>
+        <div class="field"><label>Nome completo</label><input id="f_nome" value="${esc(editando?cliente['Nome / Responsável']:'')}"></div>
+        <div class="row2">
+          <div class="field"><label>WhatsApp</label><input id="f_whatsapp" value="${esc(editando?cliente['WhatsApp']:'')}"></div>
+          <div class="field"><label>E-mail</label><input id="f_email" value="${esc(editando?cliente['E-mail']:'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>CPF/CNPJ</label><input id="f_cpf" value="${esc(editando?cliente['CPF/CNPJ']:'')}"></div>
+          <div class="field"><label>Cidade</label><input id="f_cidade" value="${esc(editando?cliente['Cidade']:'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Instagram</label><input id="f_instagram" value="${esc(editando?cliente['Instagram']:'')}"></div>
+          <div class="field"><label>Canal de origem</label><input id="f_canal" value="${esc(editando?cliente['Canal de origem']:'')}"></div>
+        </div>
+        <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?cliente['Observações']:'')}</textarea></div>
+        <div class="form-actions">
+          <button class="btn-ghost" id="cancelarCliente">Cancelar</button>
+          <button class="btn-primary" id="salvarCliente">${editando?'Salvar alterações':'Criar cliente'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cancelarCliente').addEventListener('click', fecharOverlay);
+  document.getElementById('salvarCliente').addEventListener('click', () => salvarCliente(editando ? cliente['ID Cliente'] : null));
+}
+function fecharOverlay(){ document.getElementById('overlayRoot').innerHTML = ''; }
+async function salvarCliente(idCliente){
+  const dados = {
+    nome: document.getElementById('f_nome').value.trim(),
+    whatsapp: document.getElementById('f_whatsapp').value.trim(),
+    email: document.getElementById('f_email').value.trim(),
+    cpf: document.getElementById('f_cpf').value.trim(),
+    cidade: document.getElementById('f_cidade').value.trim(),
+    instagram: document.getElementById('f_instagram').value.trim(),
+    canal: document.getElementById('f_canal').value.trim(),
+    observacoes: document.getElementById('f_obs').value.trim(),
+  };
+  if (!dados.nome){ mostrarErro('clienteErr','Informe o nome.'); return; }
+  const btn = document.getElementById('salvarCliente'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try{
+    if (idCliente) await apiCall('atualizarCliente', Object.assign({ idCliente }, dados));
+    else await apiCall('criarCliente', dados);
+    loaded = false; fecharOverlay(); await renderMain(); showToast('Cliente salvo.');
+  } catch(err){ mostrarErro('clienteErr', err.message); btn.disabled=false; btn.textContent = idCliente?'Salvar alterações':'Criar cliente'; }
+}
+function mostrarErro(id, msg){ const e = document.getElementById(id); e.style.display='block'; e.textContent = msg; }
+
+/* ============ EVENTOS ============ */
+function renderEventos(main){
+  main.innerHTML = `
+    <div class="view-header">
+      <div><h1>Eventos</h1><p>${eventos.length} registrados. Novo evento cria automaticamente o compromisso na Agenda.</p></div>
+      <button class="btn-primary" id="novoEventoBtn">+ Novo evento</button>
+    </div>
+    <div class="panel"><div id="tabelaEventos"></div></div>
+  `;
+  document.getElementById('novoEventoBtn').addEventListener('click', () => abrirFormEvento(null));
+  desenharTabelaEventos();
+}
+function desenharTabelaEventos(){
+  const el = document.getElementById('tabelaEventos');
+  if (!eventos.length){ el.innerHTML = `<div class="empty-state">Nenhum evento cadastrado ainda.</div>`; return; }
+  const ordenados = [...eventos].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Pacote</th><th>Valor</th><th>Status</th></tr></thead>
+      <tbody>${ordenados.map(e => `
+        <tr class="clickable" data-id="${esc(e['ID Evento'])}">
+          <td>${esc(e['Data do evento'])}</td><td>${esc(e['Cliente / Responsável'])}</td><td>${esc(e['Tipo de evento'])}</td>
+          <td>${esc(e['Pacote'])}</td><td>${formatBRL(e['Valor final'])}</td>
+          <td><span class="status-pill ${String(e.Status).toLowerCase()==='confirmado'?'confirmado':''}">${esc(e.Status)}</span></td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+  el.querySelectorAll('tr.clickable').forEach(row => {
+    row.addEventListener('click', () => {
+      const evento = eventos.find(e => String(e['ID Evento']) === row.dataset.id);
+      abrirFormEvento(evento);
+    });
+  });
+}
+function abrirFormEvento(evento){
+  const editando = !!evento;
+  const root = document.getElementById('overlayRoot');
+  const opcoesClientes = clientes.map(c => `<option value="${esc(c['ID Cliente'])}" ${editando && String(evento['ID Cliente'])===String(c['ID Cliente'])?'selected':''}>${esc(c['Nome / Responsável'])}</option>`).join('');
+  root.innerHTML = `
+    <div class="form-overlay" id="overlay">
+      <div class="form-panel">
+        <h2>${editando ? 'Editar evento' : 'Novo evento'}</h2>
+        <div class="form-err" id="eventoErr" style="display:none;"></div>
+        <div class="field"><label>Cliente</label>
+          <select id="f_idCliente">${clientes.length ? opcoesClientes : '<option value="">Cadastre um cliente primeiro</option>'}</select>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Status</label>
+            <select id="f_status">
+              ${['Novo','Confirmado','Concluído','Cancelado'].map(s=>`<option ${editando&&evento.Status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field"><label>Data do evento</label><input id="f_data" placeholder="DD/MM/AAAA" value="${esc(editando?evento['Data do evento']:'')}"></div>
+          <div class="field"><label>Tipo de evento</label><input id="f_tipo" value="${esc(editando?evento['Tipo de evento']:'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Hora início</label><input id="f_horaIni" placeholder="HH:MM" value="${esc(editando?evento['Hora início']:'')}"></div>
+          <div class="field"><label>Hora fim</label><input id="f_horaFim" placeholder="HH:MM" value="${esc(editando?evento['Hora fim']:'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Local</label><input id="f_local" value="${esc(editando?evento['Local']:'')}"></div>
+          <div class="field"><label>Cidade</label><input id="f_cidade" value="${esc(editando?evento['Cidade']:'')}"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Pacote</label><input id="f_pacote" value="${esc(editando?evento['Pacote']:'')}"></div>
+          <div class="field"><label>Valor pacote</label><input id="f_valorPacote" type="number" step="0.01" value="${esc(editando?evento['Valor pacote']:'')}"></div>
+          <div class="field"><label>Valor final</label><input id="f_valorFinal" type="number" step="0.01" value="${esc(editando?evento['Valor final']:'')}"></div>
+        </div>
+        <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?evento['Observações']:'')}</textarea></div>
+        <div class="form-actions">
+          <button class="btn-ghost" id="cancelarEvento">Cancelar</button>
+          <button class="btn-primary" id="salvarEvento">${editando?'Salvar alterações':'Criar evento'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cancelarEvento').addEventListener('click', fecharOverlay);
+  document.getElementById('salvarEvento').addEventListener('click', () => salvarEvento(editando ? evento['ID Evento'] : null));
+}
+async function salvarEvento(idEvento){
+  const idCliente = document.getElementById('f_idCliente').value;
+  if (!idCliente){ mostrarErro('eventoErr','Escolha um cliente.'); return; }
+  const dados = {
+    idCliente,
+    status: document.getElementById('f_status').value,
+    dataEvento: document.getElementById('f_data').value.trim(),
+    tipoEvento: document.getElementById('f_tipo').value.trim(),
+    horaInicio: document.getElementById('f_horaIni').value.trim(),
+    horaFim: document.getElementById('f_horaFim').value.trim(),
+    local: document.getElementById('f_local').value.trim(),
+    cidade: document.getElementById('f_cidade').value.trim(),
+    pacote: document.getElementById('f_pacote').value.trim(),
+    valorPacote: Number(document.getElementById('f_valorPacote').value || 0),
+    valorFinal: Number(document.getElementById('f_valorFinal').value || 0),
+    observacoes: document.getElementById('f_obs').value.trim(),
+  };
+  const btn = document.getElementById('salvarEvento'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try{
+    if (idEvento) await apiCall('atualizarEvento', Object.assign({ idEvento }, dados));
+    else await apiCall('criarEvento', dados);
+    loaded = false; fecharOverlay(); await renderMain(); showToast(idEvento ? 'Evento atualizado.' : 'Evento criado e adicionado à Agenda.');
+  } catch(err){ mostrarErro('eventoErr', err.message); btn.disabled=false; btn.textContent = idEvento?'Salvar alterações':'Criar evento'; }
+}
+
+/* ============ LEADS / CRM · ORÇAMENTOS ============ */
+const ETAPAS_COMERCIAIS = ['Novo lead','Em conversa','Orçamento enviado','Negociação','Ganho','Perdido'];
+function renderLeads(main){
+  main.innerHTML = `
+    <div class="view-header">
+      <div><h1>CRM · Orçamentos</h1><p>${leads.length} leads no funil.</p></div>
+      <button class="btn-primary" id="novoLeadBtn">+ Novo lead</button>
+    </div>
+    <div class="panel"><div id="tabelaLeads"></div></div>
+  `;
+  document.getElementById('novoLeadBtn').addEventListener('click', () => abrirFormLead(null));
+  desenharTabelaLeads();
+}
+function desenharTabelaLeads(){
+  const el = document.getElementById('tabelaLeads');
+  if (!leads.length){ el.innerHTML = `<div class="empty-state">Nenhum lead cadastrado ainda.</div>`; return; }
+  const ordenados = [...leads].sort((a,b) => Number(b['ID Lead']) - Number(a['ID Lead']));
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Cliente</th><th>Tipo</th><th>Etapa</th><th>Valor estimado</th><th>Ponderado</th><th>Próximo contato</th></tr></thead>
+      <tbody>${ordenados.map(l => `
+        <tr class="clickable" data-id="${esc(l['ID Lead'])}">
+          <td>${esc(l['Cliente'])}</td><td>${esc(l['Tipo de evento'])}</td>
+          <td><span class="status-pill ${String(l['Etapa comercial']).toLowerCase()==='ganho'?'confirmado':''}">${esc(l['Etapa comercial'])}</span></td>
+          <td>${formatBRL(l['Valor estimado'])}</td><td>${formatBRL(l['Valor ponderado'])}</td>
+          <td>${esc(l['Próximo contato'])}</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+  el.querySelectorAll('tr.clickable').forEach(row => {
+    row.addEventListener('click', () => abrirFormLead(leads.find(l => String(l['ID Lead']) === row.dataset.id)));
+  });
+}
+function abrirFormLead(lead){
+  const editando = !!lead;
+  document.getElementById('overlayRoot').innerHTML = `
+    <div class="form-overlay" id="overlay">
+      <div class="form-panel">
+        <h2>${editando ? 'Editar lead' : 'Novo lead'}</h2>
+        <div class="form-err" id="leadErr" style="display:none;"></div>
+        ${editando ? `<div class="field"><label>Cliente</label><input value="${esc(lead['Cliente'])}" disabled></div>` : `
+        <div class="row2">
+          <div class="field"><label>Nome</label><input id="f_nome"></div>
+          <div class="field"><label>WhatsApp</label><input id="f_whatsapp"></div>
+        </div>
+        <div class="field"><label>E-mail (opcional)</label><input id="f_email"></div>
+        `}
+        <div class="row2">
+          <div class="field"><label>Tipo de evento</label><input id="f_tipo" value="${esc(editando?lead['Tipo de evento']:'')}"></div>
+          <div class="field"><label>Data desejada</label><input id="f_dataDesejada" placeholder="DD/MM/AAAA" value="${esc(editando?lead['Data desejada']:'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Serviço de interesse</label><input id="f_servico" value="${esc(editando?lead['Serviço de interesse']:'')}"></div>
+          <div class="field"><label>Pacote</label><input id="f_pacote" value="${esc(editando?lead['Pacote']:'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Origem</label><input id="f_origem" value="${esc(editando?lead['Origem']:'')}"></div>
+          <div class="field"><label>Etapa comercial</label>
+            <select id="f_etapa">${ETAPAS_COMERCIAIS.map(e=>`<option ${editando&&lead['Etapa comercial']===e?'selected':''}>${e}</option>`).join('')}</select>
+          </div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Valor estimado</label><input id="f_valorEstimado" type="number" step="0.01" value="${esc(editando?lead['Valor estimado']:'')}"></div>
+          <div class="field"><label>Probabilidade (%)</label><input id="f_probabilidade" type="number" min="0" max="100" value="${esc(editando?lead['Probabilidade %']:'')}"></div>
+          <div class="field"><label>Próximo contato</label><input id="f_proximoContato" placeholder="DD/MM/AAAA" value="${esc(editando?lead['Próximo contato']:'')}"></div>
+        </div>
+        <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?lead['Observações']:'')}</textarea></div>
+        <div class="form-actions">
+          <button class="btn-ghost" id="cancelarLead">Cancelar</button>
+          <button class="btn-primary" id="salvarLead">${editando?'Salvar alterações':'Criar lead'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cancelarLead').addEventListener('click', fecharOverlay);
+  document.getElementById('salvarLead').addEventListener('click', () => salvarLead(editando ? lead['ID Lead'] : null));
+}
+async function salvarLead(idLead){
+  const dados = {
+    tipoEvento: document.getElementById('f_tipo').value.trim(),
+    dataDesejada: document.getElementById('f_dataDesejada').value.trim(),
+    servico: document.getElementById('f_servico').value.trim(),
+    pacote: document.getElementById('f_pacote').value.trim(),
+    origem: document.getElementById('f_origem').value.trim(),
+    etapa: document.getElementById('f_etapa').value,
+    valorEstimado: Number(document.getElementById('f_valorEstimado').value || 0),
+    probabilidade: Number(document.getElementById('f_probabilidade').value || 0),
+    proximoContato: document.getElementById('f_proximoContato').value.trim(),
+    observacoes: document.getElementById('f_obs').value.trim(),
+  };
+  if (!idLead){
+    dados.nome = document.getElementById('f_nome').value.trim();
+    dados.whatsapp = document.getElementById('f_whatsapp').value.trim();
+    dados.email = document.getElementById('f_email').value.trim();
+    if (!dados.nome){ mostrarErro('leadErr','Informe o nome.'); return; }
+  }
+  const btn = document.getElementById('salvarLead'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try{
+    if (idLead) await apiCall('atualizarLead', Object.assign({ idLead }, dados));
+    else await apiCall('criarLead', dados);
+    loaded = false; fecharOverlay(); await renderMain(); showToast('Lead salvo.');
+  } catch(err){ mostrarErro('leadErr', err.message); btn.disabled=false; btn.textContent = idLead?'Salvar alterações':'Criar lead'; }
+}
+
+/* ============ FINANCEIRO ============ */
+function renderFinanceiro(main){
+  const totalPrevisto = financeiro.reduce((s,p) => s + Number(p['Valor previsto']||0), 0);
+  const totalPago = financeiro.reduce((s,p) => s + Number(p['Valor pago']||0), 0);
+  main.innerHTML = `
+    <div class="view-header">
+      <div><h1>Financeiro</h1><p>${financeiro.length} parcelas.</p></div>
+      <button class="btn-primary" id="novaParcelaBtn">+ Nova parcela</button>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Total previsto</div><div class="kpi-value">${formatBRL(totalPrevisto)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total recebido</div><div class="kpi-value">${formatBRL(totalPago)}</div></div>
+    </div>
+    <div class="panel"><div id="tabelaFinanceiro"></div></div>
+  `;
+  document.getElementById('novaParcelaBtn').addEventListener('click', () => abrirFormParcela(null));
+  desenharTabelaFinanceiro();
+}
+function desenharTabelaFinanceiro(){
+  const el = document.getElementById('tabelaFinanceiro');
+  if (!financeiro.length){ el.innerHTML = `<div class="empty-state">Nenhuma parcela cadastrada ainda.</div>`; return; }
+  const ordenados = [...financeiro].sort((a,b) => Number(b['ID Parcela']) - Number(a['ID Parcela']));
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Cliente</th><th>Parcela</th><th>Vencimento</th><th>Valor previsto</th><th>Status</th><th>Saldo</th></tr></thead>
+      <tbody>${ordenados.map(p => `
+        <tr class="clickable" data-id="${esc(p['ID Parcela'])}">
+          <td>${esc(p['Cliente'])}</td><td>${esc(p['Nº parcela'])}/${esc(p['Total parcelas'])}</td>
+          <td>${esc(p['Vencimento'])}</td><td>${formatBRL(p['Valor previsto'])}</td>
+          <td><span class="status-pill ${String(p['Status']).toLowerCase()==='pago'?'confirmado':''}">${esc(p['Status'])}</span></td>
+          <td>${formatBRL(p['Saldo'])}</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+  el.querySelectorAll('tr.clickable').forEach(row => {
+    row.addEventListener('click', () => abrirFormParcela(financeiro.find(p => String(p['ID Parcela']) === row.dataset.id)));
+  });
+}
+function abrirFormParcela(parcela){
+  const editando = !!parcela;
+  const opcoesEventos = eventos.map(e => `<option value="${esc(e['ID Evento'])}">${esc(e['Cliente / Responsável'])} — ${esc(e['Data do evento'])}</option>`).join('');
+  document.getElementById('overlayRoot').innerHTML = `
+    <div class="form-overlay" id="overlay">
+      <div class="form-panel">
+        <h2>${editando ? 'Editar parcela' : 'Nova parcela'}</h2>
+        <div class="form-err" id="parcelaErr" style="display:none;"></div>
+        ${editando ? `<div class="field"><label>Cliente</label><input value="${esc(parcela['Cliente'])}" disabled></div>` : `
+        <div class="field"><label>Evento</label><select id="f_idEvento">${eventos.length?opcoesEventos:'<option value="">Cadastre um evento primeiro</option>'}</select></div>
+        <div class="row3">
+          <div class="field"><label>Tipo cobrança</label><input id="f_tipoCobranca" placeholder="Entrada, saldo..."></div>
+          <div class="field"><label>Nº parcela</label><input id="f_numeroParcela" type="number" value="1"></div>
+          <div class="field"><label>Total parcelas</label><input id="f_totalParcelas" type="number" value="1"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Vencimento</label><input id="f_vencimento" placeholder="DD/MM/AAAA"></div>
+          <div class="field"><label>Valor previsto</label><input id="f_valorPrevisto" type="number" step="0.01"></div>
+        </div>
+        `}
+        <div class="row2">
+          <div class="field"><label>Status</label>
+            <select id="f_status">${['Pendente','Pago','Atrasado','Cancelado'].map(s=>`<option ${editando&&parcela['Status']===s?'selected':''}>${s}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Forma pagamento</label><input id="f_formaPagamento" value="${esc(editando?parcela['Forma pagamento']:'')}"></div>
+        </div>
+        ${editando ? `
+        <div class="row2">
+          <div class="field"><label>Data pagamento</label><input id="f_dataPagamento" placeholder="DD/MM/AAAA" value="${esc(parcela['Data pagamento'])}"></div>
+          <div class="field"><label>Valor pago</label><input id="f_valorPago" type="number" step="0.01" value="${esc(parcela['Valor pago'])}"></div>
+        </div>` : ''}
+        <div class="field"><label>Observações</label><textarea id="f_obs" rows="2">${esc(editando?parcela['Observações']:'')}</textarea></div>
+        <div class="form-actions">
+          <button class="btn-ghost" id="cancelarParcela">Cancelar</button>
+          <button class="btn-primary" id="salvarParcela">${editando?'Salvar alterações':'Criar parcela'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cancelarParcela').addEventListener('click', fecharOverlay);
+  document.getElementById('salvarParcela').addEventListener('click', () => salvarParcela(editando ? parcela['ID Parcela'] : null));
+}
+async function salvarParcela(idParcela){
+  const dados = {
+    status: document.getElementById('f_status').value,
+    formaPagamento: document.getElementById('f_formaPagamento').value.trim(),
+    observacoes: document.getElementById('f_obs').value.trim(),
+  };
+  if (!idParcela){
+    const idEvento = document.getElementById('f_idEvento').value;
+    if (!idEvento){ mostrarErro('parcelaErr','Escolha um evento.'); return; }
+    Object.assign(dados, {
+      idEvento,
+      tipoCobranca: document.getElementById('f_tipoCobranca').value.trim(),
+      numeroParcela: Number(document.getElementById('f_numeroParcela').value || 1),
+      totalParcelas: Number(document.getElementById('f_totalParcelas').value || 1),
+      vencimento: document.getElementById('f_vencimento').value.trim(),
+      valorPrevisto: Number(document.getElementById('f_valorPrevisto').value || 0),
+    });
+  } else {
+    dados.dataPagamento = document.getElementById('f_dataPagamento').value.trim();
+    dados.valorPago = Number(document.getElementById('f_valorPago').value || 0);
+  }
+  const btn = document.getElementById('salvarParcela'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try{
+    if (idParcela) await apiCall('atualizarParcela', Object.assign({ idParcela }, dados));
+    else await apiCall('criarParcela', dados);
+    loaded = false; fecharOverlay(); await renderMain(); showToast('Parcela salva.');
+  } catch(err){ mostrarErro('parcelaErr', err.message); btn.disabled=false; btn.textContent = idParcela?'Salvar alterações':'Criar parcela'; }
+}
+
+/* ============ PRODUÇÃO ============ */
+const ETAPAS_PRODUCAO = ['Não iniciado','Em andamento','Concluído'];
+function renderProducao(main){
+  main.innerHTML = `
+    <div class="view-header"><div><h1>Produção</h1><p>Uma linha por evento — criada automaticamente ao cadastrar o evento.</p></div></div>
+    <div class="panel"><div id="tabelaProducao"></div></div>
+  `;
+  desenharTabelaProducao();
+}
+function desenharTabelaProducao(){
+  const el = document.getElementById('tabelaProducao');
+  if (!producao.length){ el.innerHTML = `<div class="empty-state">Nenhum evento com produção em aberto ainda.</div>`; return; }
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Cliente</th><th>Tipo</th><th>Data evento</th><th>Edição</th><th>Entrega</th></tr></thead>
+      <tbody>${producao.map(p => `
+        <tr class="clickable" data-id="${esc(p['ID Evento'])}">
+          <td>${esc(p['Cliente'])}</td><td>${esc(p['Tipo de evento'])}</td><td>${esc(p['Data evento'])}</td>
+          <td>${esc(p['Edição foto'])}</td>
+          <td><span class="status-pill ${String(p['Entrega']).toLowerCase()==='concluído'?'confirmado':''}">${esc(p['Entrega'])}</span></td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+  el.querySelectorAll('tr.clickable').forEach(row => {
+    row.addEventListener('click', () => abrirFormProducao(producao.find(p => String(p['ID Evento']) === row.dataset.id)));
+  });
+}
+function abrirFormProducao(p){
+  const campoEtapa = (label, campo) => `
+    <div class="field"><label>${label}</label>
+      <select id="f_${campo}">${ETAPAS_PRODUCAO.map(e=>`<option ${p[mapaCampoProducaoLabel_(campo)]===e?'selected':''}>${e}</option>`).join('')}</select>
+    </div>`;
+  document.getElementById('overlayRoot').innerHTML = `
+    <div class="form-overlay" id="overlay">
+      <div class="form-panel">
+        <h2>Produção — ${esc(p['Cliente'])}</h2>
+        <div class="form-err" id="producaoErr" style="display:none;"></div>
+        <div class="row2">
+          <div class="field"><label>Fotógrafo responsável</label><input id="f_fotoResponsavel" value="${esc(p['Foto responsável'])}"></div>
+          <div class="field"><label>Cinegrafista responsável</label><input id="f_videoResponsavel" value="${esc(p['Vídeo responsável'])}"></div>
+        </div>
+        <div class="row3">
+          ${campoEtapa('Captação','captacao')}
+          ${campoEtapa('Backup','backup')}
+          ${campoEtapa('Seleção','selecao')}
+        </div>
+        <div class="row3">
+          ${campoEtapa('Edição foto','edicaoFoto')}
+          ${campoEtapa('Edição vídeo','edicaoVideo')}
+          ${campoEtapa('Álbum','album')}
+        </div>
+        <div class="row2">
+          ${campoEtapa('Aprovação do cliente','aprovacao')}
+          ${campoEtapa('Entrega final','entrega')}
+        </div>
+        <div class="row2">
+          <div class="field"><label>Link das fotos/vídeos</label><input id="f_linkFotos" value="${esc(p['Link das fotos'])}"></div>
+          <div class="field"><label>Data de entrega</label><input id="f_dataEntrega" placeholder="DD/MM/AAAA" value="${esc(p['Data entrega'])}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Hora de entrega</label><input id="f_horaEntrega" placeholder="HH:MM" value="${esc(p['Hora entrega'])}"></div>
+          <div class="field"><label>Local de entrega</label><input id="f_localEntrega" placeholder="Ex.: online, estúdio, endereço..." value="${esc(p['Local de entrega'])}"></div>
+        </div>
+        <p class="section-note" style="font-size:12px;color:var(--ink-soft);margin:-6px 0 14px;">Ao preencher data, hora ou local de entrega, um compromisso é criado (ou atualizado) automaticamente na Agenda, já com o status financeiro do evento.</p>
+        <div class="field"><label>Pendências</label><textarea id="f_pendencias" rows="2">${esc(p['Pendências'])}</textarea></div>
+        <div class="form-actions">
+          <button class="btn-ghost" id="cancelarProducao">Cancelar</button>
+          <button class="btn-primary" id="salvarProducao">Salvar alterações</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cancelarProducao').addEventListener('click', fecharOverlay);
+  document.getElementById('salvarProducao').addEventListener('click', () => salvarProducao(p['ID Evento']));
+}
+function mapaCampoProducaoLabel_(campo){
+  const mapa = { captacao:'Captação', backup:'Backup', selecao:'Seleção', edicaoFoto:'Edição foto',
+    edicaoVideo:'Edição vídeo', album:'Álbum', aprovacao:'Aprovação', entrega:'Entrega' };
+  return mapa[campo] || campo;
+}
+async function salvarProducao(idEvento){
+  const dados = {
+    fotoResponsavel: document.getElementById('f_fotoResponsavel').value.trim(),
+    videoResponsavel: document.getElementById('f_videoResponsavel').value.trim(),
+    captacao: document.getElementById('f_captacao').value,
+    backup: document.getElementById('f_backup').value,
+    selecao: document.getElementById('f_selecao').value,
+    edicaoFoto: document.getElementById('f_edicaoFoto').value,
+    edicaoVideo: document.getElementById('f_edicaoVideo').value,
+    album: document.getElementById('f_album').value,
+    aprovacao: document.getElementById('f_aprovacao').value,
+    entrega: document.getElementById('f_entrega').value,
+    linkFotos: document.getElementById('f_linkFotos').value.trim(),
+    dataEntrega: document.getElementById('f_dataEntrega').value.trim(),
+    horaEntrega: document.getElementById('f_horaEntrega').value.trim(),
+    localEntrega: document.getElementById('f_localEntrega').value.trim(),
+    pendencias: document.getElementById('f_pendencias').value.trim(),
+  };
+  const btn = document.getElementById('salvarProducao'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try{
+    await apiCall('atualizarProducao', Object.assign({ idEvento }, dados));
+    loaded = false; fecharOverlay(); await renderMain(); showToast('Produção atualizada.');
+  } catch(err){ mostrarErro('producaoErr', err.message); btn.disabled=false; btn.textContent='Salvar alterações'; }
+}
+
+/* ============ CUSTOS ============ */
+function renderCustos(main){
+  const total = custos.reduce((s,c) => s + Number(c['Valor']||0), 0);
+  main.innerHTML = `
+    <div class="view-header">
+      <div><h1>Custos</h1><p>${custos.length} lançamentos.</p></div>
+      <button class="btn-primary" id="novoCustoBtn">+ Novo custo</button>
+    </div>
+    <div class="kpi-row"><div class="kpi-card"><div class="kpi-label">Total lançado</div><div class="kpi-value">${formatBRL(total)}</div></div></div>
+    <div class="panel"><div id="tabelaCustos"></div></div>
+  `;
+  document.getElementById('novoCustoBtn').addEventListener('click', () => abrirFormCusto(null));
+  desenharTabelaCustos();
+}
+function desenharTabelaCustos(){
+  const el = document.getElementById('tabelaCustos');
+  if (!custos.length){ el.innerHTML = `<div class="empty-state">Nenhum custo lançado ainda.</div>`; return; }
+  const ordenados = [...custos].sort((a,b) => Number(b['ID Custo']) - Number(a['ID Custo']));
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Evento</th><th>Categoria</th><th>Fornecedor</th><th>Valor</th><th>Pago?</th></tr></thead>
+      <tbody>${ordenados.map(c => `
+        <tr class="clickable" data-id="${esc(c['ID Custo'])}">
+          <td>${esc(c['Cliente'])}</td><td>${esc(c['Categoria'])}</td><td>${esc(c['Fornecedor'])}</td>
+          <td>${formatBRL(c['Valor'])}</td>
+          <td><span class="status-pill ${String(c['Pago?']).toLowerCase()==='sim'?'confirmado':''}">${esc(c['Pago?'])}</span></td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+  el.querySelectorAll('tr.clickable').forEach(row => {
+    row.addEventListener('click', () => abrirFormCusto(custos.find(c => String(c['ID Custo']) === row.dataset.id)));
+  });
+}
+function abrirFormCusto(custo){
+  const editando = !!custo;
+  const opcoesEventos = eventos.map(e => `<option value="${esc(e['ID Evento'])}" ${editando&&String(custo['ID Evento'])===String(e['ID Evento'])?'selected':''}>${esc(e['Cliente / Responsável'])} — ${esc(e['Data do evento'])}</option>`).join('');
+  document.getElementById('overlayRoot').innerHTML = `
+    <div class="form-overlay" id="overlay">
+      <div class="form-panel">
+        <h2>${editando?'Editar custo':'Novo custo'}</h2>
+        <div class="form-err" id="custoErr" style="display:none;"></div>
+        <div class="field"><label>Evento</label><select id="f_idEvento">${eventos.length?opcoesEventos:'<option value="">Cadastre um evento primeiro</option>'}</select></div>
+        <div class="row2">
+          <div class="field"><label>Data</label><input id="f_data" placeholder="DD/MM/AAAA" value="${esc(editando?custo['Data']:'')}"></div>
+          <div class="field"><label>Categoria</label><input id="f_categoria" value="${esc(editando?custo['Categoria']:'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Fornecedor</label><input id="f_fornecedor" value="${esc(editando?custo['Fornecedor']:'')}"></div>
+          <div class="field"><label>Valor</label><input id="f_valor" type="number" step="0.01" value="${esc(editando?custo['Valor']:'')}"></div>
+        </div>
+        <div class="field"><label>Descrição</label><input id="f_descricao" value="${esc(editando?custo['Descrição']:'')}"></div>
+        <div class="row2">
+          <div class="field"><label>Pago?</label><select id="f_pago"><option ${editando&&custo['Pago?']==='Sim'?'selected':''}>Sim</option><option ${!editando||custo['Pago?']==='Não'?'selected':''}>Não</option></select></div>
+          <div class="field"><label>Forma pagamento</label><input id="f_formaPagamento" value="${esc(editando?custo['Forma pagamento']:'')}"></div>
+        </div>
+        <div class="field"><label>Observações</label><textarea id="f_obs" rows="2">${esc(editando?custo['Observações']:'')}</textarea></div>
+        <div class="form-actions">
+          <button class="btn-ghost" id="cancelarCusto">Cancelar</button>
+          <button class="btn-primary" id="salvarCusto">${editando?'Salvar alterações':'Criar custo'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cancelarCusto').addEventListener('click', fecharOverlay);
+  document.getElementById('salvarCusto').addEventListener('click', () => salvarCusto(editando ? custo['ID Custo'] : null));
+}
+async function salvarCusto(idCusto){
+  const idEvento = document.getElementById('f_idEvento').value;
+  if (!idEvento){ mostrarErro('custoErr','Escolha um evento.'); return; }
+  const dados = {
+    idEvento,
+    data: document.getElementById('f_data').value.trim(),
+    categoria: document.getElementById('f_categoria').value.trim(),
+    fornecedor: document.getElementById('f_fornecedor').value.trim(),
+    descricao: document.getElementById('f_descricao').value.trim(),
+    valor: Number(document.getElementById('f_valor').value || 0),
+    pago: document.getElementById('f_pago').value,
+    formaPagamento: document.getElementById('f_formaPagamento').value.trim(),
+    observacoes: document.getElementById('f_obs').value.trim(),
+  };
+  const btn = document.getElementById('salvarCusto'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try{
+    if (idCusto) await apiCall('atualizarCusto', Object.assign({ idCusto }, dados));
+    else await apiCall('criarCusto', dados);
+    loaded = false; fecharOverlay(); await renderMain(); showToast('Custo salvo.');
+  } catch(err){ mostrarErro('custoErr', err.message); btn.disabled=false; btn.textContent = idCusto?'Salvar alterações':'Criar custo'; }
+}
+
+/* ============ INÍCIO ============ */
+renderNav();
+renderMain();
+</script>
+</body>
+</html>
