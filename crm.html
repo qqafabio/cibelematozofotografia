@@ -100,7 +100,7 @@
 
 <script>
 /* ============ CONFIGURAÇÃO ============ */
-const CRM_API_URL = 'https://script.google.com/macros/s/AKfycbz_VIaZZXgLF4qxhplwcG3bKo85J5yeyPxUItTzfMbIoQQPcJRwCBFDffwXp6v6gGCl/exec';
+const CRM_API_URL = 'COLE_AQUI_A_URL_DO_BACKEND_DO_CRM';
 
 /* ============ NAVEGAÇÃO ============ */
 const NAV = [
@@ -119,6 +119,7 @@ let leads = [];
 let financeiro = [];
 let producao = [];
 let custos = [];
+let listas = {};
 let loaded = false;
 
 function renderNav(){
@@ -146,17 +147,44 @@ async function apiCall(action, dados){
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function formatBRL(n){ return (Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function maskWhatsapp(v){
+  v = v.replace(/\D/g,'').slice(0,11);
+  if (v.length>10) v = v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');
+  else v = v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+  return v;
+}
+function maskData(v){
+  v = v.replace(/\D/g,'').slice(0,8);
+  v = v.replace(/(\d{2})(\d)/,'$1/$2').replace(/(\d{2})\/(\d{2})(\d)/,'$1/$2/$3');
+  return v;
+}
+function maskHora(v){
+  v = v.replace(/\D/g,'').slice(0,4);
+  v = v.replace(/(\d{2})(\d{1,2})/,'$1:$2');
+  return v;
+}
+function aplicarMascara(id, fn){
+  const input = document.getElementById(id);
+  if (!input) return;
+  input.addEventListener('input', () => { input.value = fn(input.value); });
+}
+function opcoesSelect(lista, valorAtual){
+  const itens = lista || [];
+  return `<option value="">— Selecione —</option>` + itens.map(v =>
+    `<option value="${esc(v)}" ${valorAtual===v?'selected':''}>${esc(v)}</option>`
+  ).join('');
+}
 function showToast(msg){
   const root = document.getElementById('toastRoot');
   root.innerHTML = `<div class="toast">${esc(msg)}</div>`;
   setTimeout(() => { root.innerHTML=''; }, 2600);
 }
 async function carregarTudo(){
-  const [c, e, l, f, p, cu] = await Promise.all([
+  const [c, e, l, f, p, cu, li] = await Promise.all([
     apiCall('listarClientes'), apiCall('listarEventos'), apiCall('listarLeads'),
-    apiCall('listarFinanceiro'), apiCall('listarProducao'), apiCall('listarCustos')
+    apiCall('listarFinanceiro'), apiCall('listarProducao'), apiCall('listarCustos'), apiCall('listarListas')
   ]);
-  clientes = c; eventos = e; leads = l; financeiro = f; producao = p; custos = cu;
+  clientes = c; eventos = e; leads = l; financeiro = f; producao = p; custos = cu; listas = li || {};
   loaded = true;
 }
 
@@ -282,6 +310,7 @@ function abrirFormCliente(cliente){
     </div>`;
   document.getElementById('cancelarCliente').addEventListener('click', fecharOverlay);
   document.getElementById('salvarCliente').addEventListener('click', () => salvarCliente(editando ? cliente['ID Cliente'] : null));
+  aplicarMascara('f_whatsapp', maskWhatsapp);
 }
 function fecharOverlay(){ document.getElementById('overlayRoot').innerHTML = ''; }
 async function salvarCliente(idCliente){
@@ -352,12 +381,10 @@ function abrirFormEvento(evento){
         </div>
         <div class="row3">
           <div class="field"><label>Status</label>
-            <select id="f_status">
-              ${['Novo','Confirmado','Concluído','Cancelado'].map(s=>`<option ${editando&&evento.Status===s?'selected':''}>${s}</option>`).join('')}
-            </select>
+            <select id="f_status">${opcoesSelect(listas['Status evento'], editando?evento.Status:'')}</select>
           </div>
           <div class="field"><label>Data do evento</label><input id="f_data" placeholder="DD/MM/AAAA" value="${esc(editando?evento['Data do evento']:'')}"></div>
-          <div class="field"><label>Tipo de evento</label><input id="f_tipo" value="${esc(editando?evento['Tipo de evento']:'')}"></div>
+          <div class="field"><label>Tipo de evento</label><select id="f_tipo">${opcoesSelect(listas['Tipo de evento'], editando?evento['Tipo de evento']:'')}</select></div>
         </div>
         <div class="row2">
           <div class="field"><label>Hora início</label><input id="f_horaIni" placeholder="HH:MM" value="${esc(editando?evento['Hora início']:'')}"></div>
@@ -368,7 +395,7 @@ function abrirFormEvento(evento){
           <div class="field"><label>Cidade</label><input id="f_cidade" value="${esc(editando?evento['Cidade']:'')}"></div>
         </div>
         <div class="row3">
-          <div class="field"><label>Pacote</label><input id="f_pacote" value="${esc(editando?evento['Pacote']:'')}"></div>
+          <div class="field"><label>Pacote</label><select id="f_pacote">${opcoesSelect(listas['Pacote'], editando?evento['Pacote']:'')}</select></div>
           <div class="field"><label>Valor pacote</label><input id="f_valorPacote" type="number" step="0.01" value="${esc(editando?evento['Valor pacote']:'')}"></div>
           <div class="field"><label>Valor final</label><input id="f_valorFinal" type="number" step="0.01" value="${esc(editando?evento['Valor final']:'')}"></div>
         </div>
@@ -381,6 +408,9 @@ function abrirFormEvento(evento){
     </div>`;
   document.getElementById('cancelarEvento').addEventListener('click', fecharOverlay);
   document.getElementById('salvarEvento').addEventListener('click', () => salvarEvento(editando ? evento['ID Evento'] : null));
+  aplicarMascara('f_data', maskData);
+  aplicarMascara('f_horaIni', maskHora);
+  aplicarMascara('f_horaFim', maskHora);
 }
 async function salvarEvento(idEvento){
   const idCliente = document.getElementById('f_idCliente').value;
@@ -408,7 +438,6 @@ async function salvarEvento(idEvento){
 }
 
 /* ============ LEADS / CRM · ORÇAMENTOS ============ */
-const ETAPAS_COMERCIAIS = ['Novo lead','Em conversa','Orçamento enviado','Negociação','Ganho','Perdido'];
 function renderLeads(main){
   main.innerHTML = `
     <div class="view-header">
@@ -449,23 +478,21 @@ function abrirFormLead(lead){
         ${editando ? `<div class="field"><label>Cliente</label><input value="${esc(lead['Cliente'])}" disabled></div>` : `
         <div class="row2">
           <div class="field"><label>Nome</label><input id="f_nome"></div>
-          <div class="field"><label>WhatsApp</label><input id="f_whatsapp"></div>
+          <div class="field"><label>WhatsApp</label><input id="f_whatsapp" placeholder="(41) 90000-0000"></div>
         </div>
         <div class="field"><label>E-mail (opcional)</label><input id="f_email"></div>
         `}
         <div class="row2">
-          <div class="field"><label>Tipo de evento</label><input id="f_tipo" value="${esc(editando?lead['Tipo de evento']:'')}"></div>
+          <div class="field"><label>Tipo de evento</label><select id="f_tipo">${opcoesSelect(listas['Tipo de evento'], editando?lead['Tipo de evento']:'')}</select></div>
           <div class="field"><label>Data desejada</label><input id="f_dataDesejada" placeholder="DD/MM/AAAA" value="${esc(editando?lead['Data desejada']:'')}"></div>
         </div>
         <div class="row2">
-          <div class="field"><label>Serviço de interesse</label><input id="f_servico" value="${esc(editando?lead['Serviço de interesse']:'')}"></div>
-          <div class="field"><label>Pacote</label><input id="f_pacote" value="${esc(editando?lead['Pacote']:'')}"></div>
+          <div class="field"><label>Serviço de interesse</label><select id="f_servico">${opcoesSelect(listas['Serviço'], editando?lead['Serviço de interesse']:'')}</select></div>
+          <div class="field"><label>Pacote</label><select id="f_pacote">${opcoesSelect(listas['Pacote'], editando?lead['Pacote']:'')}</select></div>
         </div>
         <div class="row2">
-          <div class="field"><label>Origem</label><input id="f_origem" value="${esc(editando?lead['Origem']:'')}"></div>
-          <div class="field"><label>Etapa comercial</label>
-            <select id="f_etapa">${ETAPAS_COMERCIAIS.map(e=>`<option ${editando&&lead['Etapa comercial']===e?'selected':''}>${e}</option>`).join('')}</select>
-          </div>
+          <div class="field"><label>Origem</label><select id="f_origem">${opcoesSelect(listas['Canal'], editando?lead['Origem']:'')}</select></div>
+          <div class="field"><label>Etapa comercial</label><select id="f_etapa">${opcoesSelect(listas['Etapa comercial'], editando?lead['Etapa comercial']:'')}</select></div>
         </div>
         <div class="row3">
           <div class="field"><label>Valor estimado</label><input id="f_valorEstimado" type="number" step="0.01" value="${esc(editando?lead['Valor estimado']:'')}"></div>
@@ -481,6 +508,9 @@ function abrirFormLead(lead){
     </div>`;
   document.getElementById('cancelarLead').addEventListener('click', fecharOverlay);
   document.getElementById('salvarLead').addEventListener('click', () => salvarLead(editando ? lead['ID Lead'] : null));
+  aplicarMascara('f_whatsapp', maskWhatsapp);
+  aplicarMascara('f_dataDesejada', maskData);
+  aplicarMascara('f_proximoContato', maskData);
 }
 async function salvarLead(idLead){
   const dados = {
@@ -556,23 +586,17 @@ function abrirFormParcela(parcela){
         <div class="form-err" id="parcelaErr" style="display:none;"></div>
         ${editando ? `<div class="field"><label>Cliente</label><input value="${esc(parcela['Cliente'])}" disabled></div>` : `
         <div class="field"><label>Evento</label><select id="f_idEvento">${eventos.length?opcoesEventos:'<option value="">Cadastre um evento primeiro</option>'}</select></div>
-        <div class="row3">
-          <div class="field"><label>Tipo cobrança</label><input id="f_tipoCobranca" placeholder="Entrada, saldo..."></div>
-          <div class="field"><label>Nº parcela</label><input id="f_numeroParcela" type="number" value="1"></div>
-          <div class="field"><label>Total parcelas</label><input id="f_totalParcelas" type="number" value="1"></div>
-        </div>
         <div class="row2">
-          <div class="field"><label>Vencimento</label><input id="f_vencimento" placeholder="DD/MM/AAAA"></div>
-          <div class="field"><label>Valor previsto</label><input id="f_valorPrevisto" type="number" step="0.01"></div>
+          <div class="field"><label>Tipo cobrança</label><select id="f_tipoCobranca">${opcoesSelect(listas['Tipo cobrança'], '')}</select></div>
+          <div class="field"><label>Total de parcelas</label><input id="f_totalParcelas" type="number" min="1" value="1"></div>
         </div>
+        <div id="parcelasLista"></div>
         `}
-        <div class="row2">
-          <div class="field"><label>Status</label>
-            <select id="f_status">${['Pendente','Pago','Atrasado','Cancelado'].map(s=>`<option ${editando&&parcela['Status']===s?'selected':''}>${s}</option>`).join('')}</select>
-          </div>
-          <div class="field"><label>Forma pagamento</label><input id="f_formaPagamento" value="${esc(editando?parcela['Forma pagamento']:'')}"></div>
-        </div>
         ${editando ? `
+        <div class="row2">
+          <div class="field"><label>Status</label><select id="f_status">${opcoesSelect(listas['Status cobrança'], parcela['Status'])}</select></div>
+          <div class="field"><label>Forma pagamento</label><select id="f_formaPagamento">${opcoesSelect(listas['Forma pagamento'], parcela['Forma pagamento'])}</select></div>
+        </div>
         <div class="row2">
           <div class="field"><label>Data pagamento</label><input id="f_dataPagamento" placeholder="DD/MM/AAAA" value="${esc(parcela['Data pagamento'])}"></div>
           <div class="field"><label>Valor pago</label><input id="f_valorPago" type="number" step="0.01" value="${esc(parcela['Valor pago'])}"></div>
@@ -586,34 +610,71 @@ function abrirFormParcela(parcela){
     </div>`;
   document.getElementById('cancelarParcela').addEventListener('click', fecharOverlay);
   document.getElementById('salvarParcela').addEventListener('click', () => salvarParcela(editando ? parcela['ID Parcela'] : null));
+  if (!editando){
+    document.getElementById('f_totalParcelas').addEventListener('input', renderLinhasParcelas);
+    renderLinhasParcelas();
+  } else {
+    aplicarMascara('f_dataPagamento', maskData);
+  }
+}
+function renderLinhasParcelas(){
+  const total = Math.max(1, Number(document.getElementById('f_totalParcelas').value) || 1);
+  const wrap = document.getElementById('parcelasLista');
+  // preserva valores já digitados ao redesenhar (ex.: aumentar o total mantém as linhas anteriores)
+  const anteriores = Array.from(wrap.querySelectorAll('.linha-parcela')).map(linha => ({
+    venc: linha.querySelector('.p-venc').value,
+    valor: linha.querySelector('.p-valor').value,
+    status: linha.querySelector('.p-status').value,
+    forma: linha.querySelector('.p-forma').value,
+  }));
+  wrap.innerHTML = Array.from({length: total}, (_, i) => {
+    const ant = anteriores[i] || {};
+    return `
+    <div class="linha-parcela" style="border-top:1px solid var(--rule);padding-top:12px;margin-top:12px;">
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;">Parcela ${i+1} de ${total}</p>
+      <div class="row2">
+        <div class="field"><label>Vencimento</label><input class="p-venc p-mask-data" placeholder="DD/MM/AAAA" value="${esc(ant.venc||'')}"></div>
+        <div class="field"><label>Valor</label><input class="p-valor" type="number" step="0.01" value="${esc(ant.valor||'')}"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Status</label><select class="p-status">${opcoesSelect(listas['Status cobrança'], ant.status||'Pendente')}</select></div>
+        <div class="field"><label>Forma pagamento</label><select class="p-forma">${opcoesSelect(listas['Forma pagamento'], ant.forma||'')}</select></div>
+      </div>
+    </div>`;
+  }).join('');
+  wrap.querySelectorAll('.p-mask-data').forEach(inp => inp.addEventListener('input', () => { inp.value = maskData(inp.value); }));
 }
 async function salvarParcela(idParcela){
-  const dados = {
-    status: document.getElementById('f_status').value,
-    formaPagamento: document.getElementById('f_formaPagamento').value.trim(),
-    observacoes: document.getElementById('f_obs').value.trim(),
-  };
   if (!idParcela){
     const idEvento = document.getElementById('f_idEvento').value;
     if (!idEvento){ mostrarErro('parcelaErr','Escolha um evento.'); return; }
-    Object.assign(dados, {
-      idEvento,
-      tipoCobranca: document.getElementById('f_tipoCobranca').value.trim(),
-      numeroParcela: Number(document.getElementById('f_numeroParcela').value || 1),
-      totalParcelas: Number(document.getElementById('f_totalParcelas').value || 1),
-      vencimento: document.getElementById('f_vencimento').value.trim(),
-      valorPrevisto: Number(document.getElementById('f_valorPrevisto').value || 0),
-    });
-  } else {
-    dados.dataPagamento = document.getElementById('f_dataPagamento').value.trim();
-    dados.valorPago = Number(document.getElementById('f_valorPago').value || 0);
+    const tipoCobranca = document.getElementById('f_tipoCobranca').value;
+    const parcelas = Array.from(document.querySelectorAll('.linha-parcela')).map(linha => ({
+      vencimento: linha.querySelector('.p-venc').value.trim(),
+      valor: Number(linha.querySelector('.p-valor').value || 0),
+      status: linha.querySelector('.p-status').value,
+      formaPagamento: linha.querySelector('.p-forma').value,
+    }));
+    if (parcelas.some(p => !p.valor)){ mostrarErro('parcelaErr','Preencha o valor de todas as parcelas.'); return; }
+    const btn = document.getElementById('salvarParcela'); btn.disabled = true; btn.textContent = 'Salvando…';
+    try{
+      await apiCall('criarParcelas', { idEvento, tipoCobranca, parcelas });
+      loaded = false; fecharOverlay(); await renderMain(); showToast(parcelas.length>1 ? `${parcelas.length} parcelas criadas.` : 'Parcela criada.');
+    } catch(err){ mostrarErro('parcelaErr', err.message); btn.disabled=false; btn.textContent='Criar parcela'; }
+    return;
   }
+  const dados = {
+    status: document.getElementById('f_status').value,
+    formaPagamento: document.getElementById('f_formaPagamento').value,
+    observacoes: document.getElementById('f_obs').value.trim(),
+    dataPagamento: document.getElementById('f_dataPagamento').value.trim(),
+    valorPago: Number(document.getElementById('f_valorPago').value || 0),
+  };
   const btn = document.getElementById('salvarParcela'); btn.disabled = true; btn.textContent = 'Salvando…';
   try{
-    if (idParcela) await apiCall('atualizarParcela', Object.assign({ idParcela }, dados));
-    else await apiCall('criarParcela', dados);
+    await apiCall('atualizarParcela', Object.assign({ idParcela }, dados));
     loaded = false; fecharOverlay(); await renderMain(); showToast('Parcela salva.');
-  } catch(err){ mostrarErro('parcelaErr', err.message); btn.disabled=false; btn.textContent = idParcela?'Salvar alterações':'Criar parcela'; }
+  } catch(err){ mostrarErro('parcelaErr', err.message); btn.disabled=false; btn.textContent = 'Salvar alterações'; }
 }
 
 /* ============ PRODUÇÃO ============ */
@@ -688,6 +749,8 @@ function abrirFormProducao(p){
     </div>`;
   document.getElementById('cancelarProducao').addEventListener('click', fecharOverlay);
   document.getElementById('salvarProducao').addEventListener('click', () => salvarProducao(p['ID Evento']));
+  aplicarMascara('f_dataEntrega', maskData);
+  aplicarMascara('f_horaEntrega', maskHora);
 }
 function mapaCampoProducaoLabel_(campo){
   const mapa = { captacao:'Captação', backup:'Backup', selecao:'Seleção', edicaoFoto:'Edição foto',
@@ -762,7 +825,7 @@ function abrirFormCusto(custo){
         <div class="field"><label>Evento</label><select id="f_idEvento">${eventos.length?opcoesEventos:'<option value="">Cadastre um evento primeiro</option>'}</select></div>
         <div class="row2">
           <div class="field"><label>Data</label><input id="f_data" placeholder="DD/MM/AAAA" value="${esc(editando?custo['Data']:'')}"></div>
-          <div class="field"><label>Categoria</label><input id="f_categoria" value="${esc(editando?custo['Categoria']:'')}"></div>
+          <div class="field"><label>Categoria</label><select id="f_categoria">${opcoesSelect(listas['Tipo custo'], editando?custo['Categoria']:'')}</select></div>
         </div>
         <div class="row2">
           <div class="field"><label>Fornecedor</label><input id="f_fornecedor" value="${esc(editando?custo['Fornecedor']:'')}"></div>
@@ -782,6 +845,7 @@ function abrirFormCusto(custo){
     </div>`;
   document.getElementById('cancelarCusto').addEventListener('click', fecharOverlay);
   document.getElementById('salvarCusto').addEventListener('click', () => salvarCusto(editando ? custo['ID Custo'] : null));
+  aplicarMascara('f_data', maskData);
 }
 async function salvarCusto(idCusto){
   const idEvento = document.getElementById('f_idEvento').value;
