@@ -121,7 +121,7 @@ let producao = [];
 let custos = [];
 let listas = {};
 let loaded = false;
-
+ 
 function renderNav(){
   const el = document.getElementById('navList');
   el.innerHTML = NAV.map(n => `
@@ -136,7 +136,7 @@ function renderNav(){
     item.addEventListener('click', () => { currentView = nav.id; renderNav(); renderMain(); });
   });
 }
-
+ 
 /* ============ API ============ */
 function isConfigurado(){ return CRM_API_URL && CRM_API_URL.indexOf('COLE_AQUI') === -1; }
 async function apiCall(action, dados){
@@ -187,7 +187,7 @@ async function carregarTudo(){
   clientes = c; eventos = e; leads = l; financeiro = f; producao = p; custos = cu; listas = li || {};
   loaded = true;
 }
-
+ 
 /* ============ RENDER PRINCIPAL ============ */
 async function renderMain(){
   const main = document.getElementById('mainArea');
@@ -207,7 +207,7 @@ async function renderMain(){
   else if (currentView === 'producao') renderProducao(main);
   else if (currentView === 'custos') renderCustos(main);
 }
-
+ 
 /* ============ DASHBOARD ============ */
 function renderDashboard(main){
   const confirmados = eventos.filter(e => e.Status === 'Confirmado').length;
@@ -218,7 +218,7 @@ function renderDashboard(main){
     .filter(e => e._data && e._data >= hoje)
     .sort((a,b) => a._data - b._data)
     .slice(0, 8);
-
+ 
   main.innerHTML = `
     <div class="view-header"><div><h1>Dashboard</h1><p>Panorama geral do negócio.</p></div></div>
     <div class="kpi-row">
@@ -242,7 +242,7 @@ function parseDataBR(s){
   if (p.length !== 3) return null;
   return new Date(p[2], p[1]-1, p[0]);
 }
-
+ 
 /* ============ CLIENTES ============ */
 function renderClientes(main){
   main.innerHTML = `
@@ -333,7 +333,7 @@ async function salvarCliente(idCliente){
   } catch(err){ mostrarErro('clienteErr', err.message); btn.disabled=false; btn.textContent = idCliente?'Salvar alterações':'Criar cliente'; }
 }
 function mostrarErro(id, msg){ const e = document.getElementById(id); e.style.display='block'; e.textContent = msg; }
-
+ 
 /* ============ EVENTOS ============ */
 function renderEventos(main){
   main.innerHTML = `
@@ -436,7 +436,7 @@ async function salvarEvento(idEvento){
     loaded = false; fecharOverlay(); await renderMain(); showToast(idEvento ? 'Evento atualizado.' : 'Evento criado e adicionado à Agenda.');
   } catch(err){ mostrarErro('eventoErr', err.message); btn.disabled=false; btn.textContent = idEvento?'Salvar alterações':'Criar evento'; }
 }
-
+ 
 /* ============ LEADS / CRM · ORÇAMENTOS ============ */
 function renderLeads(main){
   main.innerHTML = `
@@ -538,15 +538,31 @@ async function salvarLead(idLead){
     loaded = false; fecharOverlay(); await renderMain(); showToast('Lead salvo.');
   } catch(err){ mostrarErro('leadErr', err.message); btn.disabled=false; btn.textContent = idLead?'Salvar alterações':'Criar lead'; }
 }
-
+ 
 /* ============ FINANCEIRO ============ */
+function agruparContas(){
+  const grupos = {};
+  financeiro.forEach(p => {
+    const key = p['ID Evento'];
+    if (!grupos[key]) grupos[key] = { idEvento: key, cliente: p['Cliente'], parcelas: [] };
+    grupos[key].parcelas.push(p);
+  });
+  return Object.values(grupos).map(g => {
+    const totalPrevisto = g.parcelas.reduce((s,p) => s + Number(p['Valor previsto']||0), 0);
+    const totalPago = g.parcelas.reduce((s,p) => s + Number(p['Valor pago']||0), 0);
+    const saldo = totalPrevisto - totalPago;
+    const status = saldo <= 0 ? 'Quitado' : (totalPago > 0 ? 'Parcial' : 'Pendente');
+    return Object.assign(g, { totalPrevisto, totalPago, saldo, status });
+  });
+}
 function renderFinanceiro(main){
-  const totalPrevisto = financeiro.reduce((s,p) => s + Number(p['Valor previsto']||0), 0);
-  const totalPago = financeiro.reduce((s,p) => s + Number(p['Valor pago']||0), 0);
+  const contas = agruparContas();
+  const totalPrevisto = contas.reduce((s,c) => s + c.totalPrevisto, 0);
+  const totalPago = contas.reduce((s,c) => s + c.totalPago, 0);
   main.innerHTML = `
     <div class="view-header">
-      <div><h1>Financeiro</h1><p>${financeiro.length} parcelas.</p></div>
-      <button class="btn-primary" id="novaParcelaBtn">+ Nova parcela</button>
+      <div><h1>Financeiro</h1><p>${contas.length} conta${contas.length===1?'':'s'}, ${financeiro.length} parcela${financeiro.length===1?'':'s'} no total.</p></div>
+      <button class="btn-primary" id="novaContaBtn">+ Nova conta</button>
     </div>
     <div class="kpi-row">
       <div class="kpi-card"><div class="kpi-label">Total previsto</div><div class="kpi-value">${formatBRL(totalPrevisto)}</div></div>
@@ -554,84 +570,82 @@ function renderFinanceiro(main){
     </div>
     <div class="panel"><div id="tabelaFinanceiro"></div></div>
   `;
-  document.getElementById('novaParcelaBtn').addEventListener('click', () => abrirFormParcela(null));
+  document.getElementById('novaContaBtn').addEventListener('click', () => abrirFormConta(null));
   desenharTabelaFinanceiro();
 }
 function desenharTabelaFinanceiro(){
   const el = document.getElementById('tabelaFinanceiro');
-  if (!financeiro.length){ el.innerHTML = `<div class="empty-state">Nenhuma parcela cadastrada ainda.</div>`; return; }
-  const ordenados = [...financeiro].sort((a,b) => Number(b['ID Parcela']) - Number(a['ID Parcela']));
+  const contas = agruparContas();
+  if (!contas.length){ el.innerHTML = `<div class="empty-state">Nenhuma conta lançada ainda.</div>`; return; }
+  const ordenados = [...contas].sort((a,b) => Number(b.idEvento) - Number(a.idEvento));
   el.innerHTML = `
     <table>
-      <thead><tr><th>Cliente</th><th>Parcela</th><th>Vencimento</th><th>Valor previsto</th><th>Status</th><th>Saldo</th></tr></thead>
-      <tbody>${ordenados.map(p => `
-        <tr class="clickable" data-id="${esc(p['ID Parcela'])}">
-          <td>${esc(p['Cliente'])}</td><td>${esc(p['Nº parcela'])}/${esc(p['Total parcelas'])}</td>
-          <td>${esc(p['Vencimento'])}</td><td>${formatBRL(p['Valor previsto'])}</td>
-          <td><span class="status-pill ${String(p['Status']).toLowerCase()==='pago'?'confirmado':''}">${esc(p['Status'])}</span></td>
-          <td>${formatBRL(p['Saldo'])}</td>
+      <thead><tr><th>Cliente</th><th>Parcelas</th><th>Total previsto</th><th>Recebido</th><th>Saldo</th><th>Status</th></tr></thead>
+      <tbody>${ordenados.map(c => `
+        <tr class="clickable" data-id="${esc(c.idEvento)}">
+          <td>${esc(c.cliente)}</td><td>${c.parcelas.length}</td>
+          <td>${formatBRL(c.totalPrevisto)}</td><td>${formatBRL(c.totalPago)}</td>
+          <td>${formatBRL(c.saldo)}</td>
+          <td><span class="status-pill ${c.status==='Quitado'?'confirmado':''}">${c.status}</span></td>
         </tr>`).join('')}</tbody>
     </table>`;
   el.querySelectorAll('tr.clickable').forEach(row => {
-    row.addEventListener('click', () => abrirFormParcela(financeiro.find(p => String(p['ID Parcela']) === row.dataset.id)));
+    row.addEventListener('click', () => abrirFormConta(contas.find(c => String(c.idEvento) === row.dataset.id)));
   });
 }
-function abrirFormParcela(parcela){
-  const editando = !!parcela;
+function abrirFormConta(conta){
+  const editando = !!conta;
   const opcoesEventos = eventos.map(e => `<option value="${esc(e['ID Evento'])}">${esc(e['Cliente / Responsável'])} — ${esc(e['Data do evento'])}</option>`).join('');
+  const tipoCobrancaAtual = editando && conta.parcelas.length ? conta.parcelas[0]['Tipo cobrança'] : '';
   document.getElementById('overlayRoot').innerHTML = `
     <div class="form-overlay" id="overlay">
       <div class="form-panel">
-        <h2>${editando ? 'Editar parcela' : 'Nova parcela'}</h2>
-        <div class="form-err" id="parcelaErr" style="display:none;"></div>
-        ${editando ? `<div class="field"><label>Cliente</label><input value="${esc(parcela['Cliente'])}" disabled></div>` : `
+        <h2>${editando ? 'Conta — ' + esc(conta.cliente) : 'Nova conta'}</h2>
+        <div class="form-err" id="contaErr" style="display:none;"></div>
+        ${editando ? `<input type="hidden" id="f_idEvento" value="${esc(conta.idEvento)}">` : `
         <div class="field"><label>Evento</label><select id="f_idEvento">${eventos.length?opcoesEventos:'<option value="">Cadastre um evento primeiro</option>'}</select></div>
+        `}
         <div class="row2">
-          <div class="field"><label>Tipo cobrança</label><select id="f_tipoCobranca">${opcoesSelect(listas['Tipo cobrança'], '')}</select></div>
-          <div class="field"><label>Total de parcelas</label><input id="f_totalParcelas" type="number" min="1" value="1"></div>
+          <div class="field"><label>Tipo cobrança</label><select id="f_tipoCobranca">${opcoesSelect(listas['Tipo cobrança'], tipoCobrancaAtual)}</select></div>
+          <div class="field"><label>Total de parcelas</label><input id="f_totalParcelas" type="number" min="1" value="${editando ? conta.parcelas.length : 1}"></div>
         </div>
         <div id="parcelasLista"></div>
-        `}
-        ${editando ? `
-        <div class="row2">
-          <div class="field"><label>Status</label><select id="f_status">${opcoesSelect(listas['Status cobrança'], parcela['Status'])}</select></div>
-          <div class="field"><label>Forma pagamento</label><select id="f_formaPagamento">${opcoesSelect(listas['Forma pagamento'], parcela['Forma pagamento'])}</select></div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>Data pagamento</label><input id="f_dataPagamento" placeholder="DD/MM/AAAA" value="${esc(parcela['Data pagamento'])}"></div>
-          <div class="field"><label>Valor pago</label><input id="f_valorPago" type="number" step="0.01" value="${esc(parcela['Valor pago'])}"></div>
-        </div>` : ''}
-        <div class="field"><label>Observações</label><textarea id="f_obs" rows="2">${esc(editando?parcela['Observações']:'')}</textarea></div>
         <div class="form-actions">
-          <button class="btn-ghost" id="cancelarParcela">Cancelar</button>
-          <button class="btn-primary" id="salvarParcela">${editando?'Salvar alterações':'Criar parcela'}</button>
+          <button class="btn-ghost" id="cancelarConta">Cancelar</button>
+          <button class="btn-primary" id="salvarContaBtn">${editando?'Salvar conta':'Criar conta'}</button>
         </div>
       </div>
     </div>`;
-  document.getElementById('cancelarParcela').addEventListener('click', fecharOverlay);
-  document.getElementById('salvarParcela').addEventListener('click', () => salvarParcela(editando ? parcela['ID Parcela'] : null));
-  if (!editando){
-    document.getElementById('f_totalParcelas').addEventListener('input', renderLinhasParcelas);
-    renderLinhasParcelas();
-  } else {
-    aplicarMascara('f_dataPagamento', maskData);
-  }
+  document.getElementById('cancelarConta').addEventListener('click', fecharOverlay);
+  document.getElementById('salvarContaBtn').addEventListener('click', () => salvarConta(editando ? conta.idEvento : null));
+  document.getElementById('f_totalParcelas').addEventListener('input', () => renderLinhasParcelas(editando ? conta.parcelas : []));
+  renderLinhasParcelas(editando ? conta.parcelas : []);
 }
-function renderLinhasParcelas(){
+function renderLinhasParcelas(parcelasExistentes){
   const total = Math.max(1, Number(document.getElementById('f_totalParcelas').value) || 1);
   const wrap = document.getElementById('parcelasLista');
-  // preserva valores já digitados ao redesenhar (ex.: aumentar o total mantém as linhas anteriores)
-  const anteriores = Array.from(wrap.querySelectorAll('.linha-parcela')).map(linha => ({
-    venc: linha.querySelector('.p-venc').value,
-    valor: linha.querySelector('.p-valor').value,
-    status: linha.querySelector('.p-status').value,
-    forma: linha.querySelector('.p-forma').value,
-  }));
+  const jaTemLinhas = wrap.querySelectorAll('.linha-parcela').length > 0;
+  // na primeira renderização, parte das parcelas já existentes; depois, preserva o que já foi digitado
+  const base = jaTemLinhas
+    ? Array.from(wrap.querySelectorAll('.linha-parcela')).map(linha => ({
+        idParcela: linha.dataset.idParcela || '',
+        venc: linha.querySelector('.p-venc').value,
+        valor: linha.querySelector('.p-valor').value,
+        status: linha.querySelector('.p-status').value,
+        forma: linha.querySelector('.p-forma').value,
+        valorPago: linha.querySelector('.p-valorPago').value,
+        dataPagamento: linha.querySelector('.p-dataPagamento').value,
+      }))
+    : (parcelasExistentes || []).map(p => ({
+        idParcela: p['ID Parcela'], venc: p['Vencimento'], valor: p['Valor previsto'],
+        status: p['Status'], forma: p['Forma pagamento'],
+        valorPago: p['Valor pago'], dataPagamento: p['Data pagamento'],
+      }));
   wrap.innerHTML = Array.from({length: total}, (_, i) => {
-    const ant = anteriores[i] || {};
+    const ant = base[i] || {};
     return `
-    <div class="linha-parcela" style="border-top:1px solid var(--rule);padding-top:12px;margin-top:12px;">
-      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;">Parcela ${i+1} de ${total}</p>
+    <div class="linha-parcela" data-id-parcela="${esc(ant.idParcela||'')}" style="border-top:1px solid var(--rule);padding-top:12px;margin-top:12px;">
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;">Parcela ${i+1} de ${total}${ant.idParcela?' · já lançada':''}</p>
       <div class="row2">
         <div class="field"><label>Vencimento</label><input class="p-venc p-mask-data" placeholder="DD/MM/AAAA" value="${esc(ant.venc||'')}"></div>
         <div class="field"><label>Valor</label><input class="p-valor" type="number" step="0.01" value="${esc(ant.valor||'')}"></div>
@@ -640,43 +654,35 @@ function renderLinhasParcelas(){
         <div class="field"><label>Status</label><select class="p-status">${opcoesSelect(listas['Status cobrança'], ant.status||'Pendente')}</select></div>
         <div class="field"><label>Forma pagamento</label><select class="p-forma">${opcoesSelect(listas['Forma pagamento'], ant.forma||'')}</select></div>
       </div>
+      <div class="row2">
+        <div class="field"><label>Data pagamento</label><input class="p-dataPagamento p-mask-data" placeholder="DD/MM/AAAA" value="${esc(ant.dataPagamento||'')}"></div>
+        <div class="field"><label>Valor pago</label><input class="p-valorPago" type="number" step="0.01" value="${esc(ant.valorPago||'')}"></div>
+      </div>
     </div>`;
   }).join('');
   wrap.querySelectorAll('.p-mask-data').forEach(inp => inp.addEventListener('input', () => { inp.value = maskData(inp.value); }));
 }
-async function salvarParcela(idParcela){
-  if (!idParcela){
-    const idEvento = document.getElementById('f_idEvento').value;
-    if (!idEvento){ mostrarErro('parcelaErr','Escolha um evento.'); return; }
-    const tipoCobranca = document.getElementById('f_tipoCobranca').value;
-    const parcelas = Array.from(document.querySelectorAll('.linha-parcela')).map(linha => ({
-      vencimento: linha.querySelector('.p-venc').value.trim(),
-      valor: Number(linha.querySelector('.p-valor').value || 0),
-      status: linha.querySelector('.p-status').value,
-      formaPagamento: linha.querySelector('.p-forma').value,
-    }));
-    if (parcelas.some(p => !p.valor)){ mostrarErro('parcelaErr','Preencha o valor de todas as parcelas.'); return; }
-    const btn = document.getElementById('salvarParcela'); btn.disabled = true; btn.textContent = 'Salvando…';
-    try{
-      await apiCall('criarParcelas', { idEvento, tipoCobranca, parcelas });
-      loaded = false; fecharOverlay(); await renderMain(); showToast(parcelas.length>1 ? `${parcelas.length} parcelas criadas.` : 'Parcela criada.');
-    } catch(err){ mostrarErro('parcelaErr', err.message); btn.disabled=false; btn.textContent='Criar parcela'; }
-    return;
-  }
-  const dados = {
-    status: document.getElementById('f_status').value,
-    formaPagamento: document.getElementById('f_formaPagamento').value,
-    observacoes: document.getElementById('f_obs').value.trim(),
-    dataPagamento: document.getElementById('f_dataPagamento').value.trim(),
-    valorPago: Number(document.getElementById('f_valorPago').value || 0),
-  };
-  const btn = document.getElementById('salvarParcela'); btn.disabled = true; btn.textContent = 'Salvando…';
+async function salvarConta(idEventoExistente){
+  const idEvento = idEventoExistente || document.getElementById('f_idEvento').value;
+  if (!idEvento){ mostrarErro('contaErr','Escolha um evento.'); return; }
+  const tipoCobranca = document.getElementById('f_tipoCobranca').value;
+  const parcelas = Array.from(document.querySelectorAll('.linha-parcela')).map(linha => ({
+    idParcela: linha.dataset.idParcela || undefined,
+    vencimento: linha.querySelector('.p-venc').value.trim(),
+    valor: Number(linha.querySelector('.p-valor').value || 0),
+    status: linha.querySelector('.p-status').value,
+    formaPagamento: linha.querySelector('.p-forma').value,
+    dataPagamento: linha.querySelector('.p-dataPagamento').value.trim(),
+    valorPago: Number(linha.querySelector('.p-valorPago').value || 0),
+  }));
+  if (parcelas.some(p => !p.valor)){ mostrarErro('contaErr','Preencha o valor de todas as parcelas.'); return; }
+  const btn = document.getElementById('salvarContaBtn'); btn.disabled = true; btn.textContent = 'Salvando…';
   try{
-    await apiCall('atualizarParcela', Object.assign({ idParcela }, dados));
-    loaded = false; fecharOverlay(); await renderMain(); showToast('Parcela salva.');
-  } catch(err){ mostrarErro('parcelaErr', err.message); btn.disabled=false; btn.textContent = 'Salvar alterações'; }
+    await apiCall('salvarConta', { idEvento, tipoCobranca, parcelas });
+    loaded = false; fecharOverlay(); await renderMain(); showToast('Conta salva.');
+  } catch(err){ mostrarErro('contaErr', err.message); btn.disabled=false; btn.textContent = idEventoExistente?'Salvar conta':'Criar conta'; }
 }
-
+ 
 /* ============ PRODUÇÃO ============ */
 const ETAPAS_PRODUCAO = ['Não iniciado','Em andamento','Concluído'];
 function renderProducao(main){
@@ -781,7 +787,7 @@ async function salvarProducao(idEvento){
     loaded = false; fecharOverlay(); await renderMain(); showToast('Produção atualizada.');
   } catch(err){ mostrarErro('producaoErr', err.message); btn.disabled=false; btn.textContent='Salvar alterações'; }
 }
-
+ 
 /* ============ CUSTOS ============ */
 function renderCustos(main){
   const total = custos.reduce((s,c) => s + Number(c['Valor']||0), 0);
@@ -868,10 +874,11 @@ async function salvarCusto(idCusto){
     loaded = false; fecharOverlay(); await renderMain(); showToast('Custo salvo.');
   } catch(err){ mostrarErro('custoErr', err.message); btn.disabled=false; btn.textContent = idCusto?'Salvar alterações':'Criar custo'; }
 }
-
+ 
 /* ============ INÍCIO ============ */
 renderNav();
 renderMain();
 </script>
 </body>
+</html>
 </html>
