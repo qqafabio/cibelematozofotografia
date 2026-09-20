@@ -169,7 +169,8 @@ function aplicarMascara(id, fn){
   input.addEventListener('input', () => { input.value = fn(input.value); });
 }
 function opcoesSelect(lista, valorAtual){
-  const itens = lista || [];
+  const itens = (lista || []).slice();
+  if (valorAtual && !itens.includes(valorAtual)) itens.push(valorAtual);
   return `<option value="">— Selecione —</option>` + itens.map(v =>
     `<option value="${esc(v)}" ${valorAtual===v?'selected':''}>${esc(v)}</option>`
   ).join('');
@@ -455,12 +456,12 @@ function desenharTabelaLeads(){
   const ordenados = [...leads].sort((a,b) => Number(b['ID Lead']) - Number(a['ID Lead']));
   el.innerHTML = `
     <table>
-      <thead><tr><th>Cliente</th><th>Tipo</th><th>Etapa</th><th>Valor estimado</th><th>Ponderado</th><th>Próximo contato</th></tr></thead>
+      <thead><tr><th>Cliente</th><th>Tipo</th><th>Etapa</th><th>Valor estimado</th><th>Próximo contato</th></tr></thead>
       <tbody>${ordenados.map(l => `
         <tr class="clickable" data-id="${esc(l['ID Lead'])}">
           <td>${esc(l['Cliente'])}</td><td>${esc(l['Tipo de evento'])}</td>
           <td><span class="status-pill ${String(l['Etapa comercial']).toLowerCase()==='ganho'?'confirmado':''}">${esc(l['Etapa comercial'])}</span></td>
-          <td>${formatBRL(l['Valor estimado'])}</td><td>${formatBRL(l['Valor ponderado'])}</td>
+          <td>${formatBRL(l['Valor estimado'])}</td>
           <td>${esc(l['Próximo contato'])}</td>
         </tr>`).join('')}</tbody>
     </table>`;
@@ -494,9 +495,8 @@ function abrirFormLead(lead){
           <div class="field"><label>Origem</label><select id="f_origem">${opcoesSelect(listas['Canal'], editando?lead['Origem']:'')}</select></div>
           <div class="field"><label>Etapa comercial</label><select id="f_etapa">${opcoesSelect(listas['Etapa comercial'], editando?lead['Etapa comercial']:'')}</select></div>
         </div>
-        <div class="row3">
+        <div class="row2">
           <div class="field"><label>Valor estimado</label><input id="f_valorEstimado" type="number" step="0.01" value="${esc(editando?lead['Valor estimado']:'')}"></div>
-          <div class="field"><label>Probabilidade (%)</label><input id="f_probabilidade" type="number" min="0" max="100" value="${esc(editando?lead['Probabilidade %']:'')}"></div>
           <div class="field"><label>Próximo contato</label><input id="f_proximoContato" placeholder="DD/MM/AAAA" value="${esc(editando?lead['Próximo contato']:'')}"></div>
         </div>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?lead['Observações']:'')}</textarea></div>
@@ -521,7 +521,6 @@ async function salvarLead(idLead){
     origem: document.getElementById('f_origem').value.trim(),
     etapa: document.getElementById('f_etapa').value,
     valorEstimado: Number(document.getElementById('f_valorEstimado').value || 0),
-    probabilidade: Number(document.getElementById('f_probabilidade').value || 0),
     proximoContato: document.getElementById('f_proximoContato').value.trim(),
     observacoes: document.getElementById('f_obs').value.trim(),
   };
@@ -551,7 +550,8 @@ function agruparContas(){
     const totalPrevisto = g.parcelas.reduce((s,p) => s + Number(p['Valor previsto']||0), 0);
     const totalPago = g.parcelas.reduce((s,p) => s + Number(p['Valor pago']||0), 0);
     const saldo = totalPrevisto - totalPago;
-    const status = saldo <= 0 ? 'Quitado' : (totalPago > 0 ? 'Parcial' : 'Pendente');
+    const temVencida = g.parcelas.some(p => p['Status'] === 'Vencida');
+    const status = saldo <= 0 ? 'Quitado' : (temVencida ? 'Vencida' : (totalPago > 0 ? 'Parcial' : 'Pendente'));
     return Object.assign(g, { totalPrevisto, totalPago, saldo, status });
   });
 }
@@ -586,7 +586,7 @@ function desenharTabelaFinanceiro(){
           <td>${esc(c.cliente)}</td><td>${c.parcelas.length}</td>
           <td>${formatBRL(c.totalPrevisto)}</td><td>${formatBRL(c.totalPago)}</td>
           <td>${formatBRL(c.saldo)}</td>
-          <td><span class="status-pill ${c.status==='Quitado'?'confirmado':''}">${c.status}</span></td>
+          <td><span class="status-pill ${c.status==='Quitado'?'confirmado':(c.status==='Vencida'?'vencida':'')}">${c.status}</span></td>
         </tr>`).join('')}</tbody>
     </table>`;
   el.querySelectorAll('tr.clickable').forEach(row => {
@@ -596,7 +596,6 @@ function desenharTabelaFinanceiro(){
 function abrirFormConta(conta){
   const editando = !!conta;
   const opcoesEventos = eventos.map(e => `<option value="${esc(e['ID Evento'])}">${esc(e['Cliente / Responsável'])} — ${esc(e['Data do evento'])}</option>`).join('');
-  const tipoCobrancaAtual = editando && conta.parcelas.length ? conta.parcelas[0]['Tipo cobrança'] : '';
   document.getElementById('overlayRoot').innerHTML = `
     <div class="form-overlay" id="overlay">
       <div class="form-panel">
@@ -605,10 +604,8 @@ function abrirFormConta(conta){
         ${editando ? `<input type="hidden" id="f_idEvento" value="${esc(conta.idEvento)}">` : `
         <div class="field"><label>Evento</label><select id="f_idEvento">${eventos.length?opcoesEventos:'<option value="">Cadastre um evento primeiro</option>'}</select></div>
         `}
-        <div class="row2">
-          <div class="field"><label>Tipo cobrança</label><select id="f_tipoCobranca">${opcoesSelect(listas['Tipo cobrança'], tipoCobrancaAtual)}</select></div>
-          <div class="field"><label>Total de parcelas</label><input id="f_totalParcelas" type="number" min="1" value="${editando ? conta.parcelas.length : 1}"></div>
-        </div>
+        <p id="saldoEventoInfo" style="font-size:12.5px;color:var(--ink-soft);margin:-4px 0 14px;"></p>
+        <div class="field"><label>Total de parcelas</label><input id="f_totalParcelas" type="number" min="1" value="${editando ? conta.parcelas.length : 1}"></div>
         <div id="parcelasLista"></div>
         <div class="form-actions">
           <button class="btn-ghost" id="cancelarConta">Cancelar</button>
@@ -619,7 +616,23 @@ function abrirFormConta(conta){
   document.getElementById('cancelarConta').addEventListener('click', fecharOverlay);
   document.getElementById('salvarContaBtn').addEventListener('click', () => salvarConta(editando ? conta.idEvento : null));
   document.getElementById('f_totalParcelas').addEventListener('input', () => renderLinhasParcelas(editando ? conta.parcelas : []));
+  if (!editando) document.getElementById('f_idEvento').addEventListener('change', atualizarSaldoEventoInfo);
   renderLinhasParcelas(editando ? conta.parcelas : []);
+}
+function idEventoDoForm(){
+  const hidden = document.getElementById('f_idEvento');
+  return hidden ? hidden.value : '';
+}
+function atualizarSaldoEventoInfo(){
+  const idEvento = idEventoDoForm();
+  const evento = eventos.find(e => String(e['ID Evento']) === String(idEvento));
+  const info = document.getElementById('saldoEventoInfo');
+  if (!evento){ info.textContent = ''; return; }
+  const valorFinal = Number(evento['Valor final'] || 0);
+  const somaParcelas = Array.from(document.querySelectorAll('.p-valor')).reduce((s, inp) => s + (Number(inp.value) || 0), 0);
+  const restante = valorFinal - somaParcelas;
+  info.textContent = `Valor do evento: ${formatBRL(valorFinal)} · lançado nas parcelas: ${formatBRL(somaParcelas)} · restante: ${formatBRL(restante)}`;
+  info.style.color = restante < 0 ? 'var(--error)' : 'var(--ink-soft)';
 }
 function renderLinhasParcelas(parcelasExistentes){
   const total = Math.max(1, Number(document.getElementById('f_totalParcelas').value) || 1);
@@ -629,6 +642,7 @@ function renderLinhasParcelas(parcelasExistentes){
   const base = jaTemLinhas
     ? Array.from(wrap.querySelectorAll('.linha-parcela')).map(linha => ({
         idParcela: linha.dataset.idParcela || '',
+        tipo: linha.querySelector('.p-tipo').value,
         venc: linha.querySelector('.p-venc').value,
         valor: linha.querySelector('.p-valor').value,
         status: linha.querySelector('.p-status').value,
@@ -637,7 +651,7 @@ function renderLinhasParcelas(parcelasExistentes){
         dataPagamento: linha.querySelector('.p-dataPagamento').value,
       }))
     : (parcelasExistentes || []).map(p => ({
-        idParcela: p['ID Parcela'], venc: p['Vencimento'], valor: p['Valor previsto'],
+        idParcela: p['ID Parcela'], tipo: p['Tipo cobrança'], venc: p['Vencimento'], valor: p['Valor previsto'],
         status: p['Status'], forma: p['Forma pagamento'],
         valorPago: p['Valor pago'], dataPagamento: p['Data pagamento'],
       }));
@@ -647,27 +661,38 @@ function renderLinhasParcelas(parcelasExistentes){
     <div class="linha-parcela" data-id-parcela="${esc(ant.idParcela||'')}" style="border-top:1px solid var(--rule);padding-top:12px;margin-top:12px;">
       <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;">Parcela ${i+1} de ${total}${ant.idParcela?' · já lançada':''}</p>
       <div class="row2">
+        <div class="field"><label>Tipo cobrança</label><select class="p-tipo">${opcoesSelect(listas['Tipo cobrança'], ant.tipo||'')}</select></div>
         <div class="field"><label>Vencimento</label><input class="p-venc p-mask-data" placeholder="DD/MM/AAAA" value="${esc(ant.venc||'')}"></div>
+      </div>
+      <div class="row2">
         <div class="field"><label>Valor</label><input class="p-valor" type="number" step="0.01" value="${esc(ant.valor||'')}"></div>
-      </div>
-      <div class="row2">
         <div class="field"><label>Status</label><select class="p-status">${opcoesSelect(listas['Status cobrança'], ant.status||'Pendente')}</select></div>
-        <div class="field"><label>Forma pagamento</label><select class="p-forma">${opcoesSelect(listas['Forma pagamento'], ant.forma||'')}</select></div>
       </div>
       <div class="row2">
+        <div class="field"><label>Forma pagamento</label><select class="p-forma">${opcoesSelect(listas['Forma pagamento'], ant.forma||'')}</select></div>
         <div class="field"><label>Data pagamento</label><input class="p-dataPagamento p-mask-data" placeholder="DD/MM/AAAA" value="${esc(ant.dataPagamento||'')}"></div>
-        <div class="field"><label>Valor pago</label><input class="p-valorPago" type="number" step="0.01" value="${esc(ant.valorPago||'')}"></div>
       </div>
+      <div class="field"><label>Valor pago</label><input class="p-valorPago" type="number" step="0.01" value="${esc(ant.valorPago||'')}"></div>
     </div>`;
   }).join('');
   wrap.querySelectorAll('.p-mask-data').forEach(inp => inp.addEventListener('input', () => { inp.value = maskData(inp.value); }));
+  wrap.querySelectorAll('.p-valor').forEach(inp => inp.addEventListener('input', atualizarSaldoEventoInfo));
+  wrap.querySelectorAll('.p-tipo').forEach(sel => sel.addEventListener('change', () => {
+    // Entrada normalmente é paga na hora do fechamento — já sugere "Pago" como status,
+    // sem travar: a Cibele pode trocar se não for o caso.
+    if (sel.value === 'Entrada'){
+      const statusSel = sel.closest('.linha-parcela').querySelector('.p-status');
+      if (statusSel.value === 'Pendente' || !statusSel.value) statusSel.value = 'Pago';
+    }
+  }));
+  atualizarSaldoEventoInfo();
 }
 async function salvarConta(idEventoExistente){
   const idEvento = idEventoExistente || document.getElementById('f_idEvento').value;
   if (!idEvento){ mostrarErro('contaErr','Escolha um evento.'); return; }
-  const tipoCobranca = document.getElementById('f_tipoCobranca').value;
   const parcelas = Array.from(document.querySelectorAll('.linha-parcela')).map(linha => ({
     idParcela: linha.dataset.idParcela || undefined,
+    tipoCobranca: linha.querySelector('.p-tipo').value,
     vencimento: linha.querySelector('.p-venc').value.trim(),
     valor: Number(linha.querySelector('.p-valor').value || 0),
     status: linha.querySelector('.p-status').value,
@@ -678,7 +703,7 @@ async function salvarConta(idEventoExistente){
   if (parcelas.some(p => !p.valor)){ mostrarErro('contaErr','Preencha o valor de todas as parcelas.'); return; }
   const btn = document.getElementById('salvarContaBtn'); btn.disabled = true; btn.textContent = 'Salvando…';
   try{
-    await apiCall('salvarConta', { idEvento, tipoCobranca, parcelas });
+    await apiCall('salvarConta', { idEvento, parcelas });
     loaded = false; fecharOverlay(); await renderMain(); showToast('Conta salva.');
   } catch(err){ mostrarErro('contaErr', err.message); btn.disabled=false; btn.textContent = idEventoExistente?'Salvar conta':'Criar conta'; }
 }
@@ -723,8 +748,7 @@ function abrirFormProducao(p){
           <div class="field"><label>Fotógrafo responsável</label><input id="f_fotoResponsavel" value="${esc(p['Foto responsável'])}"></div>
           <div class="field"><label>Cinegrafista responsável</label><input id="f_videoResponsavel" value="${esc(p['Vídeo responsável'])}"></div>
         </div>
-        <div class="row3">
-          ${campoEtapa('Captação','captacao')}
+        <div class="row2">
           ${campoEtapa('Backup','backup')}
           ${campoEtapa('Seleção','selecao')}
         </div>
@@ -767,7 +791,6 @@ async function salvarProducao(idEvento){
   const dados = {
     fotoResponsavel: document.getElementById('f_fotoResponsavel').value.trim(),
     videoResponsavel: document.getElementById('f_videoResponsavel').value.trim(),
-    captacao: document.getElementById('f_captacao').value,
     backup: document.getElementById('f_backup').value,
     selecao: document.getElementById('f_selecao').value,
     edicaoFoto: document.getElementById('f_edicaoFoto').value,
@@ -789,14 +812,39 @@ async function salvarProducao(idEvento){
 }
  
 /* ============ CUSTOS ============ */
+function agruparReceitaCusto(){
+  const porEvento = {};
+  eventos.forEach(e => {
+    porEvento[e['ID Evento']] = { idEvento: e['ID Evento'], cliente: e['Cliente / Responsável'], receita: Number(e['Valor final']||0), custo: 0 };
+  });
+  custos.forEach(c => {
+    const g = porEvento[c['ID Evento']];
+    if (g) g.custo += Number(c['Valor']||0);
+  });
+  return Object.values(porEvento)
+    .filter(g => g.receita > 0 || g.custo > 0)
+    .map(g => Object.assign(g, { margem: g.receita - g.custo, margemPct: g.receita ? ((g.receita - g.custo) / g.receita * 100) : 0 }));
+}
 function renderCustos(main){
   const total = custos.reduce((s,c) => s + Number(c['Valor']||0), 0);
+  const porEvento = agruparReceitaCusto();
   main.innerHTML = `
     <div class="view-header">
       <div><h1>Custos</h1><p>${custos.length} lançamentos.</p></div>
       <button class="btn-primary" id="novoCustoBtn">+ Novo custo</button>
     </div>
     <div class="kpi-row"><div class="kpi-card"><div class="kpi-label">Total lançado</div><div class="kpi-value">${formatBRL(total)}</div></div></div>
+    <div class="panel" style="margin-bottom:20px;">
+      <h2>Receita × custo por evento</h2>
+      ${porEvento.length ? `<table>
+        <thead><tr><th>Cliente</th><th>Receita</th><th>Custos</th><th>Margem</th><th>Margem %</th></tr></thead>
+        <tbody>${porEvento.map(g => `
+          <tr>
+            <td>${esc(g.cliente)}</td><td>${formatBRL(g.receita)}</td><td>${formatBRL(g.custo)}</td>
+            <td>${formatBRL(g.margem)}</td>
+            <td><span class="status-pill ${g.margem>=0?'confirmado':'vencida'}">${g.margemPct.toFixed(0)}%</span></td>
+          </tr>`).join('')}</tbody></table>` : `<div class="empty-state">Nenhum evento com receita ou custo lançado ainda.</div>`}
+    </div>
     <div class="panel"><div id="tabelaCustos"></div></div>
   `;
   document.getElementById('novoCustoBtn').addEventListener('click', () => abrirFormCusto(null));
@@ -880,5 +928,4 @@ renderNav();
 renderMain();
 </script>
 </body>
-</html>
 </html>
