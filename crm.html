@@ -596,6 +596,10 @@ function desenharTabelaFinanceiro(){
 function abrirFormConta(conta){
   const editando = !!conta;
   const opcoesEventos = eventos.map(e => `<option value="${esc(e['ID Evento'])}">${esc(e['Cliente / Responsável'])} — ${esc(e['Data do evento'])}</option>`).join('');
+  // Separa a linha de Entrada (Tipo cobrança = "Entrada") das demais parcelas, se existir.
+  const entradaExistente = editando ? conta.parcelas.find(p => p['Tipo cobrança'] === 'Entrada') : null;
+  const parcelasRestantes = editando ? conta.parcelas.filter(p => p['Tipo cobrança'] !== 'Entrada') : [];
+ 
   document.getElementById('overlayRoot').innerHTML = `
     <div class="form-overlay" id="overlay">
       <div class="form-panel">
@@ -605,7 +609,20 @@ function abrirFormConta(conta){
         <div class="field"><label>Evento</label><select id="f_idEvento">${eventos.length?opcoesEventos:'<option value="">Cadastre um evento primeiro</option>'}</select></div>
         `}
         <p id="saldoEventoInfo" style="font-size:12.5px;color:var(--ink-soft);margin:-4px 0 14px;"></p>
-        <div class="field"><label>Total de parcelas</label><input id="f_totalParcelas" type="number" min="1" value="${editando ? conta.parcelas.length : 1}"></div>
+ 
+        <input type="hidden" id="f_entradaIdParcela" value="${esc(entradaExistente ? entradaExistente['ID Parcela'] : '')}">
+        <div class="row2">
+          <div class="field"><label>Entrada (valor pago)</label><input id="f_entradaValor" type="number" step="0.01" value="${esc(entradaExistente ? entradaExistente['Valor previsto'] : '')}"></div>
+          <div class="field"><label>Status da entrada</label><select id="f_entradaStatus">${opcoesSelect(listas['Status cobrança'], entradaExistente ? entradaExistente['Status'] : 'Pago')}</select></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Forma pagamento</label><select id="f_entradaForma">${opcoesSelect(listas['Forma pagamento'], entradaExistente ? entradaExistente['Forma pagamento'] : '')}</select></div>
+          <div class="field"><label>Data pagamento</label><input id="f_entradaDataPagamento" class="p-mask-data" placeholder="DD/MM/AAAA" value="${esc(entradaExistente ? entradaExistente['Data pagamento'] : '')}"></div>
+        </div>
+ 
+        <hr style="border:none;border-top:1px solid var(--rule);margin:20px 0;">
+ 
+        <div class="field"><label>Total de parcelas</label><input id="f_totalParcelas" type="number" min="0" value="${editando ? parcelasRestantes.length : 1}"></div>
         <div id="parcelasLista"></div>
         <div class="form-actions">
           <button class="btn-ghost" id="cancelarConta">Cancelar</button>
@@ -615,9 +632,13 @@ function abrirFormConta(conta){
     </div>`;
   document.getElementById('cancelarConta').addEventListener('click', fecharOverlay);
   document.getElementById('salvarContaBtn').addEventListener('click', () => salvarConta(editando ? conta.idEvento : null));
-  document.getElementById('f_totalParcelas').addEventListener('input', () => renderLinhasParcelas(editando ? conta.parcelas : []));
+  document.getElementById('f_totalParcelas').addEventListener('input', () => renderLinhasParcelas(parcelasRestantes));
+  document.getElementById('f_entradaValor').addEventListener('input', atualizarSaldoEventoInfo);
+  document.querySelectorAll('#overlayRoot .p-mask-data').forEach(inp => {
+    if (!inp.closest('.linha-parcela')) inp.addEventListener('input', () => { inp.value = maskData(inp.value); });
+  });
   if (!editando) document.getElementById('f_idEvento').addEventListener('change', atualizarSaldoEventoInfo);
-  renderLinhasParcelas(editando ? conta.parcelas : []);
+  renderLinhasParcelas(parcelasRestantes);
 }
 function idEventoDoForm(){
   const hidden = document.getElementById('f_idEvento');
@@ -629,13 +650,14 @@ function atualizarSaldoEventoInfo(){
   const info = document.getElementById('saldoEventoInfo');
   if (!evento){ info.textContent = ''; return; }
   const valorFinal = Number(evento['Valor final'] || 0);
+  const entrada = Number(document.getElementById('f_entradaValor').value || 0);
   const somaParcelas = Array.from(document.querySelectorAll('.p-valor')).reduce((s, inp) => s + (Number(inp.value) || 0), 0);
-  const restante = valorFinal - somaParcelas;
-  info.textContent = `Valor do evento: ${formatBRL(valorFinal)} · lançado nas parcelas: ${formatBRL(somaParcelas)} · restante: ${formatBRL(restante)}`;
+  const restante = valorFinal - entrada - somaParcelas;
+  info.textContent = `Valor do evento: ${formatBRL(valorFinal)} · entrada: ${formatBRL(entrada)} · parcelas: ${formatBRL(somaParcelas)} · restante: ${formatBRL(restante)}`;
   info.style.color = restante < 0 ? 'var(--error)' : 'var(--ink-soft)';
 }
 function renderLinhasParcelas(parcelasExistentes){
-  const total = Math.max(1, Number(document.getElementById('f_totalParcelas').value) || 1);
+  const total = Math.max(0, Number(document.getElementById('f_totalParcelas').value) || 0);
   const wrap = document.getElementById('parcelasLista');
   const jaTemLinhas = wrap.querySelectorAll('.linha-parcela').length > 0;
   // na primeira renderização, parte das parcelas já existentes; depois, preserva o que já foi digitado
@@ -677,19 +699,21 @@ function renderLinhasParcelas(parcelasExistentes){
   }).join('');
   wrap.querySelectorAll('.p-mask-data').forEach(inp => inp.addEventListener('input', () => { inp.value = maskData(inp.value); }));
   wrap.querySelectorAll('.p-valor').forEach(inp => inp.addEventListener('input', atualizarSaldoEventoInfo));
-  wrap.querySelectorAll('.p-tipo').forEach(sel => sel.addEventListener('change', () => {
-    // Entrada normalmente é paga na hora do fechamento — já sugere "Pago" como status,
-    // sem travar: a Cibele pode trocar se não for o caso.
-    if (sel.value === 'Entrada'){
-      const statusSel = sel.closest('.linha-parcela').querySelector('.p-status');
-      if (statusSel.value === 'Pendente' || !statusSel.value) statusSel.value = 'Pago';
-    }
-  }));
   atualizarSaldoEventoInfo();
 }
 async function salvarConta(idEventoExistente){
   const idEvento = idEventoExistente || document.getElementById('f_idEvento').value;
   if (!idEvento){ mostrarErro('contaErr','Escolha um evento.'); return; }
+ 
+  const entradaValor = Number(document.getElementById('f_entradaValor').value || 0);
+  const entrada = entradaValor > 0 ? {
+    idParcela: document.getElementById('f_entradaIdParcela').value || undefined,
+    valor: entradaValor,
+    status: document.getElementById('f_entradaStatus').value,
+    formaPagamento: document.getElementById('f_entradaForma').value,
+    dataPagamento: document.getElementById('f_entradaDataPagamento').value.trim(),
+  } : null;
+ 
   const parcelas = Array.from(document.querySelectorAll('.linha-parcela')).map(linha => ({
     idParcela: linha.dataset.idParcela || undefined,
     tipoCobranca: linha.querySelector('.p-tipo').value,
@@ -701,9 +725,11 @@ async function salvarConta(idEventoExistente){
     valorPago: Number(linha.querySelector('.p-valorPago').value || 0),
   }));
   if (parcelas.some(p => !p.valor)){ mostrarErro('contaErr','Preencha o valor de todas as parcelas.'); return; }
+  if (!entrada && !parcelas.length){ mostrarErro('contaErr','Informe a entrada ou ao menos uma parcela.'); return; }
+ 
   const btn = document.getElementById('salvarContaBtn'); btn.disabled = true; btn.textContent = 'Salvando…';
   try{
-    await apiCall('salvarConta', { idEvento, parcelas });
+    await apiCall('salvarConta', { idEvento, entrada, parcelas });
     loaded = false; fecharOverlay(); await renderMain(); showToast('Conta salva.');
   } catch(err){ mostrarErro('contaErr', err.message); btn.disabled=false; btn.textContent = idEventoExistente?'Salvar conta':'Criar conta'; }
 }
