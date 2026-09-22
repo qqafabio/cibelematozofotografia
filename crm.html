@@ -955,8 +955,21 @@ async function salvarCusto(idCusto){
 }
  
 /* ============ FREELANCE ============ */
+let freelanceOrdemData = 'desc';
+const SERVICO_ICONES = {
+  'Fotografia': '📷', 'Edição de foto': '🖼️', 'Foto e edição': '📷🖼️',
+  'Filmagem': '🎥', 'Edição de vídeo': '🎬', 'Filmagem e edição': '🎥🎬',
+  'Storymaker': '📱',
+};
+const SERVICOS_EDICAO_PURA = ['Edição de foto', 'Edição de vídeo'];
+function badgeServico(servico){
+  const icone = SERVICO_ICONES[servico] || '📌';
+  const classe = SERVICOS_EDICAO_PURA.includes(servico) ? 'edicao' : '';
+  return `<span class="status-pill ${classe}">${icone} ${esc(servico || '—')}</span>`;
+}
 function renderFreelance(main){
   const totalGeral = freelanceEventos.reduce((s,e) => s + (e.valorPago||0), 0);
+  const totalPendente = freelanceEventos.reduce((s,e) => s + (e.pendente||0), 0);
   main.innerHTML = `
     <div class="view-header">
       <div><h1>Freelance</h1><p>Trabalhos para a Matozo Foto e Vídeo — ${freelanceEventos.length} eventos.</p></div>
@@ -964,6 +977,7 @@ function renderFreelance(main){
     </div>
     <div class="kpi-row">
       <div class="kpi-card"><div class="kpi-label">Total recebido (todo o período)</div><div class="kpi-value">${formatBRL(totalGeral)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total pendente</div><div class="kpi-value">${formatBRL(totalPendente)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Recebido no período filtrado</div><div class="kpi-value" id="freelanceRecebidoFiltro">—</div></div>
     </div>
     <div class="panel" style="margin-bottom:20px;padding:16px 18px;">
@@ -998,20 +1012,30 @@ function atualizarRecebidoFiltro(){
 function desenharTabelaFreelance(){
   const el = document.getElementById('tabelaFreelance');
   if (!freelanceEventos.length){ el.innerHTML = `<div class="empty-state">Nenhum freelance cadastrado ainda.</div>`; return; }
-  const ordenados = [...freelanceEventos].sort((a,b) => Number(b['ID Evento']) - Number(a['ID Evento']));
+  const comData = freelanceEventos.map(ev => Object.assign({ _data: parseDataBR(ev['Data']) }, ev));
+  const ordenados = comData.sort((a,b) => {
+    const da = a._data ? a._data.getTime() : -Infinity;
+    const db = b._data ? b._data.getTime() : -Infinity;
+    return freelanceOrdemData === 'desc' ? db - da : da - db;
+  });
+  const seta = freelanceOrdemData === 'desc' ? '↓' : '↑';
   el.innerHTML = `
     <table>
-      <thead><tr><th>Data</th><th>Nome do evento</th><th>Fotografia</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th></tr></thead>
+      <thead><tr><th id="thDataFreelance" style="cursor:pointer;">Data ${seta}</th><th>Nome do evento</th><th>Fotografia</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th></tr></thead>
       <tbody>${ordenados.map(ev => `
         <tr class="clickable" data-id="${esc(ev['ID Evento'])}">
           <td>${esc(ev['Data'])}</td><td>${esc(ev['Nome do evento'])}</td>
-          <td><span class="status-pill ${ev['Fotografei']==='Sim'?'':'edicao'}">${ev['Fotografei']==='Sim'?'📷 Fotografei':'🖥️ Só edição'}</span></td>
+          <td>${badgeServico(ev['Serviço'])}</td>
           <td>${formatBRL(ev['Total'])}</td>
           <td><span class="status-pill ${ev['Status do trabalho']==='Concluído'?'confirmado':''}">${esc(ev['Status do trabalho'])}</span></td>
           <td><span class="status-pill ${ev.statusPagamento==='Pago'?'confirmado':''}">${esc(ev.statusPagamento)}</span></td>
           <td>${formatBRL(ev.pendente)}</td>
         </tr>`).join('')}</tbody>
     </table>`;
+  document.getElementById('thDataFreelance').addEventListener('click', () => {
+    freelanceOrdemData = freelanceOrdemData === 'desc' ? 'asc' : 'desc';
+    desenharTabelaFreelance();
+  });
   el.querySelectorAll('tr.clickable').forEach(row => {
     row.addEventListener('click', () => abrirFormFreelance(freelanceEventos.find(e => String(e['ID Evento']) === row.dataset.id)));
   });
@@ -1029,15 +1053,16 @@ function abrirFormFreelance(ev){
           <div class="field"><label>Nome do evento</label><input id="f_nomeEvento" value="${esc(editando?ev['Nome do evento']:'')}"></div>
         </div>
         <div class="row2">
-          <div class="field"><label>Fotografei?</label><select id="f_fotografei">
-            <option value="Sim" ${editando&&ev['Fotografei']==='Sim'?'selected':''}>Sim — fotografei</option>
-            <option value="Não" ${editando&&ev['Fotografei']==='Não'?'selected':''}>Não — só editei</option>
-          </select></div>
+          <div class="field"><label>Serviço</label><select id="f_servico">${opcoesSelect(Object.keys(SERVICO_ICONES), editando?ev['Serviço']:'')}</select></div>
           <div class="field"><label>Status do trabalho</label><select id="f_statusTrabalho">${opcoesSelect(opcoesStatusTrabalho, editando?ev['Status do trabalho']:'Pendente')}</select></div>
         </div>
         <div class="row2">
           <div class="field"><label>Valor fotografia</label><input id="f_valorFotografia" type="number" step="0.01" value="${esc(editando?ev['Valor Fotografia']:'')}"></div>
           <div class="field"><label>Valor edição</label><input id="f_valorEdicao" type="number" step="0.01" value="${esc(editando?ev['Valor Edição']:'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Valor da filmagem</label><input id="f_valorFilmagem" type="number" step="0.01" value="${esc(editando?ev['Valor Filmagem']:'')}"></div>
+          <div class="field"><label>Valor do storymaker</label><input id="f_valorStorymaker" type="number" step="0.01" value="${esc(editando?ev['Valor Storymaker']:'')}"></div>
         </div>
         <div class="row3">
           <div class="field"><label>Fotógrafo(a)</label><input id="f_fotografo" value="${esc(editando?ev['Fotógrafo(a)']:'')}"></div>
@@ -1051,13 +1076,17 @@ function abrirFormFreelance(ev){
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="2">${esc(editando?ev['Observações']:'')}</textarea></div>
         ${editando ? `
         <hr style="border:none;border-top:1px solid var(--rule);margin:18px 0;">
-        <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;">Pagamentos recebidos por este evento</p>
+        <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;">Pagamentos recebidos por este evento <span style="font-weight:400;">(clique num pagamento para editar)</span></p>
         <div id="pagamentosFreelanceLista"></div>
+        <input type="hidden" id="f_pagamentoEditando" value="">
         <div class="row2" style="margin-top:10px;">
           <div class="field"><label>Data do pagamento</label><input id="f_novoPagData" class="p-mask-data" placeholder="DD/MM/AAAA"></div>
           <div class="field"><label>Valor</label><input id="f_novoPagValor" type="number" step="0.01"></div>
         </div>
-        <button class="btn-ghost" id="addPagamentoBtn" type="button">+ Registrar pagamento</button>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn-ghost" id="addPagamentoBtn" type="button">+ Registrar pagamento</button>
+          <button class="btn-ghost" id="cancelarEdicaoPagBtn" type="button" style="display:none;">Cancelar edição</button>
+        </div>
         ` : ''}
         <div class="form-actions">
           <button class="btn-ghost" id="cancelarFreelance">Cancelar</button>
@@ -1070,22 +1099,45 @@ function abrirFormFreelance(ev){
   document.querySelectorAll('#overlayRoot .p-mask-data').forEach(inp => inp.addEventListener('input', () => { inp.value = maskData(inp.value); }));
   if (editando){
     desenharPagamentosFreelance(ev);
-    document.getElementById('addPagamentoBtn').addEventListener('click', () => registrarPagamentoFreelance(ev['ID Evento']));
+    document.getElementById('addPagamentoBtn').addEventListener('click', () => salvarPagamentoFreelance(ev['ID Evento']));
+    document.getElementById('cancelarEdicaoPagBtn').addEventListener('click', () => limparFormPagamento());
   }
+}
+function limparFormPagamento(){
+  document.getElementById('f_novoPagData').value = '';
+  document.getElementById('f_novoPagValor').value = '';
+  document.getElementById('f_pagamentoEditando').value = '';
+  document.getElementById('addPagamentoBtn').textContent = '+ Registrar pagamento';
+  document.getElementById('cancelarEdicaoPagBtn').style.display = 'none';
 }
 function desenharPagamentosFreelance(ev){
   const wrap = document.getElementById('pagamentosFreelanceLista');
   if (!ev.pagamentos || !ev.pagamentos.length){ wrap.innerHTML = `<p style="font-size:13px;color:var(--ink-soft);">Nenhum pagamento registrado ainda para este evento.</p>`; return; }
-  wrap.innerHTML = `<table><tbody>${ev.pagamentos.map(p => `<tr><td>${esc(p['Data do pagamento'])}</td><td>${formatBRL(p['Valor pago'])}</td></tr>`).join('')}</tbody></table>`;
+  wrap.innerHTML = `<table><tbody>${ev.pagamentos.map(p => `
+    <tr class="clickable" data-id-pagamento="${esc(p['ID Pagamento'])}">
+      <td>${esc(p['Data do pagamento'])}</td><td>${formatBRL(p['Valor pago'])}</td>
+    </tr>`).join('')}</tbody></table>`;
+  wrap.querySelectorAll('tr.clickable').forEach(row => {
+    row.addEventListener('click', () => {
+      const pag = ev.pagamentos.find(p => String(p['ID Pagamento']) === row.dataset.idPagamento);
+      document.getElementById('f_novoPagData').value = pag['Data do pagamento'];
+      document.getElementById('f_novoPagValor').value = pag['Valor pago'];
+      document.getElementById('f_pagamentoEditando').value = pag['ID Pagamento'];
+      document.getElementById('addPagamentoBtn').textContent = 'Salvar edição do pagamento';
+      document.getElementById('cancelarEdicaoPagBtn').style.display = 'inline-block';
+    });
+  });
 }
 async function salvarFreelanceEvento(idEvento){
   const dados = {
     data: document.getElementById('f_data').value.trim(),
     nomeEvento: document.getElementById('f_nomeEvento').value.trim(),
-    fotografei: document.getElementById('f_fotografei').value,
+    servico: document.getElementById('f_servico').value,
     statusTrabalho: document.getElementById('f_statusTrabalho').value,
     valorFotografia: Number(document.getElementById('f_valorFotografia').value || 0),
     valorEdicao: Number(document.getElementById('f_valorEdicao').value || 0),
+    valorFilmagem: Number(document.getElementById('f_valorFilmagem').value || 0),
+    valorStorymaker: Number(document.getElementById('f_valorStorymaker').value || 0),
     fotografo: document.getElementById('f_fotografo').value.trim(),
     filmmaker: document.getElementById('f_filmmaker').value.trim(),
     storymaker: document.getElementById('f_storymaker').value.trim(),
@@ -1101,19 +1153,22 @@ async function salvarFreelanceEvento(idEvento){
     loaded = false; fecharOverlay(); await renderMain(); showToast('Freelance salvo.');
   } catch(err){ mostrarErro('freelanceErr', err.message); btn.disabled=false; btn.textContent = idEvento?'Salvar alterações':'Criar freelance'; }
 }
-async function registrarPagamentoFreelance(idEvento){
+async function salvarPagamentoFreelance(idEvento){
   const data = document.getElementById('f_novoPagData').value.trim();
   const valor = Number(document.getElementById('f_novoPagValor').value || 0);
+  const idPagamento = document.getElementById('f_pagamentoEditando').value;
   if (!valor){ mostrarErro('freelanceErr','Informe o valor do pagamento.'); return; }
-  const btn = document.getElementById('addPagamentoBtn'); btn.disabled = true; btn.textContent = 'Registrando…';
+  const btn = document.getElementById('addPagamentoBtn');
+  btn.disabled = true; btn.textContent = idPagamento ? 'Salvando…' : 'Registrando…';
   try{
-    await apiCall('criarFreelancePagamento', { idEvento, data, valor });
+    if (idPagamento) await apiCall('atualizarFreelancePagamento', { idPagamento, data, valor });
+    else await apiCall('criarFreelancePagamento', { idEvento, data, valor });
     loaded = false;
     await renderMain();
     const atualizado = freelanceEventos.find(e => String(e['ID Evento']) === String(idEvento));
     abrirFormFreelance(atualizado);
-    showToast('Pagamento registrado.');
-  } catch(err){ mostrarErro('freelanceErr', err.message); btn.disabled=false; btn.textContent='+ Registrar pagamento'; }
+    showToast(idPagamento ? 'Pagamento atualizado.' : 'Pagamento registrado.');
+  } catch(err){ mostrarErro('freelanceErr', err.message); btn.disabled=false; btn.textContent = idPagamento ? 'Salvar edição do pagamento' : '+ Registrar pagamento'; }
 }
  
 /* ============ INÍCIO ============ */
