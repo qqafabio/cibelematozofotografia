@@ -1021,7 +1021,7 @@ function desenharTabelaFreelance(){
   const seta = freelanceOrdemData === 'desc' ? '↓' : '↑';
   el.innerHTML = `
     <table>
-      <thead><tr><th id="thDataFreelance" style="cursor:pointer;">Data ${seta}</th><th>Nome do evento</th><th>Fotografia</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th></tr></thead>
+      <thead><tr><th id="thDataFreelance" style="cursor:pointer;">Data ${seta}</th><th>Nome do evento</th><th>Serviço</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th></tr></thead>
       <tbody>${ordenados.map(ev => `
         <tr class="clickable" data-id="${esc(ev['ID Evento'])}">
           <td>${esc(ev['Data'])}</td><td>${esc(ev['Nome do evento'])}</td>
