@@ -309,6 +309,7 @@ function abrirFormCliente(cliente){
         </div>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?cliente['Observações']:'')}</textarea></div>
         <div class="form-actions">
+          ${editando ? `<button class="btn-danger" id="excluirCliente" type="button">Excluir</button>` : ''}
           <button class="btn-ghost" id="cancelarCliente">Cancelar</button>
           <button class="btn-primary" id="salvarCliente">${editando?'Salvar alterações':'Criar cliente'}</button>
         </div>
@@ -316,9 +317,27 @@ function abrirFormCliente(cliente){
     </div>`;
   document.getElementById('cancelarCliente').addEventListener('click', fecharOverlay);
   document.getElementById('salvarCliente').addEventListener('click', () => salvarCliente(editando ? cliente['ID Cliente'] : null));
+  if (editando){
+    document.getElementById('excluirCliente').addEventListener('click', () => excluirComConfirmacao(
+      `Excluir o cliente "${cliente['Nome / Responsável']}"? Isso não pode ser desfeito.`,
+      'excluirCliente', { idCliente: cliente['ID Cliente'] }, 'excluirCliente', 'clienteErr'
+    ));
+  }
   aplicarMascara('f_whatsapp', maskWhatsapp);
 }
 function fecharOverlay(){ document.getElementById('overlayRoot').innerHTML = ''; }
+async function excluirComConfirmacao(mensagem, action, dados, btnId, erroId){
+  if (!confirm(mensagem)) return;
+  const btn = document.getElementById(btnId);
+  if (btn){ btn.disabled = true; btn.textContent = 'Excluindo…'; }
+  try{
+    await apiCall(action, dados);
+    loaded = false; fecharOverlay(); await renderMain(); showToast('Excluído.');
+  } catch(err){
+    mostrarErro(erroId, err.message);
+    if (btn){ btn.disabled = false; btn.textContent = 'Excluir'; }
+  }
+}
 async function salvarCliente(idCliente){
   const dados = {
     nome: document.getElementById('f_nome').value.trim(),
@@ -1021,7 +1040,7 @@ function desenharTabelaFreelance(){
   const seta = freelanceOrdemData === 'desc' ? '↓' : '↑';
   el.innerHTML = `
     <table>
-      <thead><tr><th id="thDataFreelance" style="cursor:pointer;">Data ${seta}</th><th>Nome do evento</th><th>Serviço</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th></tr></thead>
+      <thead><tr><th id="thDataFreelance" style="cursor:pointer;">Data ${seta}</th><th>Nome do evento</th><th>Fotografia</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th></tr></thead>
       <tbody>${ordenados.map(ev => `
         <tr class="clickable" data-id="${esc(ev['ID Evento'])}">
           <td>${esc(ev['Data'])}</td><td>${esc(ev['Nome do evento'])}</td>
