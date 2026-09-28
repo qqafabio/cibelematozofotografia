@@ -80,9 +80,46 @@
 
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:20px;font-size:13px;z-index:30;}
   .loading-note{color:var(--ink-soft);font-size:13px;padding:20px 0;}
+
+  /* ---- Mobile topbar / gaveta de navegação ---- */
+  .mobile-topbar{display:none;align-items:center;gap:12px;padding:12px 16px;background:var(--paper-raised);border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:25;}
+  .nav-toggle{background:none;border:none;font-size:22px;line-height:1;padding:4px 6px;color:var(--ink);}
+  .mobile-topbar-title{font-size:12.5px;letter-spacing:.05em;color:var(--ink-soft);}
+  .nav-backdrop{display:none;position:fixed;inset:0;background:rgba(34,31,28,.4);z-index:35;}
+  .nav-backdrop.open{display:block;}
+
+  @media (max-width:768px){
+    .mobile-topbar{display:flex;}
+    .sidebar{position:fixed;top:0;left:0;height:100vh;width:240px;max-width:80vw;transform:translateX(-100%);transition:transform .2s ease;z-index:40;overflow-y:auto;}
+    .sidebar.open{transform:translateX(0);}
+    .main{padding:20px 16px 60px;}
+    .view-header{flex-direction:column;align-items:stretch;}
+    .view-header .btn-primary{width:100%;}
+
+    /* formulários em coluna única, ocupando a tela cheia */
+    .row2,.row3{grid-template-columns:1fr;}
+    .form-overlay{padding:0;align-items:stretch;}
+    .form-panel{max-width:100%;min-height:100vh;border-radius:0;padding:20px 18px 90px;}
+    .form-actions{flex-direction:column;}
+    .form-actions button{width:100%;}
+    .btn-danger{margin-right:0;}
+
+    /* tabelas viram cartões empilhados */
+    table.responsive-table thead{display:none;}
+    table.responsive-table, table.responsive-table tbody, table.responsive-table tr, table.responsive-table td{display:block;width:100%;}
+    table.responsive-table tr{border:1px solid var(--rule);border-radius:4px;margin-bottom:12px;padding:4px 0;}
+    table.responsive-table td{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;text-align:right;border-bottom:1px dashed var(--rule);}
+    table.responsive-table td:last-child{border-bottom:none;}
+    table.responsive-table td::before{content:attr(data-label);font-size:11.5px;color:var(--ink-soft);font-weight:500;text-align:left;}
+  }
 </style>
 </head>
 <body>
+<div class="mobile-topbar">
+  <button class="nav-toggle" id="navToggle" aria-label="Abrir menu">☰</button>
+  <span class="mobile-topbar-title">CIBELE MATOZO · CRM</span>
+</div>
+<div class="nav-backdrop" id="navBackdrop"></div>
 <div class="shell">
   <aside class="sidebar">
     <div class="brand">
@@ -137,10 +174,17 @@ function renderNav(){
   el.querySelectorAll('.nav-item').forEach(item => {
     const nav = NAV.find(n => n.id === item.dataset.id);
     if (!nav.ready) return;
-    item.addEventListener('click', () => { currentView = nav.id; renderNav(); renderMain(); });
+    item.addEventListener('click', () => { currentView = nav.id; renderNav(); renderMain(); toggleNavMobile(true); });
   });
 }
- 
+function toggleNavMobile(forceClose){
+  const sidebar = document.querySelector('.sidebar');
+  const backdrop = document.getElementById('navBackdrop');
+  const open = forceClose ? false : !sidebar.classList.contains('open');
+  sidebar.classList.toggle('open', open);
+  backdrop.classList.toggle('open', open);
+}
+
 /* ============ API ============ */
 function isConfigurado(){ return CRM_API_URL && CRM_API_URL.indexOf('COLE_AQUI') === -1; }
 async function apiCall(action, dados){
@@ -234,10 +278,10 @@ function renderDashboard(main){
     </div>
     <div class="panel">
       <h2>Próximos eventos</h2>
-      ${proximos.length ? `<table>
+      ${proximos.length ? `<table class="responsive-table">
         <thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Pacote</th><th>Status</th></tr></thead>
         <tbody>${proximos.map(e => `
-          <tr><td>${esc(e['Data do evento'])}</td><td>${esc(e['Cliente / Responsável'])}</td><td>${esc(e['Tipo de evento'])}</td><td>${esc(e['Pacote'])}</td><td><span class="status-pill ${String(e.Status).toLowerCase()==='confirmado'?'confirmado':''}">${esc(e.Status)}</span></td></tr>
+          <tr><td data-label="Data">${esc(e['Data do evento'])}</td><td data-label="Cliente">${esc(e['Cliente / Responsável'])}</td><td data-label="Tipo">${esc(e['Tipo de evento'])}</td><td data-label="Pacote">${esc(e['Pacote'])}</td><td data-label="Status"><span class="status-pill ${String(e.Status).toLowerCase()==='confirmado'?'confirmado':''}">${esc(e.Status)}</span></td></tr>
         `).join('')}</tbody></table>` : `<div class="empty-state">Nenhum evento futuro cadastrado ainda.</div>`}
     </div>
   `;
@@ -270,12 +314,12 @@ function desenharTabelaClientes(filtro){
   const el = document.getElementById('tabelaClientes');
   if (!lista.length){ el.innerHTML = `<div class="empty-state">Nenhum cliente encontrado.</div>`; return; }
   el.innerHTML = `
-    <table>
+    <table class="responsive-table">
       <thead><tr><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Cidade</th><th>Eventos</th></tr></thead>
       <tbody>${lista.map(c => `
         <tr class="clickable" data-id="${esc(c['ID Cliente'])}">
-          <td>${esc(c['Nome / Responsável'])}</td><td>${esc(c['WhatsApp'])}</td><td>${esc(c['E-mail'])}</td>
-          <td>${esc(c['Cidade'])}</td><td>${esc(c['Qtd. eventos']||0)}</td>
+          <td data-label="Nome">${esc(c['Nome / Responsável'])}</td><td data-label="WhatsApp">${esc(c['WhatsApp'])}</td><td data-label="E-mail">${esc(c['E-mail'])}</td>
+          <td data-label="Cidade">${esc(c['Cidade'])}</td><td data-label="Eventos">${esc(c['Qtd. eventos']||0)}</td>
         </tr>`).join('')}</tbody>
     </table>`;
   el.querySelectorAll('tr.clickable').forEach(row => {
@@ -419,13 +463,13 @@ function desenharTabelaEventos(){
   if (!eventos.length){ el.innerHTML = `<div class="empty-state">Nenhum evento cadastrado ainda.</div>`; return; }
   const ordenados = [...eventos].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
   el.innerHTML = `
-    <table>
+    <table class="responsive-table">
       <thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Pacote</th><th>Valor</th><th>Status</th></tr></thead>
       <tbody>${ordenados.map(e => `
         <tr class="clickable" data-id="${esc(e['ID Evento'])}">
-          <td>${esc(e['Data do evento'])}</td><td>${esc(e['Cliente / Responsável'])}</td><td>${esc(e['Tipo de evento'])}</td>
-          <td>${esc(e['Pacote'])}</td><td>${formatBRL(e['Valor final'])}</td>
-          <td><span class="status-pill ${String(e.Status).toLowerCase()==='confirmado'?'confirmado':''}">${esc(e.Status)}</span></td>
+          <td data-label="Data">${esc(e['Data do evento'])}</td><td data-label="Cliente">${esc(e['Cliente / Responsável'])}</td><td data-label="Tipo">${esc(e['Tipo de evento'])}</td>
+          <td data-label="Pacote">${esc(e['Pacote'])}</td><td data-label="Valor">${formatBRL(e['Valor final'])}</td>
+          <td data-label="Status"><span class="status-pill ${String(e.Status).toLowerCase()==='confirmado'?'confirmado':''}">${esc(e.Status)}</span></td>
         </tr>`).join('')}</tbody>
     </table>`;
   el.querySelectorAll('tr.clickable').forEach(row => {
@@ -526,14 +570,14 @@ function desenharTabelaLeads(){
   if (!leads.length){ el.innerHTML = `<div class="empty-state">Nenhum lead cadastrado ainda.</div>`; return; }
   const ordenados = [...leads].sort((a,b) => Number(b['ID Lead']) - Number(a['ID Lead']));
   el.innerHTML = `
-    <table>
+    <table class="responsive-table">
       <thead><tr><th>Cliente</th><th>Tipo</th><th>Etapa</th><th>Valor estimado</th><th>Próximo contato</th></tr></thead>
       <tbody>${ordenados.map(l => `
         <tr class="clickable" data-id="${esc(l['ID Lead'])}">
-          <td>${esc(l['Cliente'])}</td><td>${esc(l['Tipo de evento'])}</td>
-          <td><span class="status-pill ${String(l['Etapa comercial']).toLowerCase()==='ganho'?'confirmado':''}">${esc(l['Etapa comercial'])}</span></td>
-          <td>${formatBRL(l['Valor estimado'])}</td>
-          <td>${esc(l['Próximo contato'])}</td>
+          <td data-label="Cliente">${esc(l['Cliente'])}</td><td data-label="Tipo">${esc(l['Tipo de evento'])}</td>
+          <td data-label="Etapa"><span class="status-pill ${String(l['Etapa comercial']).toLowerCase()==='ganho'?'confirmado':''}">${esc(l['Etapa comercial'])}</span></td>
+          <td data-label="Valor estimado">${formatBRL(l['Valor estimado'])}</td>
+          <td data-label="Próximo contato">${esc(l['Próximo contato'])}</td>
         </tr>`).join('')}</tbody>
     </table>`;
   el.querySelectorAll('tr.clickable').forEach(row => {
@@ -657,14 +701,14 @@ function desenharTabelaFinanceiro(){
   if (!contas.length){ el.innerHTML = `<div class="empty-state">Nenhuma conta lançada ainda.</div>`; return; }
   const ordenados = [...contas].sort((a,b) => Number(b.idEvento) - Number(a.idEvento));
   el.innerHTML = `
-    <table>
+    <table class="responsive-table">
       <thead><tr><th>Cliente</th><th>Parcelas</th><th>Total previsto</th><th>Recebido</th><th>Saldo</th><th>Status</th></tr></thead>
       <tbody>${ordenados.map(c => `
         <tr class="clickable" data-id="${esc(c.idEvento)}">
-          <td>${esc(c.cliente)}</td><td>${c.parcelas.length}</td>
-          <td>${formatBRL(c.totalPrevisto)}</td><td>${formatBRL(c.totalPago)}</td>
-          <td>${formatBRL(c.saldo)}</td>
-          <td><span class="status-pill ${c.status==='Quitado'?'confirmado':(c.status==='Vencida'?'vencida':'')}">${c.status}</span></td>
+          <td data-label="Cliente">${esc(c.cliente)}</td><td data-label="Parcelas">${c.parcelas.length}</td>
+          <td data-label="Total previsto">${formatBRL(c.totalPrevisto)}</td><td data-label="Recebido">${formatBRL(c.totalPago)}</td>
+          <td data-label="Saldo">${formatBRL(c.saldo)}</td>
+          <td data-label="Status"><span class="status-pill ${c.status==='Quitado'?'confirmado':(c.status==='Vencida'?'vencida':'')}">${c.status}</span></td>
         </tr>`).join('')}</tbody>
     </table>`;
   el.querySelectorAll('tr.clickable').forEach(row => {
@@ -830,13 +874,13 @@ function desenharTabelaProducao(){
   const el = document.getElementById('tabelaProducao');
   if (!producao.length){ el.innerHTML = `<div class="empty-state">Nenhum evento com produção em aberto ainda.</div>`; return; }
   el.innerHTML = `
-    <table>
+    <table class="responsive-table">
       <thead><tr><th>Cliente</th><th>Tipo</th><th>Data evento</th><th>Edição</th><th>Entrega</th></tr></thead>
       <tbody>${producao.map(p => `
         <tr class="clickable" data-id="${esc(p['ID Evento'])}">
-          <td>${esc(p['Cliente'])}</td><td>${esc(p['Tipo de evento'])}</td><td>${esc(p['Data evento'])}</td>
-          <td>${esc(p['Edição foto'])}</td>
-          <td><span class="status-pill ${String(p['Entrega']).toLowerCase()==='concluído'?'confirmado':''}">${esc(p['Entrega'])}</span></td>
+          <td data-label="Cliente">${esc(p['Cliente'])}</td><td data-label="Tipo">${esc(p['Tipo de evento'])}</td><td data-label="Data evento">${esc(p['Data evento'])}</td>
+          <td data-label="Edição">${esc(p['Edição foto'])}</td>
+          <td data-label="Entrega"><span class="status-pill ${String(p['Entrega']).toLowerCase()==='concluído'?'confirmado':''}">${esc(p['Entrega'])}</span></td>
         </tr>`).join('')}</tbody>
     </table>`;
   el.querySelectorAll('tr.clickable').forEach(row => {
@@ -945,13 +989,13 @@ function renderCustos(main){
     <div class="kpi-row"><div class="kpi-card"><div class="kpi-label">Total lançado</div><div class="kpi-value">${formatBRL(total)}</div></div></div>
     <div class="panel" style="margin-bottom:20px;">
       <h2>Receita × custo por evento</h2>
-      ${porEvento.length ? `<table>
+      ${porEvento.length ? `<table class="responsive-table">
         <thead><tr><th>Cliente</th><th>Receita</th><th>Custos</th><th>Margem</th><th>Margem %</th></tr></thead>
         <tbody>${porEvento.map(g => `
           <tr>
-            <td>${esc(g.cliente)}</td><td>${formatBRL(g.receita)}</td><td>${formatBRL(g.custo)}</td>
-            <td>${formatBRL(g.margem)}</td>
-            <td><span class="status-pill ${g.margem>=0?'confirmado':'vencida'}">${g.margemPct.toFixed(0)}%</span></td>
+            <td data-label="Cliente">${esc(g.cliente)}</td><td data-label="Receita">${formatBRL(g.receita)}</td><td data-label="Custos">${formatBRL(g.custo)}</td>
+            <td data-label="Margem">${formatBRL(g.margem)}</td>
+            <td data-label="Margem %"><span class="status-pill ${g.margem>=0?'confirmado':'vencida'}">${g.margemPct.toFixed(0)}%</span></td>
           </tr>`).join('')}</tbody></table>` : `<div class="empty-state">Nenhum evento com receita ou custo lançado ainda.</div>`}
     </div>
     <div class="panel"><div id="tabelaCustos"></div></div>
@@ -964,13 +1008,13 @@ function desenharTabelaCustos(){
   if (!custos.length){ el.innerHTML = `<div class="empty-state">Nenhum custo lançado ainda.</div>`; return; }
   const ordenados = [...custos].sort((a,b) => Number(b['ID Custo']) - Number(a['ID Custo']));
   el.innerHTML = `
-    <table>
+    <table class="responsive-table">
       <thead><tr><th>Evento</th><th>Categoria</th><th>Fornecedor</th><th>Valor</th><th>Pago?</th></tr></thead>
       <tbody>${ordenados.map(c => `
         <tr class="clickable" data-id="${esc(c['ID Custo'])}">
-          <td>${esc(c['Cliente'])}</td><td>${esc(c['Categoria'])}</td><td>${esc(c['Fornecedor'])}</td>
-          <td>${formatBRL(c['Valor'])}</td>
-          <td><span class="status-pill ${String(c['Pago?']).toLowerCase()==='sim'?'confirmado':''}">${esc(c['Pago?'])}</span></td>
+          <td data-label="Evento">${esc(c['Cliente'])}</td><td data-label="Categoria">${esc(c['Categoria'])}</td><td data-label="Fornecedor">${esc(c['Fornecedor'])}</td>
+          <td data-label="Valor">${formatBRL(c['Valor'])}</td>
+          <td data-label="Pago?"><span class="status-pill ${String(c['Pago?']).toLowerCase()==='sim'?'confirmado':''}">${esc(c['Pago?'])}</span></td>
         </tr>`).join('')}</tbody>
     </table>`;
   el.querySelectorAll('tr.clickable').forEach(row => {
@@ -1105,16 +1149,16 @@ function desenharTabelaFreelance(){
   });
   const seta = freelanceOrdemData === 'desc' ? '↓' : '↑';
   el.innerHTML = `
-    <table>
+    <table class="responsive-table">
       <thead><tr><th id="thDataFreelance" style="cursor:pointer;">Data ${seta}</th><th>Nome do evento</th><th>Fotografia</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th></tr></thead>
       <tbody>${ordenados.map(ev => `
         <tr class="clickable" data-id="${esc(ev['ID Evento'])}">
-          <td>${esc(ev['Data'])}</td><td>${esc(ev['Nome do evento'])}</td>
-          <td>${badgeServico(ev['Serviço'])}</td>
-          <td>${formatBRL(ev['Total'])}</td>
-          <td><span class="status-pill ${ev['Status do trabalho']==='Concluído'?'confirmado':''}">${esc(ev['Status do trabalho'])}</span></td>
-          <td><span class="status-pill ${ev.statusPagamento==='Pago'?'confirmado':''}">${esc(ev.statusPagamento)}</span></td>
-          <td>${formatBRL(ev.pendente)}</td>
+          <td data-label="Data">${esc(ev['Data'])}</td><td data-label="Nome do evento">${esc(ev['Nome do evento'])}</td>
+          <td data-label="Fotografia">${badgeServico(ev['Serviço'])}</td>
+          <td data-label="Total">${formatBRL(ev['Total'])}</td>
+          <td data-label="Trabalho"><span class="status-pill ${ev['Status do trabalho']==='Concluído'?'confirmado':''}">${esc(ev['Status do trabalho'])}</span></td>
+          <td data-label="Pagamento"><span class="status-pill ${ev.statusPagamento==='Pago'?'confirmado':''}">${esc(ev.statusPagamento)}</span></td>
+          <td data-label="Pendente">${formatBRL(ev.pendente)}</td>
         </tr>`).join('')}</tbody>
     </table>`;
   document.getElementById('thDataFreelance').addEventListener('click', () => {
@@ -1212,9 +1256,9 @@ function limparFormPagamento(){
 function desenharPagamentosFreelance(ev){
   const wrap = document.getElementById('pagamentosFreelanceLista');
   if (!ev.pagamentos || !ev.pagamentos.length){ wrap.innerHTML = `<p style="font-size:13px;color:var(--ink-soft);">Nenhum pagamento registrado ainda para este evento.</p>`; return; }
-  wrap.innerHTML = `<table><tbody>${ev.pagamentos.map(p => `
+  wrap.innerHTML = `<table class="responsive-table"><tbody>${ev.pagamentos.map(p => `
     <tr class="clickable" data-id-pagamento="${esc(p['ID Pagamento'])}">
-      <td>${esc(p['Data do pagamento'])}</td><td>${formatBRL(p['Valor pago'])}</td>
+      <td data-label="Data">${esc(p['Data do pagamento'])}</td><td data-label="Valor">${formatBRL(p['Valor pago'])}</td>
     </tr>`).join('')}</tbody></table>`;
   wrap.querySelectorAll('tr.clickable').forEach(row => {
     row.addEventListener('click', () => {
@@ -1272,6 +1316,8 @@ async function salvarPagamentoFreelance(idEvento){
 }
  
 /* ============ INÍCIO ============ */
+document.getElementById('navToggle').addEventListener('click', () => toggleNavMobile());
+document.getElementById('navBackdrop').addEventListener('click', () => toggleNavMobile(true));
 renderNav();
 renderMain();
 </script>

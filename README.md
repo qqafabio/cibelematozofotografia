@@ -103,7 +103,17 @@ Todos os módulos (Leads, Clientes, Eventos, Financeiro, Custos, Freelance) têm
 - **Evento / Conta do Financeiro:** bloqueado se já houver algum "Valor pago" lançado no Financeiro daquele evento — o pagamento precisa ser revertido antes (mudando o **Status** da parcela/entrada para algo diferente de "Pago", sem precisar zerar o valor previsto). Caso o bloqueio apareça mas o valor for de um teste, o próprio app oferece uma **exclusão forçada** (segunda confirmação explícita), que ignora a trava e apaga o valor recebido junto — sem gerar estorno real, só limpeza de dado de teste.
 - Excluir um Evento também remove em cascata: o compromisso na Agenda, a linha de Produção (e o compromisso de entrega, se houver), os Custos vinculados e todas as parcelas do Financeiro daquele evento.
 
-### 2.5 Atualizando depois de publicado
+### 2.5 Visualização mobile (v2.4)
+
+O CRM tem um breakpoint responsivo em `max-width: 768px`, ativado automaticamente ao abrir em celular:
+
+- **Navegação:** a sidebar fixa vira um menu gaveta — um botão ☰ na barra superior abre/fecha a sidebar como uma gaveta deslizante, com um fundo escurecido por trás; a gaveta fecha sozinha ao selecionar um módulo.
+- **Tabelas:** as listas (Clientes, Eventos, Leads, Financeiro, Produção, Custos, Freelance etc.) deixam de mostrar colunas lado a lado e passam a exibir cada linha como um cartão, com cada coluna empilhada em formato rótulo/valor.
+- **Formulários:** os campos que ficavam em 2-3 colunas (`.row2`/`.row3`) passam a uma coluna só, e o painel de edição ocupa a tela inteira (em vez de um modal pequeno centralizado), facilitando preencher formulários longos (Eventos, Produção, Freelance) pelo celular.
+
+Nenhuma mudança de back-end foi necessária — é só CSS/JS no `crm.html`.
+
+### 2.6 Atualizando depois de publicado
 
 - **Mudou algo no `crm.html`** (layout, textos, regras de formulário): edite e suba de novo no GitHub. Vale na hora.
 - **Mudou algo no back-end** (`backend.txt`): cole o conteúdo atualizado no `Código.gs`, no editor do Apps Script, e crie uma **Nova implantação** — sem isso, o CRM continua rodando a versão antiga do back-end mesmo com o `backend.txt` já atualizado aqui no repositório.
