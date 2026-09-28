@@ -38,6 +38,8 @@
   .btn-primary:hover{opacity:.88;}
   .btn-ghost{background:transparent;border:1px solid var(--rule);color:var(--ink);padding:9px 14px;font-size:13.5px;}
   .btn-ghost:hover{border-color:var(--ink-soft);}
+  .btn-danger{background:transparent;border:1px solid var(--error);color:var(--error);padding:9px 14px;font-size:13.5px;margin-right:auto;}
+  .btn-danger:hover{background:var(--error);color:var(--paper);}
 
   /* ---- KPI cards ---- */
   .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:28px;}
@@ -426,6 +428,7 @@ function abrirFormEvento(evento){
         </div>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?evento['Observações']:'')}</textarea></div>
         <div class="form-actions">
+          ${editando ? `<button class="btn-danger" id="excluirEvento" type="button">Excluir</button>` : ''}
           <button class="btn-ghost" id="cancelarEvento">Cancelar</button>
           <button class="btn-primary" id="salvarEvento">${editando?'Salvar alterações':'Criar evento'}</button>
         </div>
@@ -433,6 +436,12 @@ function abrirFormEvento(evento){
     </div>`;
   document.getElementById('cancelarEvento').addEventListener('click', fecharOverlay);
   document.getElementById('salvarEvento').addEventListener('click', () => salvarEvento(editando ? evento['ID Evento'] : null));
+  if (editando){
+    document.getElementById('excluirEvento').addEventListener('click', () => excluirComConfirmacao(
+      `Excluir o evento de "${evento['Cliente / Responsável']}" em ${evento['Data do evento'] || '(sem data)'}? Isso remove também a produção, o compromisso na Agenda e as parcelas do Financeiro. Não pode ser desfeito.`,
+      'excluirEvento', { idEvento: evento['ID Evento'] }, 'excluirEvento', 'eventoErr'
+    ));
+  }
   aplicarMascara('f_data', maskData);
   aplicarMascara('f_horaIni', maskHora);
   aplicarMascara('f_horaFim', maskHora);
@@ -525,6 +534,7 @@ function abrirFormLead(lead){
         </div>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?lead['Observações']:'')}</textarea></div>
         <div class="form-actions">
+          ${editando ? `<button class="btn-danger" id="excluirLead" type="button">Excluir</button>` : ''}
           <button class="btn-ghost" id="cancelarLead">Cancelar</button>
           <button class="btn-primary" id="salvarLead">${editando?'Salvar alterações':'Criar lead'}</button>
         </div>
@@ -532,6 +542,12 @@ function abrirFormLead(lead){
     </div>`;
   document.getElementById('cancelarLead').addEventListener('click', fecharOverlay);
   document.getElementById('salvarLead').addEventListener('click', () => salvarLead(editando ? lead['ID Lead'] : null));
+  if (editando){
+    document.getElementById('excluirLead').addEventListener('click', () => excluirComConfirmacao(
+      `Excluir o lead de "${lead['Cliente']}"? Isso não pode ser desfeito.`,
+      'excluirLead', { idLead: lead['ID Lead'] }, 'excluirLead', 'leadErr'
+    ));
+  }
   aplicarMascara('f_whatsapp', maskWhatsapp);
   aplicarMascara('f_dataDesejada', maskData);
   aplicarMascara('f_proximoContato', maskData);
@@ -649,6 +665,7 @@ function abrirFormConta(conta){
         <div class="field"><label>Total de parcelas</label><input id="f_totalParcelas" type="number" min="0" value="${editando ? parcelasRestantes.length : 1}"></div>
         <div id="parcelasLista"></div>
         <div class="form-actions">
+          ${editando ? `<button class="btn-danger" id="excluirConta" type="button">Excluir conta</button>` : ''}
           <button class="btn-ghost" id="cancelarConta">Cancelar</button>
           <button class="btn-primary" id="salvarContaBtn">${editando?'Salvar conta':'Criar conta'}</button>
         </div>
@@ -656,6 +673,12 @@ function abrirFormConta(conta){
     </div>`;
   document.getElementById('cancelarConta').addEventListener('click', fecharOverlay);
   document.getElementById('salvarContaBtn').addEventListener('click', () => salvarConta(editando ? conta.idEvento : null));
+  if (editando){
+    document.getElementById('excluirConta').addEventListener('click', () => excluirComConfirmacao(
+      `Excluir toda a conta de "${conta.cliente}"? Isso remove todas as parcelas lançadas. Não pode ser desfeito.`,
+      'excluirContaFinanceiro', { idEvento: conta.idEvento }, 'excluirConta', 'contaErr'
+    ));
+  }
   document.getElementById('f_totalParcelas').addEventListener('input', () => renderLinhasParcelas(parcelasRestantes));
   document.getElementById('f_entradaValor').addEventListener('input', atualizarSaldoEventoInfo);
   document.querySelectorAll('#overlayRoot .p-mask-data').forEach(inp => {
@@ -942,6 +965,7 @@ function abrirFormCusto(custo){
         </div>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="2">${esc(editando?custo['Observações']:'')}</textarea></div>
         <div class="form-actions">
+          ${editando ? `<button class="btn-danger" id="excluirCusto" type="button">Excluir</button>` : ''}
           <button class="btn-ghost" id="cancelarCusto">Cancelar</button>
           <button class="btn-primary" id="salvarCusto">${editando?'Salvar alterações':'Criar custo'}</button>
         </div>
@@ -949,6 +973,12 @@ function abrirFormCusto(custo){
     </div>`;
   document.getElementById('cancelarCusto').addEventListener('click', fecharOverlay);
   document.getElementById('salvarCusto').addEventListener('click', () => salvarCusto(editando ? custo['ID Custo'] : null));
+  if (editando){
+    document.getElementById('excluirCusto').addEventListener('click', () => excluirComConfirmacao(
+      `Excluir o custo "${custo['Descrição'] || custo['Categoria'] || ''}"? Isso não pode ser desfeito.`,
+      'excluirCusto', { idCusto: custo['ID Custo'] }, 'excluirCusto', 'custoErr'
+    ));
+  }
   aplicarMascara('f_data', maskData);
 }
 async function salvarCusto(idCusto){
@@ -1105,9 +1135,11 @@ function abrirFormFreelance(ev){
         <div style="display:flex;gap:10px;align-items:center;">
           <button class="btn-ghost" id="addPagamentoBtn" type="button">+ Registrar pagamento</button>
           <button class="btn-ghost" id="cancelarEdicaoPagBtn" type="button" style="display:none;">Cancelar edição</button>
+          <button class="btn-danger" id="excluirPagamentoBtn" type="button" style="display:none;margin-right:0;">Excluir pagamento</button>
         </div>
         ` : ''}
         <div class="form-actions">
+          ${editando ? `<button class="btn-danger" id="excluirFreelance" type="button">Excluir</button>` : ''}
           <button class="btn-ghost" id="cancelarFreelance">Cancelar</button>
           <button class="btn-primary" id="salvarFreelanceBtn">${editando?'Salvar alterações':'Criar freelance'}</button>
         </div>
@@ -1120,6 +1152,17 @@ function abrirFormFreelance(ev){
     desenharPagamentosFreelance(ev);
     document.getElementById('addPagamentoBtn').addEventListener('click', () => salvarPagamentoFreelance(ev['ID Evento']));
     document.getElementById('cancelarEdicaoPagBtn').addEventListener('click', () => limparFormPagamento());
+    document.getElementById('excluirPagamentoBtn').addEventListener('click', () => {
+      const idPagamento = document.getElementById('f_pagamentoEditando').value;
+      excluirComConfirmacao(
+        'Excluir este pagamento? Isso não pode ser desfeito.',
+        'excluirFreelancePagamento', { idPagamento }, 'excluirPagamentoBtn', 'freelanceErr'
+      );
+    });
+    document.getElementById('excluirFreelance').addEventListener('click', () => excluirComConfirmacao(
+      `Excluir o freelance "${ev['Nome do evento']}"? Isso remove também todos os pagamentos lançados para ele. Não pode ser desfeito.`,
+      'excluirFreelanceEvento', { idEvento: ev['ID Evento'] }, 'excluirFreelance', 'freelanceErr'
+    ));
   }
 }
 function limparFormPagamento(){
@@ -1128,6 +1171,7 @@ function limparFormPagamento(){
   document.getElementById('f_pagamentoEditando').value = '';
   document.getElementById('addPagamentoBtn').textContent = '+ Registrar pagamento';
   document.getElementById('cancelarEdicaoPagBtn').style.display = 'none';
+  document.getElementById('excluirPagamentoBtn').style.display = 'none';
 }
 function desenharPagamentosFreelance(ev){
   const wrap = document.getElementById('pagamentosFreelanceLista');
@@ -1144,6 +1188,7 @@ function desenharPagamentosFreelance(ev){
       document.getElementById('f_pagamentoEditando').value = pag['ID Pagamento'];
       document.getElementById('addPagamentoBtn').textContent = 'Salvar edição do pagamento';
       document.getElementById('cancelarEdicaoPagBtn').style.display = 'inline-block';
+      document.getElementById('excluirPagamentoBtn').style.display = 'inline-block';
     });
   });
 }
