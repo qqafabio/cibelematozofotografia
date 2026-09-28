@@ -337,6 +337,50 @@ async function excluirComConfirmacao(mensagem, action, dados, btnId, erroId){
     if (btn){ btn.disabled = false; btn.textContent = 'Excluir'; }
   }
 }
+async function excluirEventoComConfirmacao(evento){
+  const mensagem = `Excluir o evento de "${evento['Cliente / Responsável']}" em ${evento['Data do evento'] || '(sem data)'}? Isso remove também a produção, o compromisso na Agenda, os custos e as parcelas do Financeiro. Não pode ser desfeito.`;
+  if (!confirm(mensagem)) return;
+  const btn = document.getElementById('excluirEvento');
+  if (btn){ btn.disabled = true; btn.textContent = 'Excluindo…'; }
+  try{
+    await apiCall('excluirEvento', { idEvento: evento['ID Evento'] });
+    loaded = false; fecharOverlay(); await renderMain(); showToast('Excluído.');
+  } catch(err){
+    const bloqueadoPorPagamento = /recebido/.test(err.message);
+    if (bloqueadoPorPagamento && confirm(err.message + '\n\nSe for um evento de teste, você pode excluir mesmo assim — isso apaga também o valor recebido do Financeiro, sem estorno real. Confirma a exclusão forçada?')){
+      try{
+        await apiCall('excluirEvento', { idEvento: evento['ID Evento'], forcar: true });
+        loaded = false; fecharOverlay(); await renderMain(); showToast('Excluído.');
+        return;
+      } catch(err2){ mostrarErro('eventoErr', err2.message); }
+    } else {
+      mostrarErro('eventoErr', err.message);
+    }
+    if (btn){ btn.disabled = false; btn.textContent = 'Excluir'; }
+  }
+}
+async function excluirContaComConfirmacao(conta){
+  const mensagem = `Excluir toda a conta de "${conta.cliente}"? Isso remove todas as parcelas lançadas. Não pode ser desfeito.`;
+  if (!confirm(mensagem)) return;
+  const btn = document.getElementById('excluirConta');
+  if (btn){ btn.disabled = true; btn.textContent = 'Excluindo…'; }
+  try{
+    await apiCall('excluirContaFinanceiro', { idEvento: conta.idEvento });
+    loaded = false; fecharOverlay(); await renderMain(); showToast('Excluído.');
+  } catch(err){
+    const bloqueadoPorPagamento = /recebido/.test(err.message);
+    if (bloqueadoPorPagamento && confirm(err.message + '\n\nSe for uma conta de teste, você pode excluir mesmo assim — isso apaga também o valor recebido, sem estorno real. Confirma a exclusão forçada?')){
+      try{
+        await apiCall('excluirContaFinanceiro', { idEvento: conta.idEvento, forcar: true });
+        loaded = false; fecharOverlay(); await renderMain(); showToast('Excluído.');
+        return;
+      } catch(err2){ mostrarErro('contaErr', err2.message); }
+    } else {
+      mostrarErro('contaErr', err.message);
+    }
+    if (btn){ btn.disabled = false; btn.textContent = 'Excluir conta'; }
+  }
+}
 async function salvarCliente(idCliente){
   const dados = {
     nome: document.getElementById('f_nome').value.trim(),
@@ -434,10 +478,7 @@ function abrirFormEvento(evento){
   document.getElementById('cancelarEvento').addEventListener('click', fecharOverlay);
   document.getElementById('salvarEvento').addEventListener('click', () => salvarEvento(editando ? evento['ID Evento'] : null));
   if (editando){
-    document.getElementById('excluirEvento').addEventListener('click', () => excluirComConfirmacao(
-      `Excluir o evento de "${evento['Cliente / Responsável']}" em ${evento['Data do evento'] || '(sem data)'}? Isso remove também a produção, o compromisso na Agenda e as parcelas do Financeiro. Não pode ser desfeito.`,
-      'excluirEvento', { idEvento: evento['ID Evento'] }, 'excluirEvento', 'eventoErr'
-    ));
+    document.getElementById('excluirEvento').addEventListener('click', () => excluirEventoComConfirmacao(evento));
   }
   aplicarMascara('f_data', maskData);
   aplicarMascara('f_horaIni', maskHora);
@@ -672,10 +713,7 @@ function abrirFormConta(conta){
   document.getElementById('cancelarConta').addEventListener('click', fecharOverlay);
   document.getElementById('salvarContaBtn').addEventListener('click', () => salvarConta(editando ? conta.idEvento : null));
   if (editando){
-    document.getElementById('excluirConta').addEventListener('click', () => excluirComConfirmacao(
-      `Excluir toda a conta de "${conta.cliente}"? Isso remove todas as parcelas lançadas. Não pode ser desfeito.`,
-      'excluirContaFinanceiro', { idEvento: conta.idEvento }, 'excluirConta', 'contaErr'
-    ));
+    document.getElementById('excluirConta').addEventListener('click', () => excluirContaComConfirmacao(conta));
   }
   document.getElementById('f_totalParcelas').addEventListener('input', () => renderLinhasParcelas(parcelasRestantes));
   document.getElementById('f_entradaValor').addEventListener('input', atualizarSaldoEventoInfo);
