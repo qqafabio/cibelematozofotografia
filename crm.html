@@ -185,13 +185,10 @@ function showToast(msg){
   setTimeout(() => { root.innerHTML=''; }, 2600);
 }
 async function carregarTudo(){
-  const [c, e, l, f, p, cu, li, fl] = await Promise.all([
-    apiCall('listarClientes'), apiCall('listarEventos'), apiCall('listarLeads'),
-    apiCall('listarFinanceiro'), apiCall('listarProducao'), apiCall('listarCustos'), apiCall('listarListas'),
-    apiCall('listarFreelanceEventos')
-  ]);
-  clientes = c; eventos = e; leads = l; financeiro = f; producao = p; custos = cu; listas = li || {};
-  freelanceEventos = fl;
+  const r = await apiCall('carregarTudo');
+  clientes = r.clientes; eventos = r.eventos; leads = r.leads; financeiro = r.financeiro;
+  producao = r.producao; custos = r.custos; listas = r.listas || {};
+  freelanceEventos = r.freelanceEventos;
   loaded = true;
 }
  
