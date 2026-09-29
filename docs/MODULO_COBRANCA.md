@@ -1,6 +1,6 @@
 # Módulo de Cobrança v.2.4
 
-## Status: Em Desenvolvimento (Task 1.3b ✅)
+## Status: Em Desenvolvimento (Task 1.4 ✅)
 
 ---
 
@@ -352,6 +352,82 @@ Implementado:
    - Incrementa contador (1 → 2 → 3)
    - Atualiza histórico
    - Se 3ª tentativa: bloqueia cliente automaticamente
+
+---
+
+## API REST: Task 1.4 ✅
+
+**Endpoints de API para Integração**
+
+Documentação completa em: `docs/API_COBRANCAS.md`
+
+**10 Endpoints Implementados:**
+
+| # | Endpoint | Ação | Tipo |
+|---|----------|------|------|
+| 1 | `listarContasEmAtraso` | Lista contas vencidas | GET |
+| 2 | `listarContasEmAtrasoComFiltros` | Lista com filtros + paginação | GET |
+| 3 | `obterTemplatesMensagem` | Retorna 3 templates | GET |
+| 4 | `obterHistoricoCobranca` | Histórico de ações | GET |
+| 5 | `registrarTentativaCobranca` | Registra tentativa | POST |
+| 6 | `registrarEnvioManual` | Registra envio manual | POST |
+| 7 | `bloquearClienteCobranca` | Bloqueia cliente | POST |
+| 8 | `desbloquearClienteCobranca` | Desbloqueia cliente | POST |
+| 9 | `resumoCobrancas` | Dashboard executivo | GET |
+| 10 | `relatorioCobrancas` | Relatório estruturado | GET |
+
+**Novos Endpoints (Task 1.4)**
+
+### `resumoCobrancas()` ⭐
+Retorna dashboard executivo com métricas principais
+
+**Retorno:**
+```json
+{
+  "resumo": {
+    "totalEmAtraso": 45000.50,
+    "quantidadeContas": 12,
+    "diasMedioAtraso": 18,
+    "valorMedioAtraso": 3750.04,
+    "clientesBlockeados": 2
+  },
+  "distribuicaoTentativas": {
+    "0_tentativas": 5,
+    "1_tentativa": 4,
+    "2_tentativas": 1,
+    "3_tentativas_ou_bloqueado": 2
+  },
+  "urgencia": {
+    "critica": 2,
+    "alta": 4,
+    "media": 3,
+    "baixa": 3
+  }
+}
+```
+
+### `relatorioCobrancas(dados?)` ⭐
+Retorna relatório detalhado e estruturado para exportação/BI
+
+**Retorno:**
+```json
+{
+  "totalRegistros": 12,
+  "totalEmAtraso": 45000.50,
+  "dados": [
+    {
+      "idParcela": "1001",
+      "cliente": "João Silva",
+      "valor": "1500.00",
+      "saldo": "1500.00",
+      "diasEmAtraso": 4,
+      "tentativas": 0,
+      "statusCobranca": "Primeira cobrança",
+      "prioridade": "BAIXA"
+    }
+  ]
+}
+```
 
 ---
 
