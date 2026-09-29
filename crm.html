@@ -90,6 +90,13 @@
   .floating-window-content{overflow-y:auto;padding:20px;flex:1;}
   .floating-window-resize{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 0%,var(--gold) 100%);border-radius:0 0 4px 0;}
 
+  /* ---- Dashboard de Cobranças (Task 2.2) ---- */
+  .urgency-critica{background:var(--error);color:white;}
+  .urgency-alta{background:#ff9800;color:white;}
+  .urgency-media{background:#ffc107;color:var(--ink);}
+  .urgency-baixa{background:var(--ok);color:white;}
+  .urgency-badge{display:inline-block;padding:3px 8px;border-radius:3px;font-size:11px;font-weight:500;}
+
   /* ---- Mobile topbar / gaveta de navegação ---- */
   .mobile-topbar{display:none;align-items:center;gap:12px;padding:12px 16px;background:var(--paper-raised);border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:25;}
   .nav-toggle{background:none;border:none;font-size:22px;line-height:1;padding:4px 6px;color:var(--ink);}
@@ -162,6 +169,7 @@ const NAV = [
   { id:'leads', label:'CRM · Orçamentos', ready:true },
   { id:'financeiro', label:'Financeiro', ready:true },
   { id:'contasEmAtraso', label:'📧 Cobranças', ready:true },
+  { id:'dashboardCobrancas', label:'📊 Análise', ready:true },
   { id:'producao', label:'Produção', ready:true },
   { id:'custos', label:'Custos', ready:true },
   { id:'templates', label:'⚙️ Templates', ready:true },
@@ -178,6 +186,7 @@ let custos = [];
 let templates = [];
 let listas = {};
 let freelanceEventos = [];
+let dashboardCobrancas = null;
 let loaded = false;
 
 /* ============ FLOATING WINDOW (Task 2.1) ============ */
@@ -464,6 +473,7 @@ async function renderMain(){
   else if (currentView === 'leads') renderLeads(main);
   else if (currentView === 'financeiro') renderFinanceiro(main);
   else if (currentView === 'contasEmAtraso') renderContasEmAtraso(main);
+  else if (currentView === 'dashboardCobrancas') renderDashboardCobrancas(main);
   else if (currentView === 'producao') renderProducao(main);
   else if (currentView === 'custos') renderCustos(main);
   else if (currentView === 'templates') renderTemplates(main);
@@ -1140,6 +1150,140 @@ function desenharTabelaAtraso() {
       </tbody>
     </table>
   `;
+}
+
+async function renderDashboardCobrancas(main) {
+  try {
+    const resumo = await apiCall('resumoCobrancas');
+    const relatorio = await apiCall('relatorioCobrancas', { limite: 1000 });
+
+    const { resumo: metricas, distribuicaoTentativas, urgencia } = resumo;
+    const contas = (relatorio.dados || []).sort((a, b) => b.diasEmAtraso - a.diasEmAtraso);
+    const top10 = contas.slice(0, 10);
+
+    const agora = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+    main.innerHTML = `
+      <div class="view-header">
+        <div><h1>📊 Análise de Cobranças</h1><p>Dashboard executivo • Atualizado: ${agora}</p></div>
+      </div>
+
+      <!-- KPI: Resumo Geral -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Total em atraso</div>
+          <div class="kpi-value">${formatBRL(metricas.totalEmAtraso)}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Contas vencidas</div>
+          <div class="kpi-value">${metricas.quantidadeContas}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Dias médio</div>
+          <div class="kpi-value">${metricas.diasMedioAtraso}d</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Valor médio</div>
+          <div class="kpi-value">${formatBRL(metricas.valorMedioAtraso)}</div>
+        </div>
+      </div>
+
+      <!-- Distribuição de Tentativas -->
+      <div class="panel" style="margin-bottom:20px;">
+        <h2>Distribuição de Tentativas</h2>
+        <div class="kpi-row">
+          <div class="kpi-card" style="background:var(--ok-soft);">
+            <div class="kpi-label">0 Tentativas (Novo)</div>
+            <div class="kpi-value">${distribuicaoTentativas['0_tentativas']}</div>
+          </div>
+          <div class="kpi-card" style="background:#e3f2fd;">
+            <div class="kpi-label">1 Tentativa</div>
+            <div class="kpi-value">${distribuicaoTentativas['1_tentativa']}</div>
+          </div>
+          <div class="kpi-card" style="background:#fff3e0;">
+            <div class="kpi-label">2 Tentativas</div>
+            <div class="kpi-value">${distribuicaoTentativas['2_tentativas']}</div>
+          </div>
+          <div class="kpi-card" style="background:#ffebee;">
+            <div class="kpi-label">3+ / Bloqueados</div>
+            <div class="kpi-value">${distribuicaoTentativas['3_tentativas_ou_bloqueado']}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Urgência -->
+      <div class="panel" style="margin-bottom:20px;">
+        <h2>Classificação por Urgência</h2>
+        <div class="kpi-row">
+          <div class="kpi-card urgency-critica">
+            <div class="kpi-label" style="color:white;">🔴 Crítica (&gt;30 dias)</div>
+            <div class="kpi-value" style="color:white;">${urgencia.critica}</div>
+          </div>
+          <div class="kpi-card urgency-alta">
+            <div class="kpi-label" style="color:white;">🟠 Alta (15-30 dias)</div>
+            <div class="kpi-value" style="color:white;">${urgencia.alta}</div>
+          </div>
+          <div class="kpi-card urgency-media">
+            <div class="kpi-label">🟡 Média (7-15 dias)</div>
+            <div class="kpi-value">${urgencia.media}</div>
+          </div>
+          <div class="kpi-card urgency-baixa">
+            <div class="kpi-label" style="color:white;">🟢 Baixa (&lt;7 dias)</div>
+            <div class="kpi-value" style="color:white;">${urgencia.baixa}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top 10 Contas Urgentes -->
+      <div class="panel">
+        <h2>Top ${Math.min(10, top10.length)} Contas Mais Urgentes</h2>
+        ${top10.length ? `
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Saldo</th>
+                <th>Dias Atraso</th>
+                <th>Tentativas</th>
+                <th>Urgência</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${top10.map((c, idx) => {
+                const urgClass = c.prioridade === 'CRÍTICA' ? 'urgency-critica' :
+                                 c.prioridade === 'ALTA' ? 'urgency-alta' :
+                                 c.prioridade === 'MÉDIA' ? 'urgency-media' : 'urgency-baixa';
+                return `
+                  <tr>
+                    <td data-label="Cliente"><strong>${esc(c.cliente)}</strong></td>
+                    <td data-label="Saldo">${formatBRL(c.saldo)}</td>
+                    <td data-label="Dias Atraso"><strong style="color:var(--error);">${c.diasEmAtraso}d</strong></td>
+                    <td data-label="Tentativas">${c.tentativas}/3</td>
+                    <td data-label="Urgência"><span class="urgency-badge ${urgClass}">${c.prioridade}</span></td>
+                    <td data-label="Ação">
+                      <button class="btn-ghost" style="font-size:12px;padding:6px 10px;" onclick="abrirCopiadorMensagemFlutuante({
+                        'ID Parcela': '${esc(c.idParcela)}',
+                        'Cliente': '${esc(c.cliente)}',
+                        'Valor': ${c.saldo},
+                        'diasEmAtraso': ${c.diasEmAtraso},
+                        'Vencimento': '${esc(c.vencimento)}',
+                        'Tentativas Cobranca': ${c.tentativas}
+                      }); event.preventDefault();">
+                        📋 Cobrar
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        ` : `<div class="empty-state">✅ Nenhuma conta em atraso!</div>`}
+      </div>
+    `;
+  } catch (err) {
+    main.innerHTML = `<div class="view-header"><h1>Análise de Cobranças</h1></div><p style="color:var(--error);">Erro ao carregar dashboard: ${esc(err.message)}</p>`;
+  }
 }
 
 /* ============ PRODUÇÃO ============ */
