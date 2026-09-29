@@ -89,7 +89,7 @@ Lead → Cliente → Evento (com sincronização automática no Google Agenda) �
 
 ### 2.2 Arquitetura
 
-- **Frontend:** `crm.html` — página única (sem framework), publicada no GitHub Pages. Toda a comunicação com o back-end passa por `apiCall(action, dados)`, que faz um `fetch` POST para a constante `CRM_API_URL` no topo do arquivo.
+- **Frontend:** `crm.html` publicado no GitHub Pages (sem framework, sem build). A partir da v2.6 o código é dividido em `assets/css/crm.css` e vários `assets/js/*.js` carregados como scripts clássicos (ver 2.7). Toda a comunicação com o back-end passa por `apiCall(action, dados)`, que faz um `fetch` POST para a constante `CRM_API_URL` (em `assets/js/config.js`).
 - **Back-end:** projeto Apps Script separado do Contrato Digital, arquivo `Código.gs`. O conteúdo é espelhado localmente em `backend.txt` (não versionado — veja aviso no topo deste guia). Funciona como uma API por ação: o `doPost` recebe `{ action, dados }` e despacha para a função correspondente, sempre devolvendo JSON (`{ ok, dados }` ou `{ ok:false, error }`).
 - **Dados:** duas planilhas Google Sheets, configuradas no topo do `Código.gs`:
   - `CRM_PLANILHA_ID` — planilha principal (abas: Clientes, Eventos, CRM & Orçamentos, Financeiro, Produção, Custos, Listas).
@@ -137,9 +137,37 @@ Todo template (padrão ou customizado) precisa conter as 4 variáveis obrigatór
 
 Nenhuma mudança de back-end foi necessária — é só CSS/JS no `crm.html`.
 
-### 2.6 Atualizando depois de publicado
+### 2.7 Arquitetura do front (v2.6 — sanitização)
 
-- **Mudou algo no `crm.html`** (layout, textos, regras de formulário): edite e suba de novo no GitHub. Vale na hora.
+O `crm.html` era um único arquivo de ~2.200 linhas (CSS + ~2.000 linhas de JS). Na v2.6 ele foi **dividido em arquivos pequenos por responsabilidade**, sem alterar o comportamento e sem introduzir passo de build (o deploy continua sendo arquivos estáticos no GitHub Pages):
+
+```
+crm.html                 esqueleto: <head>, <body> e as tags de carregamento
+assets/css/crm.css       todo o estilo (antigo bloco <style>)
+assets/js/
+  config.js              CRM_API_URL + NAV
+  state.js               estado global (clientes, eventos, contasEmAtraso, ...)
+  api.js                 apiCall (Facade) + carregarTudo
+  ui.js                  janela flutuante, toast, overlay, helpers (esc, máscaras, formatBRL...)
+  router.js              renderNav + renderMain (roteador de views) + navegação mobile
+  main.js                inicialização (carrega por último)
+  modules/               um arquivo por tela: dashboard, clientes, eventos, leads,
+                         financeiro, cobrancas, producao, custos, freelance,
+                         templates, mensagens
+```
+
+> ⚠️ **Importante — não converter para ES Modules.** Os arquivos são carregados como
+> `<script>` **clássicos**, que compartilham um único escopo global. É isso que mantém
+> as funções e o estado acessíveis entre arquivos e faz os `onclick` inline (dentro das
+> template strings) continuarem funcionando. A **ordem de carregamento** no `crm.html`
+> importa: dados/estado primeiro, `main.js` por último. Usar `type="module"`,
+> `import`/`export` quebraria os handlers inline e as referências globais.
+
+Ao mexer no JS, valide a sintaxe de cada arquivo antes de publicar: `node --check assets/js/**/*.js`.
+
+### 2.8 Atualizando depois de publicado
+
+- **Mudou algo no front** (`crm.html`, `assets/css/*` ou `assets/js/*`): edite e suba de novo no GitHub. Vale na hora (o sufixo `?v=2.6` nas tags ajuda a furar o cache; incremente-o em mudanças grandes).
 - **Mudou algo no back-end** (`backend.txt`): cole o conteúdo atualizado no `Código.gs`, no editor do Apps Script, e crie uma **Nova implantação** — sem isso, o CRM continua rodando a versão antiga do back-end mesmo com o `backend.txt` já atualizado aqui no repositório.
 
 ---
@@ -151,7 +179,7 @@ Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mail
 ## Personalizando
 
 - **Contrato Digital:** cores e fontes nas variáveis `:root` (`--paper`, `--ink`, `--gold` etc.) dentro de `<style>` no `index.html`; textos das cláusulas na função `buildClauses()`; preços e pacotes no objeto `PACOTES` — tudo no topo do `index.html`.
-- **CRM:** cores e fontes seguem o mesmo padrão de variáveis `:root` no `<style>` do `crm.html`.
+- **CRM:** cores e fontes seguem o mesmo padrão de variáveis `:root`, agora em `assets/css/crm.css` (a partir da v2.6; antes ficavam no `<style>` do `crm.html`).
 
 ## Sobre a assinatura eletrônica via plataforma paga
 

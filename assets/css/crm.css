@@ -1,0 +1,128 @@
+  :root{
+    --paper:#FBF9F4; --paper-raised:#FFFFFF; --ink:#221F1C; --ink-soft:#6B6459;
+    --rule:#DCD4C4; --gold:#A8791E; --gold-soft:#F1E6CC; --error:#B23B2E; --ok:#5C7A52; --ok-soft:#E7EEE1;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif;-webkit-font-smoothing:antialiased;}
+  .shell{display:flex;min-height:100vh;}
+
+  /* ---- Sidebar ---- */
+  .sidebar{width:220px;flex-shrink:0;background:var(--paper-raised);border-right:1px solid var(--rule);padding:20px 14px;}
+  .brand{display:flex;align-items:center;gap:9px;padding:0 6px 18px;border-bottom:1px solid var(--rule);margin-bottom:16px;}
+  .brand .wordmark{font-size:12px;letter-spacing:.08em;color:var(--ink-soft);line-height:1.3;}
+  .brand .wordmark strong{display:block;color:var(--ink);font-size:12.5px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:3px;font-size:14px;cursor:pointer;color:var(--ink);margin-bottom:2px;}
+  .nav-item:hover{background:var(--gold-soft);}
+  .nav-item.active{background:var(--ink);color:var(--paper);}
+  .nav-item.disabled{color:#B7B2A6;cursor:default;}
+  .nav-item.disabled:hover{background:none;}
+  .nav-soon{font-size:10px;background:var(--rule);color:var(--ink-soft);padding:1px 6px;border-radius:8px;margin-left:auto;}
+
+  /* ---- Main ---- */
+  .main{flex:1;min-width:0;padding:28px 32px 60px;}
+  .view-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+  .view-header h1{font-family:'Fraunces',serif;font-weight:500;font-size:26px;margin:0;}
+  .view-header p{color:var(--ink-soft);font-size:13.5px;margin:4px 0 0;}
+
+  button{font-family:'Work Sans',sans-serif;cursor:pointer;border-radius:3px;border:none;transition:opacity .15s ease;}
+  .btn-primary{background:var(--ink);color:var(--paper);padding:10px 16px;font-size:13.5px;}
+  .btn-primary:hover{opacity:.88;}
+  .btn-ghost{background:transparent;border:1px solid var(--rule);color:var(--ink);padding:9px 14px;font-size:13.5px;}
+  .btn-ghost:hover{border-color:var(--ink-soft);}
+  .btn-danger{background:transparent;border:1px solid var(--error);color:var(--error);padding:9px 14px;font-size:13.5px;margin-right:auto;}
+  .btn-danger:hover{background:var(--error);color:var(--paper);}
+
+  /* ---- KPI cards ---- */
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:28px;}
+  .kpi-card{background:var(--paper-raised);border:1px solid var(--rule);border-radius:3px;padding:16px 18px;}
+  .kpi-card .kpi-label{font-size:12px;color:var(--ink-soft);}
+  .kpi-card .kpi-value{font-family:'Fraunces',serif;font-size:26px;margin-top:4px;}
+
+  .panel{background:var(--paper-raised);border:1px solid var(--rule);border-radius:3px;}
+  .panel h2{font-family:'Fraunces',serif;font-weight:500;font-size:16px;margin:0;padding:14px 18px;border-bottom:1px solid var(--rule);}
+
+  /* ---- Tables ---- */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-weight:500;color:var(--ink-soft);font-size:11.5px;letter-spacing:.03em;padding:10px 16px;border-bottom:1px solid var(--rule);}
+  td{padding:11px 16px;border-bottom:1px solid var(--rule);}
+  tr:last-child td{border-bottom:none;}
+  tr.clickable{cursor:pointer;}
+  tr.clickable:hover{background:var(--gold-soft);}
+  .status-pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:10px;background:var(--gold-soft);color:#6B5316;}
+  .status-pill.confirmado{background:var(--ok-soft);color:#3E5636;}
+
+  .empty-state{padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
+
+  /* ---- Search ---- */
+  .search-box{margin-bottom:16px;}
+  .search-box input{width:100%;max-width:320px;font-size:14px;padding:10px 12px;border:1px solid var(--rule);border-radius:3px;background:var(--paper-raised);}
+
+  /* ---- Form panel (create/edit) ---- */
+  .form-overlay{position:fixed;inset:0;background:rgba(34,31,28,.35);display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;z-index:20;}
+  .form-panel{background:var(--paper-raised);border-radius:4px;width:100%;max-width:560px;padding:26px 28px 24px;}
+  .form-panel h2{font-family:'Fraunces',serif;font-weight:500;font-size:19px;margin:0 0 18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:5px;}
+  .field input,.field select,.field textarea{width:100%;font-size:14px;padding:9px 11px;border:1px solid var(--rule);border-radius:3px;background:var(--paper);font-family:'Work Sans',sans-serif;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  .form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--rule);}
+  .form-err{color:var(--error);font-size:12.5px;margin-bottom:12px;}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:20px;font-size:13px;z-index:30;}
+  .loading-note{color:var(--ink-soft);font-size:13px;padding:20px 0;}
+
+  /* ---- Modal Flutuante (Task 2.1) ---- */
+  .floating-window-overlay{position:fixed;inset:0;background:rgba(34,31,28,.35);z-index:19;}
+  .floating-window{position:fixed;background:var(--paper-raised);border:1px solid var(--rule);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.15);min-width:400px;min-height:300px;display:flex;flex-direction:column;z-index:20;}
+  .floating-window-header{background:linear-gradient(135deg,var(--gold) 0%,var(--ink-soft) 100%);color:white;padding:12px 16px;cursor:move;font-weight:500;border-bottom:1px solid var(--rule);flex-shrink:0;user-select:none;display:flex;justify-content:space-between;align-items:center;}
+  .floating-window-header .close-btn{background:rgba(255,255,255,.2);border:none;color:white;cursor:pointer;padding:4px 8px;border-radius:2px;font-size:14px;}
+  .floating-window-header .close-btn:hover{background:rgba(255,255,255,.4);}
+  .floating-window-content{overflow-y:auto;padding:20px;flex:1;}
+  .floating-window-resize{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 0%,var(--gold) 100%);border-radius:0 0 4px 0;}
+
+  /* ---- Dashboard de Cobranças (Task 2.2) ---- */
+  .urgency-critica{background:var(--error);color:white;}
+  .urgency-alta{background:#ff9800;color:white;}
+  .urgency-media{background:#ffc107;color:var(--ink);}
+  .urgency-baixa{background:var(--ok);color:white;}
+  .urgency-badge{display:inline-block;padding:3px 8px;border-radius:3px;font-size:11px;font-weight:500;}
+
+  /* ---- Mobile topbar / gaveta de navegação ---- */
+  .mobile-topbar{display:none;align-items:center;gap:12px;padding:12px 16px;background:var(--paper-raised);border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:25;}
+  .nav-toggle{background:none;border:none;font-size:22px;line-height:1;padding:4px 6px;color:var(--ink);}
+  .mobile-topbar-title{font-size:12.5px;letter-spacing:.05em;color:var(--ink-soft);}
+  .nav-backdrop{display:none;position:fixed;inset:0;background:rgba(34,31,28,.4);z-index:35;}
+  .nav-backdrop.open{display:block;}
+
+  @media (max-width:768px){
+    .mobile-topbar{display:flex;}
+    .sidebar{position:fixed;top:0;left:0;height:100vh;width:240px;max-width:80vw;transform:translateX(-100%);transition:transform .2s ease;z-index:40;overflow-y:auto;}
+    .sidebar.open{transform:translateX(0);}
+    .main{padding:20px 16px 60px;}
+    .view-header{flex-direction:column;align-items:stretch;}
+    .view-header .btn-primary{width:100%;}
+
+    /* formulários em coluna única, ocupando a tela cheia */
+    .row2,.row3{grid-template-columns:1fr;}
+    /* display:block (em vez de flex) evita que o fundo do painel seja
+       recortado na altura da viewport quando o formulário é mais alto que
+       a tela — o que deixava o conteúdo de trás vazar através do backdrop. */
+    .form-overlay{padding:0;display:block;}
+    .form-panel{max-width:100%;min-height:100vh;border-radius:0;padding:20px 18px 90px;}
+    .form-actions{flex-direction:column;}
+    .form-actions button{width:100%;}
+    .btn-danger{margin-right:0;}
+
+    /* Mobile: floating window desabilitado */
+    .floating-window{position:static !important;width:100vw;min-width:unset;max-width:100%;min-height:100vh;margin:0;border:none;border-radius:0;}
+    .floating-window-resize{display:none;}
+
+    /* tabelas viram cartões empilhados */
+    table.responsive-table thead{display:none;}
+    table.responsive-table, table.responsive-table tbody, table.responsive-table tr, table.responsive-table td{display:block;width:100%;}
+    table.responsive-table tr{border:1px solid var(--rule);border-radius:4px;margin-bottom:12px;padding:4px 0;}
+    table.responsive-table td{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;text-align:right;border-bottom:1px dashed var(--rule);}
+    table.responsive-table td:last-child{border-bottom:none;}
+    table.responsive-table td::before{content:attr(data-label);font-size:11.5px;color:var(--ink-soft);font-weight:500;text-align:left;}
+  }
