@@ -114,7 +114,10 @@
 
     /* formulários em coluna única, ocupando a tela cheia */
     .row2,.row3{grid-template-columns:1fr;}
-    .form-overlay{padding:0;align-items:stretch;}
+    /* display:block (em vez de flex) evita que o fundo do painel seja
+       recortado na altura da viewport quando o formulário é mais alto que
+       a tela — o que deixava o conteúdo de trás vazar através do backdrop. */
+    .form-overlay{padding:0;display:block;}
     .form-panel{max-width:100%;min-height:100vh;border-radius:0;padding:20px 18px 90px;}
     .form-actions{flex-direction:column;}
     .form-actions button{width:100%;}
