@@ -382,7 +382,7 @@ class FloatingWindow {
   }
 }
 
-/* ============ */
+function renderNav(){
   const el = document.getElementById('navList');
   el.innerHTML = NAV.map(n => `
     <div class="nav-item ${n.id===currentView?'active':''} ${!n.ready?'disabled':''}" data-id="${n.id}">
@@ -1187,7 +1187,6 @@ async function salvarConta(idEventoExistente){
 }
 
 /* ============ CONTAS EM ATRASO / COBRANÇAS ============ */
-let contasEmAtraso = [];
 
 async function renderContasEmAtraso(main) {
   try {
@@ -2145,9 +2144,6 @@ async function marcarEnvio(idParcela, templateId, index) {
     } else {
       mostrarErro('modalErr', 'Erro ao registrar envio: ' + err.message);
     }
-  }
-}
-    });
   }
 }
 
