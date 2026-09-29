@@ -1,6 +1,6 @@
 # Módulo de Cobrança v.2.4
 
-## Status: Em Desenvolvimento (Task 1.3a ✅)
+## Status: Em Desenvolvimento (Task 1.3b ✅)
 
 ---
 
@@ -278,6 +278,80 @@ Implementado:
 - Preenchimento dinâmico de variáveis
 - Botão "Copiar para área de transferência"
 - Notificação de sucesso
+
+---
+
+## Função 7: `registrarEnvioManual(dados)` ⭐
+
+**Localização**: Backend Google Apps Script  
+**Objetivo**: Registrar envio manual de mensagem de cobrança
+
+**Parâmetros**:
+```javascript
+{
+  "idParcela": "1001",           // obrigatório
+  "templateUsado": "leve",       // obrigatório: 'leve', 'media', ou 'pesada'
+  "usuarioEnviou": "João"        // opcional, padrão: "Manual (App)"
+}
+```
+
+**Lógica**:
+1. Localiza a parcela em "Financeiro"
+2. Incrementa contador de tentativas (máximo 3)
+3. Adiciona nota com timestamp, template e usuário
+4. Se atingiu 3 tentativas: **bloqueia cliente automaticamente**
+
+**Retorno**:
+```javascript
+{
+  "idParcela": "1001",
+  "envioRegistrado": true,
+  "tentativaRegistrada": 2,     // número da tentativa (1, 2 ou 3)
+  "dataHora": "29/09/2026 14:35:22",
+  "proximaTentativa": true,      // false se atingiu 3
+  "clienteBloqueado": false      // true se 3ª tentativa
+}
+```
+
+**Histórico Registrado** (no campo "Observacoes"):
+```
+✓ Envio 1/3 - 29/09/2026 14:30:45 por Manual (App)
+Template: LEVE (manual via WhatsApp)
+---
+✓ Envio 2/3 - 29/09/2026 14:35:22 por João
+Template: MÉDIA (manual via WhatsApp)
+---
+✓ Envio 3/3 - 30/09/2026 10:15:00 por Maria
+Template: PESADA (manual via WhatsApp)
+⚠️ CLIENTE BLOQUEADO AUTOMATICAMENTE
+```
+
+**Endpoint**: `POST /` com `action: "registrarEnvioManual"`
+
+---
+
+## Frontend: Task 1.3b ✅
+
+**Registro de Envio Manual**
+
+Implementado:
+- Botão "✅ Enviado" (verde) em cada template
+- Indicador visual de progresso: "Tentativa X/3"
+- Função `marcarEnvio()` que chama backend
+- Feedback imediato (toast)
+- Recarregar UI se cliente foi bloqueado
+- Desabilita botão quando máximo atingido
+
+**Fluxo de Uso**:
+1. Usuário acessa "📧 Cobranças" e clica "📋 Copiar"
+2. Modal abre com 3 templates + indicador "Tentativa 1/3"
+3. Usuário clica "📋 Copiar" para copiar mensagem
+4. Envia manualmente via WhatsApp
+5. Volta ao modal e clica "✅ Enviado"
+6. Sistema registra no backend:
+   - Incrementa contador (1 → 2 → 3)
+   - Atualiza histórico
+   - Se 3ª tentativa: bloqueia cliente automaticamente
 
 ---
 
