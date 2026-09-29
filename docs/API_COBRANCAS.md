@@ -428,6 +428,137 @@ print(f"Total em atraso: R$ {resumo['dados']['resumo']['totalEmAtraso']}")
 
 ---
 
+## Endpoints de Gerenciamento de Templates
+
+### 11. Listar Todos os Templates
+
+**Payload:**
+```json
+{
+  "action": "listarTemplates"
+}
+```
+
+**Resposta:**
+```json
+[
+  {
+    "ID": 1,
+    "Nome": "LEVE",
+    "Descrição": "Primeira abordagem - Educada e amigável",
+    "Corpo": "Olá {{cliente}}!...",
+    "Padrão": "Sim",
+    "Data Criação": "29/09/2026"
+  },
+  {
+    "ID": 4,
+    "Nome": "CUSTOMIZADO",
+    "Descrição": "Meu template personalizado",
+    "Corpo": "Prezado {{cliente}}...",
+    "Padrão": "Não",
+    "Data Criação": "29/09/2026",
+    "Data Atualização": "29/09/2026"
+  }
+]
+```
+
+---
+
+### 12. Criar Novo Template
+
+**Payload:**
+```json
+{
+  "action": "criarTemplate",
+  "dados": {
+    "nome": "SUPER LEVE",
+    "descricao": "Ultra amigável e descontraído",
+    "corpo": "Opa {{cliente}}! 👋\n\nTudo bem? Vimos que tem uma parcela vencida..."
+  }
+}
+```
+
+**Parâmetros:**
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|-----------|------|-------------|-----------|
+| nome | string | ✓ | Nome do template |
+| descricao | string | ✓ | Descrição/contexto de uso |
+| corpo | string | ✓ | Corpo da mensagem (deve conter {{cliente}}, {{valor}}, {{diasAtraso}}, {{vencimento}}) |
+
+**Resposta:**
+```json
+{
+  "ID": 4,
+  "Nome": "SUPER LEVE",
+  "Descrição": "Ultra amigável e descontraído",
+  "Corpo": "Opa {{cliente}}!...",
+  "Padrão": "Não",
+  "Data Criação": "29/09/2026"
+}
+```
+
+---
+
+### 13. Atualizar Template Existente
+
+**Payload:**
+```json
+{
+  "action": "atualizarTemplate",
+  "dados": {
+    "id": 4,
+    "nome": "SUPER LEVE v2",
+    "descricao": "Ultra amigável (revisado)",
+    "corpo": "Opa {{cliente}}! Olha só..."
+  }
+}
+```
+
+**Parâmetros:**
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|-----------|------|-------------|-----------|
+| id | number | ✓ | ID do template |
+| nome | string | ✓ | Novo nome |
+| descricao | string | ✓ | Nova descrição |
+| corpo | string | ✓ | Novo corpo (deve conter 4 variáveis) |
+
+**Resposta:**
+```json
+{
+  "id": 4,
+  "atualizado": true
+}
+```
+
+---
+
+### 14. Deletar Template
+
+**Payload:**
+```json
+{
+  "action": "deletarTemplate",
+  "dados": {
+    "id": 4
+  }
+}
+```
+
+**Parâmetros:**
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|-----------|------|-------------|-----------|
+| id | number | ✓ | ID do template |
+
+**Resposta:**
+```json
+{
+  "id": 4,
+  "deletado": true
+}
+```
+
+---
+
 ## Notas de Implementação
 
 1. **Autenticação**: API exposta como "Qualquer pessoa" — sem autenticação necessária
@@ -438,4 +569,4 @@ print(f"Total em atraso: R$ {resumo['dados']['resumo']['totalEmAtraso']}")
 
 ---
 
-**Última atualização**: 29/09/2026 (Task 1.4)
+**Última atualização**: 29/09/2026 (Task 1.5)

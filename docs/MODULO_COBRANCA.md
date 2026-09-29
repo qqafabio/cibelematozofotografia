@@ -1,6 +1,6 @@
 # Módulo de Cobrança v.2.4
 
-## Status: Em Desenvolvimento (Task 1.4 ✅)
+## Status: Em Desenvolvimento (Task 1.5 ✅)
 
 ---
 
@@ -406,32 +406,119 @@ Retorna dashboard executivo com métricas principais
 }
 ```
 
-### `relatorioCobrancas(dados?)` ⭐
-Retorna relatório detalhado e estruturado para exportação/BI
+---
+
+## Backend CRUD: Task 1.5 ✅
+
+**Templates de Mensagem Customizáveis**
+
+Implementado:
+- Aba "Templates" no Google Sheets
+- Armazenamento de templates com: ID, Nome, Descrição, Corpo, Padrão (Sim/Não)
+- 4 funções CRUD: listarTemplates(), criarTemplate(), atualizarTemplate(), deletarTemplate()
+- Validação obrigatória: corpo deve conter {{cliente}}, {{valor}}, {{diasAtraso}}, {{vencimento}}
+- Templates padrão protegidos (não podem ser editados nem deletados)
+- obterTemplatesMensagem() agora retorna templates salvos + padrões
+
+**Funções:**
+
+### `listarTemplates()` ⭐
+Retorna array de todos os templates
 
 **Retorno:**
 ```json
+[
+  {
+    "ID": 1,
+    "Nome": "LEVE",
+    "Descrição": "Primeira abordagem - Educada e amigável",
+    "Corpo": "Olá {{cliente}}!...",
+    "Padrão": "Sim",
+    "Data Criação": "29/09/2026"
+  },
+  {
+    "ID": 4,
+    "Nome": "CUSTOMIZADO",
+    "Descrição": "Meu template personalizado",
+    "Corpo": "Prezado {{cliente}}...",
+    "Padrão": "Não",
+    "Data Criação": "29/09/2026",
+    "Data Atualização": "29/09/2026"
+  }
+]
+```
+
+### `criarTemplate(dados)` ⭐
+Cria novo template customizado
+
+**Parâmetros:**
+```javascript
 {
-  "totalRegistros": 12,
-  "totalEmAtraso": 45000.50,
-  "dados": [
-    {
-      "idParcela": "1001",
-      "cliente": "João Silva",
-      "valor": "1500.00",
-      "saldo": "1500.00",
-      "diasEmAtraso": 4,
-      "tentativas": 0,
-      "statusCobranca": "Primeira cobrança",
-      "prioridade": "BAIXA"
-    }
-  ]
+  "nome": "SUPER LEVE",           // obrigatório
+  "descricao": "Ultra amigável",  // obrigatório
+  "corpo": "Olá {{cliente}}..."   // obrigatório, deve conter 4 variáveis
+}
+```
+
+### `atualizarTemplate(dados)` ⭐
+Atualiza template existente (não pode atualizar padrão)
+
+**Parâmetros:**
+```javascript
+{
+  "id": 4,
+  "nome": "SUPER LEVE v2",
+  "descricao": "Ultra amigável (revisado)",
+  "corpo": "Oi {{cliente}}..."
+}
+```
+
+### `deletarTemplate(dados)` ⭐
+Deleta template customizado (padrões protegidos)
+
+**Parâmetros:**
+```javascript
+{
+  "id": 4
 }
 ```
 
 ---
 
-### Campos Novos em "Financeiro" (aba de parcelas)
+## Frontend CRUD: Task 1.5 ✅
+
+**Tela de Gerenciamento de Templates**
+
+Implementado:
+- Novo item no menu: "⚙️ Templates"
+- Visualização em cards: mostra Nome, Descrição e Corpo (readonly textarea)
+- Badge "PADRÃO" para templates protegidos
+- Botão "Novo Template" (+ ícone)
+- Botões "✏️ Editar" e "🗑️ Deletar" (desativados para padrões)
+
+**Modal de Criar/Editar:**
+- Campos: Nome, Descrição, Corpo
+- Preview em tempo real das variáveis substituídas
+- Validação de presença das 4 variáveis obrigatórias
+- Feedback (toast) ao criar/atualizar/deletar
+
+**Fluxo de Uso:**
+1. Clique "⚙️ Templates" no menu
+2. Visualize templates padrão + customizados
+3. Clique "+ Novo Template" para criar
+4. Preencha Nome, Descrição, Corpo
+5. Veja preview com valores de exemplo
+6. Salve e use no modal de Cobranças
+
+---
+
+### Próximas Tasks
+
+- [ ] Task 2.1: Modal flutuante (drag & drop, redimensionável)
+- [ ] Task 2.2: Dashboard de cobranças (gráficos, KPIs)
+- ...
+
+---
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
