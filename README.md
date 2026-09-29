@@ -77,12 +77,15 @@ Como bônus: ajustes na página (preços, textos das cláusulas, cores) passam a
 
 Lead → Cliente → Evento (com sincronização automática no Google Agenda) → Orçamento → Financeiro (entrada + parcelas) → Produção → Custos, além de um menu à parte para lançamento de **trabalhos freelance** (serviços prestados por nós a outra empresa de foto e vídeo).
 
-**v2.4 — Módulo de Cobranças** (novo):
-- Tela "📧 Cobranças" com lista de contas em atraso
-- 3 templates de mensagem (LEVE, MÉDIA, PESADA) com preenchimento dinâmico
-- Copiar mensagem para WhatsApp (envio manual)
-- Registro de tentativas de cobrança
-- Bloqueio de clientes após 3 tentativas
+**v2.4 — Módulo de Cobranças** (✅ completo):
+- Tela "📧 Cobranças" com lista de contas em atraso + filtros e paginação (Task 1.1-1.4)
+- 3 templates de mensagem padrão (LEVE, MÉDIA, PESADA) + gerenciamento de templates customizados (Task 1.5)
+- Copiar mensagem para WhatsApp (envio manual) com preenchimento dinâmico
+- Registro de tentativas de cobrança + bloqueio automático após 3 tentativas
+- Modal flutuante com drag & drop para composição de mensagens (Task 2.1)
+- Dashboard executivo com KPIs, distribuição de tentativas e classificação de urgência (Task 2.2)
+- Exportação estruturada de relatório em CSV com filtros avançados (Task 2.3)
+- 14 endpoints de API para integração completa
 
 ### 2.2 Arquitetura
 
