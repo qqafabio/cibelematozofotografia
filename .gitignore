@@ -1,2 +1,7 @@
 backend.txt
 .claude/settings.local.json
+
+# Variáveis de ambiente (contêm segredos - NUNCA commitar)
+.env
+.env.local
+.env.*.local

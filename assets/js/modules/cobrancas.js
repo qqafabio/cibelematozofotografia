@@ -112,7 +112,7 @@ async function renderContasEmAtraso(main) {
     contasEmAtraso = result.dados || [];
     const { paginacao } = result;
 
-    const totalAtraso = contasEmAtraso.reduce((s, c) => s + (Number(c['Valor'] || 0) - Number(c['Valor pago'] || 0)), 0);
+    const totalAtraso = contasEmAtraso.reduce((s, c) => s + (Number(c['Valor previsto'] || 0) - Number(c['Valor pago'] || 0)), 0);
 
     main.innerHTML = `
       <div class="view-header">
@@ -152,7 +152,7 @@ function desenharTabelaAtraso() {
       </thead>
       <tbody>
         ${ordenados.map((c, idx) => {
-          const saldo = Number(c['Valor'] || 0) - Number(c['Valor pago'] || 0);
+          const saldo = Number(c['Valor previsto'] || 0) - Number(c['Valor pago'] || 0);
           return `
           <tr>
             <td data-label="Cliente">${esc(c['Cliente'] || '—')}</td>
@@ -307,5 +307,50 @@ async function renderDashboardCobrancas(main) {
   } catch (err) {
     main.innerHTML = `<div class="view-header"><h1>Análise de Cobranças</h1></div><p style="color:var(--error);">Erro ao carregar dashboard: ${esc(err.message)}</p>`;
   }
+}
+
+/* ============ ALERTA AUTOMÁTICO DE VENCIDAS (no carregamento) ============ */
+/* Chamado uma vez por carregamento da página (em main.js), depois que
+   carregarTudo() populou contasEmAtraso. Se houver contas vencidas, abre uma
+   modal-lembrete. Não reaparece ao navegar entre menus — só a cada refresh. */
+function alertaCobrancasVencidas(){
+  if (!contasEmAtraso || !contasEmAtraso.length) return;
+
+  const total = contasEmAtraso.reduce((s, c) => s + (Number(c['Valor previsto'] || 0) - Number(c['Valor pago'] || 0)), 0);
+  const ordenados = [...contasEmAtraso].sort((a, b) => b.diasEmAtraso - a.diasEmAtraso);
+  const topN = ordenados.slice(0, 5);
+  const restantes = ordenados.length - topN.length;
+
+  const linhas = topN.map(c => {
+    const saldo = Number(c['Valor previsto'] || 0) - Number(c['Valor pago'] || 0);
+    return `
+      <tr>
+        <td data-label="Cliente">${esc(c['Cliente'] || '—')}</td>
+        <td data-label="Saldo" style="text-align:right;">${formatBRL(saldo)}</td>
+        <td data-label="Atraso" style="text-align:right;"><strong style="color:var(--error);">${c.diasEmAtraso}d</strong></td>
+      </tr>`;
+  }).join('');
+
+  const n = contasEmAtraso.length;
+  const root = document.getElementById('overlayRoot');
+  root.innerHTML = `
+    <div class="form-overlay" id="overlay">
+      <div class="form-panel">
+        <h2>⚠️ ${n} conta${n === 1 ? '' : 's'} em atraso</h2>
+        <p style="color:var(--ink-soft);margin:-4px 0 14px;">
+          Total em aberto: <strong>${formatBRL(total)}</strong>
+        </p>
+        <table class="responsive-table" style="margin-bottom:16px;">
+          <thead><tr><th>Cliente</th><th style="text-align:right;">Saldo</th><th style="text-align:right;">Atraso</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+        ${restantes > 0 ? `<p style="color:var(--ink-soft);font-size:13px;margin:-6px 0 14px;">…e mais ${restantes} conta${restantes === 1 ? '' : 's'}.</p>` : ''}
+        <div class="form-actions">
+          <button class="btn-ghost" onclick="fecharOverlay();">Fechar</button>
+          <button class="btn-primary" onclick="fecharOverlay(); currentView='contasEmAtraso'; renderNav(); renderMain();">📧 Ver Cobranças</button>
+        </div>
+      </div>
+    </div>
+  `;
 }
 

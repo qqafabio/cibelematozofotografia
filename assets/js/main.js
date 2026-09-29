@@ -9,4 +9,6 @@
 document.getElementById('navToggle').addEventListener('click', () => toggleNavMobile());
 document.getElementById('navBackdrop').addEventListener('click', () => toggleNavMobile(true));
 renderNav();
-renderMain();
+// Aguarda o carregamento inicial (carregarTudo popula contasEmAtraso) e, então,
+// dispara o lembrete de contas vencidas — uma vez por carregamento da página.
+renderMain().then(() => alertaCobrancasVencidas());

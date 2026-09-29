@@ -12,11 +12,20 @@
 **Lógica**:
 - Consulta a aba "Financeiro"
 - Filtra parcelas onde:
-  - Status = 'Vencida'
-  - Valor Pago < Valor (não foi totalmente paga)
-  - Vencimento < Hoje
+  - Vencimento < Hoje (comparado por data, via `parseDataBR_`)
+  - Valor pago < `Valor previsto` (não foi totalmente paga)
+  - Status ≠ 'Pago'
 - Calcula `diasEmAtraso` para cada parcela
 - Ordena por dias em atraso (DESC)
+
+> 🐛 **Fix (2026-09-29):** a função lia a coluna inexistente `'Valor'` (o nome real é
+> `'Valor previsto'`) e usava `new Date('DD/MM/AAAA')` (retorna *Invalid Date* no Apps
+> Script), então **nenhuma** parcela qualificava como em atraso — Cobranças/Análise/CSV
+> ficavam vazios. Corrigido para `'Valor previsto'` + `parseDataBR_`. A regra deixou de
+> exigir `Status === 'Vencida'` (passou a `Status !== 'Pago'`), ficando autossuficiente:
+> detecta o atraso pela data mesmo que `listarFinanceiro` ainda não tenha persistido o
+> status. Os mesmos usos foram corrigidos em `listarContasEmAtrasoComFiltros`,
+> `resumoCobrancas` e `relatorioCobrancas`, e no front (`cobrancas.js`/`mensagens.js`).
 
 **Retorno**:
 ```javascript

@@ -21,7 +21,7 @@ async function abrirCopiadorMensagem(conta) {
     // Prepara dados dinâmicos
     const idParcela = conta['ID Parcela'] || '';
     const cliente = conta['Cliente'] || 'Cliente';
-    const valor = Number(conta['Valor'] || 0).toFixed(2);
+    const valor = Number(conta['Valor previsto'] || 0).toFixed(2);
     const diasAtraso = conta['diasEmAtraso'] || 0;
     const vencimento = conta['Vencimento'] || 'N/A';
     const tentativasAtuais = Number(conta['Tentativas Cobranca'] || 0);
@@ -164,7 +164,7 @@ async function abrirCopiadorMensagemFlutuante(conta) {
 
     const idParcela = conta['ID Parcela'] || '';
     const cliente = conta['Cliente'] || 'Cliente';
-    const valor = Number(conta['Valor'] || 0).toFixed(2);
+    const valor = Number(conta['Valor previsto'] || 0).toFixed(2);
     const diasAtraso = conta['diasEmAtraso'] || 0;
     const vencimento = conta['Vencimento'] || 'N/A';
     const tentativasAtuais = Number(conta['Tentativas Cobranca'] || 0);
