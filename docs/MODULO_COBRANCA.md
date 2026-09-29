@@ -1,6 +1,6 @@
 # Módulo de Cobrança v.2.4
 
-## Status: Em Desenvolvimento (Task 2.2 ✅)
+## Status: Completo! (Task 2.3 ✅)
 
 ---
 
@@ -632,9 +632,85 @@ Implementado:
 
 ---
 
+## Frontend Relatório: Task 2.3 ✅
+
+**Exportação Estruturada para CSV**
+
+Implementado:
+- Novo botão "⬇️ Exportar CSV" no Dashboard
+- Modal de filtros com opções avançadas
+- Geração de CSV com UTF-8 BOM (Excel-compatible)
+- Suporte para filtros: cliente, valor mínimo, dias mínimo, incluir todas/bloqueados
+- Ordenação: por dias de atraso, valor, ou cliente
+
+**Funções:**
+
+### `exportarRelatorioCobracas()` ⭐
+Abre modal com filtros e dispara download do CSV
+
+**Recursos:**
+- Modal com 6 opções configuráveis
+- Filtro por cliente (busca parcial)
+- Filtro por valor mínimo (R$)
+- Filtro por dias mínimo de atraso
+- Checkbox "Incluir todas as contas" (padrão: apenas urgentes se desmarcado)
+- Checkbox "Incluir bloqueados" (padrão: sim)
+- Dropdown de ordenação (dias DESC, valor DESC, cliente A-Z)
+
+### `gerarRelatorioCSV(contas)` ⭐
+Gera CSV com encoding UTF-8 + BOM
+
+**Formato:**
+```
+Cliente,Valor (R$),Saldo (R$),Dias Atraso,Tentativas,Urgência,Status
+João Silva,1500.00,1500.00,4,0,BAIXA,Primeira cobrança
+Maria Santos,3000.00,2000.00,14,1,MÉDIA,Primeira abordagem enviada
+```
+
+**Características:**
+- Header com 7 colunas
+- Valores monetários sem símbolo (apenas número com 2 decimais)
+- Quebras de linha: CRLF (Windows-compatible)
+- BOM UTF-8 para Excel reconhecer acentos
+- Escape de aspas duplas em texto
+- Filename: `relatorio_cobrancas_YYYYMMDD.csv`
+
+### `downloadCSV(content, filename)` ⭐
+Dispara download no navegador
+
+### `abrirFiltrosExportacao()` ⭐
+Modal interativo com filtros
+
+**Parâmetros retornados:**
+```javascript
+{
+  cliente: "João",           // busca parcial
+  valorMin: 500,             // valor mínimo
+  diasMin: 7,                // dias mínimo de atraso
+  incluirTodas: true,        // incluir todas as contas?
+  incluirBloqueados: true,   // incluir bloqueados?
+  ordenar: "dias"            // "dias", "valor", "cliente"
+}
+```
+
+**Fluxo de Uso:**
+1. Clique "⬇️ Exportar CSV" no Dashboard
+2. Preencha filtros (ou deixe padrão)
+3. Clique "Exportar"
+4. Arquivo baixa automaticamente com nome `relatorio_cobrancas_YYYYMMDD.csv`
+5. Abra em Excel/Sheets para análise
+
+**Casos de Uso:**
+- **Análise Completa**: Deixar filtros em branco, exportar todas
+- **Atrasos Críticos**: Setar "Incluir todas as contas" = unchecked (apenas urgentes)
+- **Por Cliente**: Filtro "João" para analisar todas as parcelas de um cliente
+- **Por Faixa de Valor**: Setar valor mínimo (ex.: R$ 1000)
+- **Atrasos Severos**: Setar dias mínimo (ex.: 30 dias)
+
+---
+
 ### Próximas Tasks
 
-- [ ] Task 2.3: Relatório estruturado (exportação CSV/PDF)
 - [ ] Task 2.4: Automação de cobranças
 - [ ] Task 3.x: Features avançadas
 - ...
