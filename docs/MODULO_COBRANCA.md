@@ -1,6 +1,6 @@
 # Módulo de Cobrança v.2.4
 
-## Status: Em Desenvolvimento (Task 1.5 ✅)
+## Status: Em Desenvolvimento (Task 2.1 ✅)
 
 ---
 
@@ -512,15 +512,61 @@ Implementado:
 
 ---
 
-### Próximas Tasks
+## Frontend UX: Task 2.1 ✅
 
-- [ ] Task 2.1: Modal flutuante (drag & drop, redimensionável)
-- [ ] Task 2.2: Dashboard de cobranças (gráficos, KPIs)
-- ...
+**Modal Flutuante com Drag & Drop**
+
+Implementado:
+- Classe `FloatingWindow` reutilizável
+- Drag & drop no header (mouse eventos)
+- Resize via handle (canto inferior-direito)
+- Boundary detection (não sai da tela)
+- Persistência em localStorage (posição + tamanho)
+- Z-index automático ao focar
+- Mobile: desabilita drag/resize, volta a centered
+- Integração com modal de copiar mensagens (nova função `abrirCopiadorMensagemFlutuante()`)
+
+**Recursos:**
+1. **Drag:** Clique e arraste no header (gradiente dourado)
+2. **Resize:** Handle triangular no canto inferior-direito
+3. **Persistência:** Salva posição em `localStorage[floatingWindow_<nome>]`
+4. **Mobile:** Em telas ≤ 768px, volta a modal centrado (sem drag)
+5. **Z-index:** Incrementa automaticamente ao focar
+
+**Estilo:**
+- Header: gradiente ouro ↔ ink-soft
+- Botão fechar (×) no header
+- Sombra suave (0 8px 24px rgba)
+- Border: 1px solid var(--rule)
+- Min: 400px × 300px
+
+**Classe FloatingWindow:**
+
+```javascript
+new FloatingWindow(id, options)
+  .create(title, htmlContent)
+  .close()
+  .savePosition()
+  .restorePosition()
+```
+
+Exemplo de uso em `abrirCopiadorMensagemFlutuante()`:
+```javascript
+const fw = new FloatingWindow('copiadorMensagensFlutuante', {
+  saveName: 'copiadorMensagens'
+});
+fw.create('📧 Copiar Mensagem de Cobrança', htmlContent);
+```
 
 ---
 
-| Campo | Tipo | Descrição |
+### Próximas Tasks
+
+- [ ] Task 2.2: Dashboard de cobranças (gráficos, KPIs)
+- [ ] Task 2.3: Relatório de cobranças (exportação CSV/PDF)
+- ...
+
+---
 |-------|------|-----------|
 | `Observacoes` | Text | Histórico acumulado de cobranças |
 | `Tentativas Cobranca` | Number | Contador de tentativas (1-3) |
