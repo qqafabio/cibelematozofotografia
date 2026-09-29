@@ -1,6 +1,6 @@
 # Módulo de Cobrança v.2.4
 
-## Status: Em Desenvolvimento (Task 2.1 ✅)
+## Status: Em Desenvolvimento (Task 2.2 ✅)
 
 ---
 
@@ -581,16 +581,62 @@ fw.create('📧 Copiar Mensagem de Cobrança', htmlContent);
 
 ---
 
-## Próximas Tasks
+## Frontend Dashboard: Task 2.2 ✅
 
-- [ ] Task 1.3a: Frontend - UI para copiar mensagem
-- [ ] Task 1.3b: Frontend - Registro de envio manual
-- [ ] Task 1.4: Endpoints de API
-- [ ] Task 1.5: Templates de mensagem
-- [ ] Task 2.1: Modal flutuante
-- ...
+**Dashboard Executivo de Cobranças**
+
+Implementado:
+- Novo item no menu: "📊 Análise"
+- 4 seções principais com KPI cards e tabelas
+- Integração com `resumoCobrancas()` e `relatorioCobrancas()`
+
+**Seção 1: KPI Cards (Resumo Geral)**
+- Total em atraso (R$)
+- Quantidade de contas vencidas
+- Dias médio de atraso
+- Valor médio por conta
+
+**Seção 2: Distribuição de Tentativas**
+- 4 cards coloridos: 0 tentativas, 1, 2, 3+/bloqueados
+- Backgrounds: verde (novo), azul (1a), laranja (2a), vermelho (bloqueado)
+
+**Seção 3: Urgência**
+- 4 cards com cores: Crítica (vermelho), Alta (laranja), Média (amarelo), Baixa (verde)
+- Filtros automáticos por dias em atraso
+
+**Seção 4: Top 10 Contas Urgentes**
+- Tabela ordenada por dias de atraso (DESC)
+- Colunas: Cliente, Saldo, Dias Atraso, Tentativas, Urgência, Ação
+- Botão "📋 Cobrar" abre modal flutuante (Task 2.1)
+
+**Estilos CSS:**
+```css
+.urgency-critica { background: var(--error); color: white; }
+.urgency-alta { background: #ff9800; color: white; }
+.urgency-media { background: #ffc107; color: var(--ink); }
+.urgency-baixa { background: var(--ok); color: white; }
+.urgency-badge { padding: 3px 8px; border-radius: 3px; }
+```
+
+**Recursos:**
+- Timestamp de última atualização
+- Responsivo (mobile-friendly)
+- Empty state quando sem contas em atraso
+- Integração automática com FloatingWindow para cobranças
+
+**Fluxo de Uso:**
+1. Clique "📊 Análise" no menu
+2. Veja resumo com KPIs e distribuições
+3. Clique em "📋 Cobrar" para abrir modal flutuante
+4. Use templates customizados (Task 1.5) para enviar
 
 ---
 
-**Data**: 29/09/2026  
-**Status**: Task 1.2 ✅ Concluída
+### Próximas Tasks
+
+- [ ] Task 2.3: Relatório estruturado (exportação CSV/PDF)
+- [ ] Task 2.4: Automação de cobranças
+- [ ] Task 3.x: Features avançadas
+- ...
+
+---
