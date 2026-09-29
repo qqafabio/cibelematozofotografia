@@ -81,6 +81,15 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:20px;font-size:13px;z-index:30;}
   .loading-note{color:var(--ink-soft);font-size:13px;padding:20px 0;}
 
+  /* ---- Modal Flutuante (Task 2.1) ---- */
+  .floating-window-overlay{position:fixed;inset:0;background:rgba(34,31,28,.35);z-index:19;}
+  .floating-window{position:fixed;background:var(--paper-raised);border:1px solid var(--rule);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.15);min-width:400px;min-height:300px;display:flex;flex-direction:column;z-index:20;}
+  .floating-window-header{background:linear-gradient(135deg,var(--gold) 0%,var(--ink-soft) 100%);color:white;padding:12px 16px;cursor:move;font-weight:500;border-bottom:1px solid var(--rule);flex-shrink:0;user-select:none;display:flex;justify-content:space-between;align-items:center;}
+  .floating-window-header .close-btn{background:rgba(255,255,255,.2);border:none;color:white;cursor:pointer;padding:4px 8px;border-radius:2px;font-size:14px;}
+  .floating-window-header .close-btn:hover{background:rgba(255,255,255,.4);}
+  .floating-window-content{overflow-y:auto;padding:20px;flex:1;}
+  .floating-window-resize{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 0%,var(--gold) 100%);border-radius:0 0 4px 0;}
+
   /* ---- Mobile topbar / gaveta de navegação ---- */
   .mobile-topbar{display:none;align-items:center;gap:12px;padding:12px 16px;background:var(--paper-raised);border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:25;}
   .nav-toggle{background:none;border:none;font-size:22px;line-height:1;padding:4px 6px;color:var(--ink);}
@@ -103,6 +112,10 @@
     .form-actions{flex-direction:column;}
     .form-actions button{width:100%;}
     .btn-danger{margin-right:0;}
+
+    /* Mobile: floating window desabilitado */
+    .floating-window{position:static !important;width:100vw;min-width:unset;max-width:100%;min-height:100vh;margin:0;border:none;border-radius:0;}
+    .floating-window-resize{display:none;}
 
     /* tabelas viram cartões empilhados */
     table.responsive-table thead{display:none;}
@@ -166,8 +179,201 @@ let templates = [];
 let listas = {};
 let freelanceEventos = [];
 let loaded = false;
- 
-function renderNav(){
+
+/* ============ FLOATING WINDOW (Task 2.1) ============ */
+let currentFloatingWindow = null;
+
+class FloatingWindow {
+  constructor(id, options = {}) {
+    this.id = id;
+    this.element = null;
+    this.header = null;
+    this.content = null;
+    this.isDragging = false;
+    this.isResizing = false;
+    this.startX = 0;
+    this.startY = 0;
+    this.startLeft = 0;
+    this.startTop = 0;
+    this.startWidth = 0;
+    this.startHeight = 0;
+    this.options = {
+      minWidth: 400,
+      minHeight: 300,
+      maxZIndex: 100,
+      saveName: null,
+      ...options
+    };
+    this.zIndex = 20;
+  }
+
+  create(title, htmlContent) {
+    const overlay = document.createElement('div');
+    overlay.className = 'floating-window-overlay';
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) this.close();
+    });
+
+    this.element = document.createElement('div');
+    this.element.className = 'floating-window';
+    this.element.id = this.id;
+
+    this.header = document.createElement('div');
+    this.header.className = 'floating-window-header';
+    this.header.innerHTML = `<span>${title}</span><button class="close-btn">×</button>`;
+    this.header.querySelector('.close-btn').addEventListener('click', () => this.close());
+
+    this.content = document.createElement('div');
+    this.content.className = 'floating-window-content';
+    this.content.innerHTML = htmlContent;
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'floating-window-resize';
+
+    this.element.appendChild(this.header);
+    this.element.appendChild(this.content);
+    this.element.appendChild(resizeHandle);
+
+    document.getElementById('overlayRoot').appendChild(overlay);
+    document.getElementById('overlayRoot').appendChild(this.element);
+
+    this.setupDragAndResize();
+    this.restorePosition();
+    this.makeActive();
+    currentFloatingWindow = this;
+
+    return this;
+  }
+
+  setupDragAndResize() {
+    this.header.addEventListener('mousedown', (e) => this.startDrag(e));
+    this.element.querySelector('.floating-window-resize').addEventListener('mousedown', (e) => this.startResize(e));
+  }
+
+  startDrag(e) {
+    if (e.button !== 0) return;
+    this.isDragging = true;
+    this.startX = e.clientX;
+    this.startY = e.clientY;
+    this.startLeft = this.element.offsetLeft;
+    this.startTop = this.element.offsetTop;
+    document.addEventListener('mousemove', this.dragHandler = (e) => this.drag(e));
+    document.addEventListener('mouseup', this.dragEndHandler = () => this.endDrag());
+    e.preventDefault();
+  }
+
+  drag(e) {
+    if (!this.isDragging) return;
+    const dx = e.clientX - this.startX;
+    const dy = e.clientY - this.startY;
+    let newLeft = this.startLeft + dx;
+    let newTop = this.startTop + dy;
+
+    const maxLeft = window.innerWidth - this.element.offsetWidth;
+    const maxTop = window.innerHeight - this.element.offsetHeight;
+
+    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+    newTop = Math.max(0, Math.min(newTop, maxTop));
+
+    this.element.style.left = newLeft + 'px';
+    this.element.style.top = newTop + 'px';
+  }
+
+  endDrag() {
+    this.isDragging = false;
+    document.removeEventListener('mousemove', this.dragHandler);
+    document.removeEventListener('mouseup', this.dragEndHandler);
+    this.savePosition();
+  }
+
+  startResize(e) {
+    if (e.button !== 0) return;
+    this.isResizing = true;
+    this.startX = e.clientX;
+    this.startY = e.clientY;
+    this.startWidth = this.element.offsetWidth;
+    this.startHeight = this.element.offsetHeight;
+    document.addEventListener('mousemove', this.resizeHandler = (e) => this.resize(e));
+    document.addEventListener('mouseup', this.resizeEndHandler = () => this.endResize());
+    e.preventDefault();
+  }
+
+  resize(e) {
+    if (!this.isResizing) return;
+    const dx = e.clientX - this.startX;
+    const dy = e.clientY - this.startY;
+    let newWidth = Math.max(this.options.minWidth, this.startWidth + dx);
+    let newHeight = Math.max(this.options.minHeight, this.startHeight + dy);
+
+    this.element.style.width = newWidth + 'px';
+    this.element.style.height = newHeight + 'px';
+  }
+
+  endResize() {
+    this.isResizing = false;
+    document.removeEventListener('mousemove', this.resizeHandler);
+    document.removeEventListener('mouseup', this.resizeEndHandler);
+    this.savePosition();
+  }
+
+  makeActive() {
+    this.zIndex = Math.min(this.options.maxZIndex, Math.max(...document.querySelectorAll('.floating-window').map(el => parseInt(getComputedStyle(el).zIndex) || 0)) + 1);
+    this.element.style.zIndex = this.zIndex;
+  }
+
+  savePosition() {
+    if (!this.options.saveName) return;
+    const pos = {
+      left: this.element.offsetLeft,
+      top: this.element.offsetTop,
+      width: this.element.offsetWidth,
+      height: this.element.offsetHeight
+    };
+    localStorage.setItem(`floatingWindow_${this.options.saveName}`, JSON.stringify(pos));
+  }
+
+  restorePosition() {
+    if (!this.options.saveName) {
+      this.center();
+      return;
+    }
+    const saved = localStorage.getItem(`floatingWindow_${this.options.saveName}`);
+    if (saved) {
+      try {
+        const pos = JSON.parse(saved);
+        this.element.style.left = Math.max(0, pos.left) + 'px';
+        this.element.style.top = Math.max(0, pos.top) + 'px';
+        this.element.style.width = pos.width + 'px';
+        this.element.style.height = pos.height + 'px';
+      } catch (e) {
+        this.center();
+      }
+    } else {
+      this.center();
+    }
+  }
+
+  center() {
+    const w = Math.min(600, window.innerWidth - 40);
+    const h = Math.min(500, window.innerHeight - 80);
+    this.element.style.width = w + 'px';
+    this.element.style.height = h + 'px';
+    this.element.style.left = (window.innerWidth - w) / 2 + 'px';
+    this.element.style.top = (window.innerHeight - h) / 2 + 'px';
+  }
+
+  close() {
+    if (this.element) {
+      this.element.parentElement.remove();
+      this.element.remove();
+    }
+    const overlay = document.querySelector('.floating-window-overlay');
+    if (overlay) overlay.remove();
+    currentFloatingWindow = null;
+  }
+}
+
+/* ============ */
   const el = document.getElementById('navList');
   el.innerHTML = NAV.map(n => `
     <div class="nav-item ${n.id===currentView?'active':''} ${!n.ready?'disabled':''}" data-id="${n.id}">
@@ -1692,6 +1898,72 @@ async function marcarEnvio(idParcela, templateId, index) {
   }
 }
     });
+  }
+}
+
+async function abrirCopiadorMensagemFlutuante(conta) {
+  try {
+    const result = await apiCall('obterTemplatesMensagem');
+    const { templates } = result;
+
+    if (!templates || !templates.length) {
+      showToast('Nenhum template disponível');
+      return;
+    }
+
+    const idParcela = conta['ID Parcela'] || '';
+    const cliente = conta['Cliente'] || 'Cliente';
+    const valor = Number(conta['Valor'] || 0).toFixed(2);
+    const diasAtraso = conta['diasEmAtraso'] || 0;
+    const vencimento = conta['Vencimento'] || 'N/A';
+    const tentativasAtuais = Number(conta['Tentativas Cobranca'] || 0);
+    const maxTentativas = 3;
+
+    const preencherTemplate = (template) => {
+      return template
+        .replace(/\{\{cliente\}\}/g, cliente)
+        .replace(/\{\{valor\}\}/g, valor)
+        .replace(/\{\{diasAtraso\}\}/g, diasAtraso)
+        .replace(/\{\{vencimento\}\}/g, vencimento);
+    };
+
+    const templateCards = templates.map((tpl, idx) => {
+      const corpoPreenchido = preencherTemplate(tpl.corpo);
+      const progresso = tentativasAtuais + 1;
+      const podeRegistrar = progresso <= maxTentativas;
+      return `
+        <div class="template-card" style="background:var(--paper-raised);border:1px solid var(--rule);border-radius:4px;padding:16px;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div>
+              <strong style="color:var(--gold);">${tpl.nome}</strong>
+              <p style="color:var(--ink-soft);font-size:12px;margin:4px 0 0;">${tpl.descricao}</p>
+            </div>
+            <div style="text-align:right;font-size:11px;color:var(--ink-soft);">
+              Tentativa: <strong style="color:var(--ink);">${progresso}/${maxTentativas}</strong>
+            </div>
+          </div>
+          <textarea readonly style="width:100%;min-height:120px;padding:12px;border:1px solid var(--rule);border-radius:3px;background:var(--paper);font-family:monospace;font-size:12px;resize:none;color:var(--ink);">${corpoPreenchido}</textarea>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="btn-primary" style="flex:1;" onclick="copiarMensagem('${tpl.id}', ${idx}); event.preventDefault();">📋 Copiar</button>
+            <button class="btn-primary" style="flex:1;background:var(--ok);" onclick="marcarEnvio('${idParcela}', '${tpl.id}', ${idx}); event.preventDefault();" ${!podeRegistrar ? 'disabled style="opacity:0.5;"' : ''}>✅ Enviado</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <p style="color:var(--ink-soft);font-size:13px;margin-bottom:16px;margin-top:0;">
+        <strong>${cliente}</strong> • R$ ${valor} • ${diasAtraso}d • ${tentativasAtuais}/${maxTentativas}
+      </p>
+      <div id="copiadorMensagensTiposFlutuante">
+        ${templateCards}
+      </div>
+    `;
+
+    const fw = new FloatingWindow('copiadorMensagensFlutuante', { saveName: 'copiadorMensagens' });
+    fw.create('📧 Copiar Mensagem de Cobrança', htmlContent);
+  } catch (err) {
+    showToast('❌ Erro: ' + err.message);
   }
 }
 
