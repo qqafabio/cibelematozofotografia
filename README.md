@@ -79,7 +79,7 @@ Lead → Cliente → Evento (com sincronização automática no Google Agenda) �
 
 **v2.4 — Módulo de Cobranças** (✅ completo):
 - Tela "📧 Cobranças" com lista de contas em atraso + filtros e paginação (Task 1.1-1.4)
-- 3 templates de mensagem padrão (LEVE, MÉDIA, PESADA) + gerenciamento de templates customizados (Task 1.5)
+- 3 templates de mensagem padrão (LEVE, MÉDIA, PESADA) com tom pessoal de estúdio + gerenciamento de templates customizados (Task 1.5)
 - Copiar mensagem para WhatsApp (envio manual) com preenchimento dinâmico
 - Registro de tentativas de cobrança + bloqueio automático após 3 tentativas
 - Modal flutuante com drag & drop para composição de mensagens (Task 2.1)
@@ -120,6 +120,20 @@ O CRM tem um breakpoint responsivo em `max-width: 768px`, ativado automaticament
 - **Navegação:** a sidebar fixa vira um menu gaveta — um botão ☰ na barra superior abre/fecha a sidebar como uma gaveta deslizante, com um fundo escurecido por trás; a gaveta fecha sozinha ao selecionar um módulo.
 - **Tabelas:** as listas (Clientes, Eventos, Leads, Financeiro, Produção, Custos, Freelance etc.) deixam de mostrar colunas lado a lado e passam a exibir cada linha como um cartão, com cada coluna empilhada em formato rótulo/valor.
 - **Formulários:** os campos que ficavam em 2-3 colunas (`.row2`/`.row3`) passam a uma coluna só, e o painel de edição ocupa a tela inteira (em vez de um modal pequeno centralizado), facilitando preencher formulários longos (Eventos, Produção, Freelance) pelo celular.
+
+### 2.6 Templates de cobrança (v2.4)
+
+Os 3 templates padrão foram reescritos para o tom de um estúdio de fotografia — pessoal e caloroso, com firmeza gradual (não corporativo/bancário):
+
+- **LEVE** — lembrete gentil, presume esquecimento e já oferece o PIX.
+- **MÉDIA** — follow-up que oferece solução concreta (parcelar/renegociar).
+- **PESADA** — aviso formal com prazo de 5 dias úteis e referência ao contrato (sem ameaças agressivas).
+
+Todo template (padrão ou customizado) precisa conter as 4 variáveis obrigatórias: `{{cliente}}`, `{{valor}}`, `{{diasAtraso}}`, `{{vencimento}}` — validadas no back-end em `criarTemplate`/`atualizarTemplate`.
+
+> **Atenção ao aplicar os textos novos:** `_obterTemplatesPadroes_()` só é usado por `listarTemplates()` quando a aba **`Templates` ainda não existe** na planilha. Se a aba já foi criada com os textos antigos, os novos padrões não sobrescrevem automaticamente — nesse caso, edite os 3 direto pela tela "⚙️ Templates" ou apague/recrie a aba.
+
+**Correção (bug):** `criarTemplate` tinha um erro de digitação no nome da variável de validação (`variavelisObritorias`/`variavelisAusentes` na declaração vs. `variaveis...` no uso), que causava `ReferenceError: variaveisObritorias is not defined` ao salvar um novo template. Corrigido; `atualizarTemplate` já estava correta.
 
 Nenhuma mudança de back-end foi necessária — é só CSS/JS no `crm.html`.
 

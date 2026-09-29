@@ -266,6 +266,14 @@ apiCall('listarContasEmAtrasoComFiltros', {
 
 **Endpoint**: `POST /` com `action: "obterTemplatesMensagem"`
 
+> ✍️ **Revisão de tom (2026-09-29):** os 3 corpos padrão em `_obterTemplatesPadroes_()`
+> foram reescritos para o tom de estúdio de fotografia (pessoal/caloroso, com firmeza
+> gradual) — LEVE (lembrete gentil + PIX), MÉDIA (follow-up com opção de parcelar) e
+> PESADA (aviso formal com prazo de 5 dias úteis e referência ao contrato).
+> Esses padrões só são aplicados por `listarTemplates()` quando a aba `Templates`
+> ainda **não existe**; se já existir com os textos antigos, editar pela tela
+> "⚙️ Templates" ou recriar a aba.
+
 ---
 
 ## Frontend: Task 1.3a ✅
@@ -459,6 +467,11 @@ Cria novo template customizado
   "corpo": "Olá {{cliente}}..."   // obrigatório, deve conter 4 variáveis
 }
 ```
+
+> 🐛 **Fix (2026-09-29):** havia um erro de digitação nas variáveis de validação
+> (`variavelisObritorias`/`variavelisAusentes` na declaração vs. `variaveis...` no uso),
+> que gerava `ReferenceError: variaveisObritorias is not defined` ao salvar um novo
+> template. Corrigido. A função `atualizarTemplate` já estava correta.
 
 ### `atualizarTemplate(dados)` ⭐
 Atualiza template existente (não pode atualizar padrão)
