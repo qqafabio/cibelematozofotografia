@@ -472,9 +472,9 @@ async function exportarRelatorioCobracas(){
 
     const csv = gerarRelatorioCSV(contas);
     downloadCSV(csv, `relatorio_cobrancas_${yyyymmdd()}.csv`);
-    mostrarToast('✅ CSV exportado com sucesso!');
+    showToast('✅ CSV exportado com sucesso!');
   } catch (err) {
-    mostrarToast('❌ Erro ao exportar: ' + err.message);
+    showToast('❌ Erro ao exportar: ' + err.message);
   }
 }
 
