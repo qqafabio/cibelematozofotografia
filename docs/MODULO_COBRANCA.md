@@ -38,6 +38,91 @@
 
 ---
 
+## Função 1.1: `listarContasEmAtrasoComFiltros(dados)` ⭐
+
+**Localização**: Backend Google Apps Script  
+**Objetivo**: Listar contas em atraso com filtros, ordenação e paginação
+
+**Parâmetros** (todos opcionais):
+```javascript
+{
+  "filtroCliente": "João",         // busca parcial por nome
+  "filtroValorMinimo": 500.00,     // apenas parcelas >= valor
+  "filtroDiasAtraso": 7,           // apenas com 7+ dias de atraso
+  "ordenarPor": "diasAtraso",      // "diasAtraso" | "valor" | "vencimento"
+  "pagina": 1,                     // página (padrão: 1)
+  "limite": 20                     // registros por página (padrão: 20, máx: 100)
+}
+```
+
+**Lógica**:
+1. Lista todas as contas em atraso (via `listarContasEmAtraso()`)
+2. Aplica filtros (cliente, valor mínimo, dias)
+3. Ordena conforme solicitado
+4. Pagina os resultados
+5. Retorna dados + metadados de paginação
+
+**Retorno**:
+```javascript
+{
+  "dados": [
+    {
+      "ID Parcela": "1001",
+      "Cliente": "João Silva",
+      "Valor": 1500.00,
+      "Valor pago": 0.00,
+      "Vencimento": "25/09/2026",
+      "Status": "Vencida",
+      "diasEmAtraso": 4,
+      "Observacoes": "..."
+    }
+    // ... mais registros
+  ],
+  "paginacao": {
+    "paginaAtual": 1,
+    "limite": 20,
+    "totalRegistros": 47,
+    "totalPaginas": 3,
+    "temProxima": true,
+    "temAnterior": false
+  }
+}
+```
+
+**Exemplos de uso**:
+
+```javascript
+// Listar todos em atraso, página 1
+apiCall('listarContasEmAtrasoComFiltros', {})
+
+// Cliente específico
+apiCall('listarContasEmAtrasoComFiltros', {
+  filtroCliente: "Maria"
+})
+
+// Atrasos críticos (15+ dias, valor >= 1000)
+apiCall('listarContasEmAtrasoComFiltros', {
+  filtroDiasAtraso: 15,
+  filtroValorMinimo: 1000,
+  ordenarPor: "valor"
+})
+
+// Ordenar por data de vencimento (urgência natural)
+apiCall('listarContasEmAtrasoComFiltros', {
+  ordenarPor: "vencimento"
+})
+
+// Paginação: página 3, 50 por página
+apiCall('listarContasEmAtrasoComFiltros', {
+  pagina: 3,
+  limite: 50
+})
+```
+
+**Endpoint**: `POST /` com `action: "listarContasEmAtrasoComFiltros"`
+
+---
+
 ## Função 2: `registrarTentativaCobranca(dados)`
 
 **Localização**: Backend Google Apps Script  
@@ -185,7 +270,8 @@
 
 ## Próximas Tasks
 
-- [ ] Task 1.2: Backend - Lógica de identificação
+- [ ] Task 1.3a: Frontend - UI para copiar mensagem
+- [ ] Task 1.3b: Frontend - Registro de envio manual
 - [ ] Task 1.4: Endpoints de API
 - [ ] Task 1.5: Templates de mensagem
 - [ ] Task 2.1: Modal flutuante
@@ -194,4 +280,4 @@
 ---
 
 **Data**: 29/09/2026  
-**Status**: Task 1.1 ✅ Concluída
+**Status**: Task 1.2 ✅ Concluída
