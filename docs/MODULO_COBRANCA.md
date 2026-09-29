@@ -1,6 +1,6 @@
 # Módulo de Cobrança v.2.4
 
-## Status: Em Desenvolvimento (Task 1.1 ✅)
+## Status: Em Desenvolvimento (Task 1.3a ✅)
 
 ---
 
@@ -249,7 +249,37 @@ apiCall('listarContasEmAtrasoComFiltros', {
 
 ---
 
-## Estrutura de Dados
+## Função 6: `obterTemplatesMensagem()` ⭐
+
+**Localização**: Backend Google Apps Script  
+**Objetivo**: Retornar 3 templates de mensagem para cobrança (LEVE, MÉDIA, PESADA)
+
+**Parâmetros**: Nenhum
+
+**Retorno**: Array com 3 templates contendo `id`, `nome`, `descricao` e `corpo`
+
+**Variáveis Dinâmicas** (preenchidas no frontend):
+- `{{cliente}}` - Nome do cliente
+- `{{valor}}` - Valor da parcela em atraso
+- `{{diasAtraso}}` - Dias em atraso
+- `{{vencimento}}` - Data do vencimento
+
+**Endpoint**: `POST /` com `action: "obterTemplatesMensagem"`
+
+---
+
+## Frontend: Task 1.3a ✅
+
+**UI para Copiar Mensagem**
+
+Implementado:
+- Tela "📧 Cobranças" com tabela de contas em atraso
+- Modal com 3 templates de mensagem
+- Preenchimento dinâmico de variáveis
+- Botão "Copiar para área de transferência"
+- Notificação de sucesso
+
+---
 
 ### Campos Novos em "Financeiro" (aba de parcelas)
 
