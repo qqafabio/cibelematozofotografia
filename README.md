@@ -77,6 +77,13 @@ Como bônus: ajustes na página (preços, textos das cláusulas, cores) passam a
 
 Lead → Cliente → Evento (com sincronização automática no Google Agenda) → Orçamento → Financeiro (entrada + parcelas) → Produção → Custos, além de um menu à parte para lançamento de **trabalhos freelance** (serviços prestados por nós a outra empresa de foto e vídeo).
 
+**v2.4 — Módulo de Cobranças** (novo):
+- Tela "📧 Cobranças" com lista de contas em atraso
+- 3 templates de mensagem (LEVE, MÉDIA, PESADA) com preenchimento dinâmico
+- Copiar mensagem para WhatsApp (envio manual)
+- Registro de tentativas de cobrança
+- Bloqueio de clientes após 3 tentativas
+
 ### 2.2 Arquitetura
 
 - **Frontend:** `crm.html` — página única (sem framework), publicada no GitHub Pages. Toda a comunicação com o back-end passa por `apiCall(action, dados)`, que faz um `fetch` POST para a constante `CRM_API_URL` no topo do arquivo.
