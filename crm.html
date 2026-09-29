@@ -1161,6 +1161,16 @@ async function renderDashboardCobrancas(main) {
     const contas = (relatorio.dados || []).sort((a, b) => b.diasEmAtraso - a.diasEmAtraso);
     const top10 = contas.slice(0, 10);
 
+    // Armazena em variável global para acesso via onclick
+    dashboardCobrancas = top10.map(c => ({
+      'ID Parcela': c.idParcela,
+      'Cliente': c.cliente,
+      'Valor': c.saldo,
+      'diasEmAtraso': c.diasEmAtraso,
+      'Vencimento': c.vencimento,
+      'Tentativas Cobranca': c.tentativas
+    }));
+
     const agora = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
     main.innerHTML = `
@@ -1262,14 +1272,7 @@ async function renderDashboardCobrancas(main) {
                     <td data-label="Tentativas">${c.tentativas}/3</td>
                     <td data-label="Urgência"><span class="urgency-badge ${urgClass}">${c.prioridade}</span></td>
                     <td data-label="Ação">
-                      <button class="btn-ghost" style="font-size:12px;padding:6px 10px;" onclick="abrirCopiadorMensagemFlutuante({
-                        'ID Parcela': '${esc(c.idParcela)}',
-                        'Cliente': '${esc(c.cliente)}',
-                        'Valor': ${c.saldo},
-                        'diasEmAtraso': ${c.diasEmAtraso},
-                        'Vencimento': '${esc(c.vencimento)}',
-                        'Tentativas Cobranca': ${c.tentativas}
-                      }); event.preventDefault();">
+                      <button class="btn-ghost" style="font-size:12px;padding:6px 10px;" onclick="abrirCopiadorMensagemFlutuante(dashboardCobrancas[${idx}]); event.preventDefault();">
                         📋 Cobrar
                       </button>
                     </td>
