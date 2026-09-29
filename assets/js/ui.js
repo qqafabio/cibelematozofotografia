@@ -249,5 +249,9 @@ async function excluirComConfirmacao(mensagem, action, dados, btnId, erroId){
     if (btn){ btn.disabled = false; btn.textContent = 'Excluir'; }
   }
 }
-function mostrarErro(id, msg){ const e = document.getElementById(id); e.style.display='block'; e.textContent = msg; }
+function mostrarErro(id, msg){
+  const e = document.getElementById(id);
+  if (!e){ showToast('❌ ' + msg); return; }
+  e.style.display='block'; e.textContent = msg;
+}
  

@@ -275,6 +275,14 @@ apiCall('listarContasEmAtrasoComFiltros', {
 
 **Endpoint**: `POST /` com `action: "obterTemplatesMensagem"`
 
+> 🐛 **Fix (2026-09-29 · v2.6.2):** `obterTemplatesMensagem()` devolve `{ templates }`,
+> onde cada template usa as chaves **maiúsculas** do cabeçalho da aba (`'ID'`, `'Nome'`,
+> `'Descrição'`, `'Corpo'`, `'Padrão'`) — o mesmo shape de `_obterTemplatesPadroes_()`.
+> O front (`modules/mensagens.js`) lia com chaves minúsculas (`tpl.corpo`…), então
+> `tpl['Corpo']` vinha `undefined` e o botão "📋 Copiar" estourava `TypeError`, sem abrir
+> a modal. Corrigido no front para o contrato maiúsculo (a tela `modules/templates.js` já
+> usava as chaves corretas).
+
 > ✍️ **Revisão de tom (2026-09-29):** os 3 corpos padrão em `_obterTemplatesPadroes_()`
 > foram reescritos para o tom de estúdio de fotografia (pessoal/caloroso, com firmeza
 > gradual) — LEVE (lembrete gentil + PIX), MÉDIA (follow-up com opção de parcelar) e

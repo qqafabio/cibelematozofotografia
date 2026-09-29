@@ -38,15 +38,15 @@ async function abrirCopiadorMensagem(conta) {
 
     // Cria HTML do modal com botão de registro
     const templateCards = templates.map((tpl, idx) => {
-      const corpoPreenchido = preencherTemplate(tpl.corpo);
+      const corpoPreenchido = preencherTemplate(tpl['Corpo']);
       const progresso = tentativasAtuais + 1;
       const podeRegistrar = progresso <= maxTentativas;
       return `
         <div class="template-card" style="background:var(--paper-raised);border:1px solid var(--rule);border-radius:4px;padding:16px;margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
             <div>
-              <strong style="color:var(--gold);">${tpl.nome}</strong>
-              <p style="color:var(--ink-soft);font-size:12px;margin:4px 0 0;">${tpl.descricao}</p>
+              <strong style="color:var(--gold);">${esc(tpl['Nome'])}</strong>
+              <p style="color:var(--ink-soft);font-size:12px;margin:4px 0 0;">${esc(tpl['Descrição'])}</p>
             </div>
             <div style="text-align:right;font-size:11px;color:var(--ink-soft);">
               Tentativa: <strong style="color:var(--ink);">${progresso}/${maxTentativas}</strong>
@@ -54,10 +54,10 @@ async function abrirCopiadorMensagem(conta) {
           </div>
           <textarea readonly style="width:100%;min-height:140px;padding:12px;border:1px solid var(--rule);border-radius:3px;background:var(--paper);font-family:monospace;font-size:12px;resize:none;color:var(--ink);">${corpoPreenchido}</textarea>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="btn-primary" style="flex:1;" onclick="copiarMensagem('${tpl.id}', ${idx}); event.preventDefault();">
+            <button class="btn-primary" style="flex:1;" onclick="copiarMensagem('${tpl['ID']}', ${idx}); event.preventDefault();">
               📋 Copiar
             </button>
-            <button class="btn-primary" style="flex:1;background:var(--ok);" onclick="marcarEnvio('${idParcela}', '${tpl.id}', ${idx}); event.preventDefault();" ${!podeRegistrar ? 'disabled style="opacity:0.5;"' : ''}>
+            <button class="btn-primary" style="flex:1;background:var(--ok);" onclick="marcarEnvio('${idParcela}', '${tpl['ID']}', ${idx}); event.preventDefault();" ${!podeRegistrar ? 'disabled style="opacity:0.5;"' : ''}>
               ✅ Enviado
             </button>
           </div>
@@ -87,7 +87,7 @@ async function abrirCopiadorMensagem(conta) {
       if (e.target.id === 'overlay') fecharOverlay();
     });
   } catch (err) {
-    mostrarErro('modalErr', 'Erro ao carregar templates: ' + err.message);
+    showToast('❌ Erro ao carregar templates: ' + err.message);
   }
 }
 
@@ -179,15 +179,15 @@ async function abrirCopiadorMensagemFlutuante(conta) {
     };
 
     const templateCards = templates.map((tpl, idx) => {
-      const corpoPreenchido = preencherTemplate(tpl.corpo);
+      const corpoPreenchido = preencherTemplate(tpl['Corpo']);
       const progresso = tentativasAtuais + 1;
       const podeRegistrar = progresso <= maxTentativas;
       return `
         <div class="template-card" style="background:var(--paper-raised);border:1px solid var(--rule);border-radius:4px;padding:16px;margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
             <div>
-              <strong style="color:var(--gold);">${tpl.nome}</strong>
-              <p style="color:var(--ink-soft);font-size:12px;margin:4px 0 0;">${tpl.descricao}</p>
+              <strong style="color:var(--gold);">${esc(tpl['Nome'])}</strong>
+              <p style="color:var(--ink-soft);font-size:12px;margin:4px 0 0;">${esc(tpl['Descrição'])}</p>
             </div>
             <div style="text-align:right;font-size:11px;color:var(--ink-soft);">
               Tentativa: <strong style="color:var(--ink);">${progresso}/${maxTentativas}</strong>
@@ -195,8 +195,8 @@ async function abrirCopiadorMensagemFlutuante(conta) {
           </div>
           <textarea readonly style="width:100%;min-height:120px;padding:12px;border:1px solid var(--rule);border-radius:3px;background:var(--paper);font-family:monospace;font-size:12px;resize:none;color:var(--ink);">${corpoPreenchido}</textarea>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="btn-primary" style="flex:1;" onclick="copiarMensagem('${tpl.id}', ${idx}); event.preventDefault();">📋 Copiar</button>
-            <button class="btn-primary" style="flex:1;background:var(--ok);" onclick="marcarEnvio('${idParcela}', '${tpl.id}', ${idx}); event.preventDefault();" ${!podeRegistrar ? 'disabled style="opacity:0.5;"' : ''}>✅ Enviado</button>
+            <button class="btn-primary" style="flex:1;" onclick="copiarMensagem('${tpl['ID']}', ${idx}); event.preventDefault();">📋 Copiar</button>
+            <button class="btn-primary" style="flex:1;background:var(--ok);" onclick="marcarEnvio('${idParcela}', '${tpl['ID']}', ${idx}); event.preventDefault();" ${!podeRegistrar ? 'disabled style="opacity:0.5;"' : ''}>✅ Enviado</button>
           </div>
         </div>
       `;
