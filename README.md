@@ -175,7 +175,7 @@ Ao mexer no JS, valide a sintaxe de cada arquivo antes de publicar: `node --chec
 
 ### 2.8 Atualizando depois de publicado
 
-- **Mudou algo no front** (`crm.html`, `assets/css/*` ou `assets/js/*`): edite e suba de novo no GitHub. Vale na hora (o sufixo `?v=2.8.1` nas tags ajuda a furar o cache; incremente-o em mudanças grandes).
+- **Mudou algo no front** (`crm.html`, `assets/css/*` ou `assets/js/*`): edite e suba de novo no GitHub. Vale na hora (o sufixo `?v=2.8.2` nas tags ajuda a furar o cache; incremente-o em mudanças grandes).
 - **Mudou algo no back-end** (`backend.txt`): cole o conteúdo atualizado no `Código.gs`, no editor do Apps Script, e crie uma **Nova implantação** — sem isso, o CRM continua rodando a versão antiga do back-end mesmo com o `backend.txt` já atualizado aqui no repositório.
 
 ### 2.9 Cadastro de Pacotes (v2.7 — Fase 1)
@@ -255,6 +255,22 @@ v2.8 adiciona o conceito de **evento coletivo** sem quebrar os eventos individua
 - **Fotos extras mais rápidas:** lançar a quantidade de fotos extras de um participante deixou de
   passar por `salvarConta` (que sincronizava a Agenda a cada mudança) e de recarregar tudo — agora
   grava direto no Financeiro e atualiza só o estado necessário.
+
+#### Ajustes v2.8.2
+
+- **Recálculo instantâneo (previsto/saldo):** ao mudar o status ou a quantidade de fotos extras de um
+  participante, a tela agora atualiza **na hora** (atualização otimista local, espelhando a regra do
+  back-end) e a gravação no Apps Script acontece em segundo plano, reconciliando o estado ao concluir.
+  Some a sensação de espera que existia mesmo após a otimização da v2.8.1.
+- **Excluir evento coletivo:** o detalhe do evento coletivo ganhou o botão **"🗑 Excluir evento"**, com
+  as **mesmas validações do evento individual** — bloqueia se já houver valor recebido no Financeiro e
+  oferece exclusão forçada para eventos de teste. A cascata no back-end (`excluirEvento`) remove também
+  os **participantes** do evento (além de produção, Agenda, custos e parcelas); os **clientes**
+  cadastrados permanecem na base, como acontece com o cliente de um evento individual.
+- **Ícones nos menus:** todos os itens do menu lateral passaram a exibir um ícone ao lado do nome
+  (🏠 Dashboard, 👥 Clientes, 📅 Eventos · Agenda, 🎓 Eventos Coletivos, 📦 Pacotes, 🎯 CRM · Orçamentos,
+  💰 Financeiro, 🎬 Produção, 💸 Custos, 🤝 Freelance), no mesmo padrão de 📧 Cobranças, 📊 Análise e
+  ⚙️ Templates.
 
 ---
 

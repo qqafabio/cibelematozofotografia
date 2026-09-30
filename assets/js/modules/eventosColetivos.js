@@ -19,6 +19,14 @@ function eventosColetivosLista(){
 function participantesDoEvento(idEvento){
   return (participantes || []).filter(p => String(p['ID Evento']) === String(idEvento));
 }
+/* "Valor foto extra" do pacote do evento (espelha valorFotoExtraDoEvento_ do back-end),
+   para calcular o previsto localmente e atualizar a tela na hora, sem esperar a rede. */
+function valorFotoExtraDoEventoFront(ev){
+  const nome = String(ev && ev['Pacote'] || '').trim();
+  if (!nome) return 0;
+  const p = (pacotes || []).find(x => String(x['Nome']).trim() === nome);
+  return p ? Number(p['Valor foto extra'] || 0) : 0;
+}
 /* Soma as contas do participante no Financeiro (ignora Canceladas). */
 function contasDoParticipante(idEvento, idCliente){
   const linhas = (financeiro || []).filter(f =>
@@ -138,13 +146,28 @@ async function salvarEventoColetivo(idEvento){
 }
 
 /* ---------- Detalhe do evento coletivo (cabeçalho + importação + participantes) ---------- */
+/* Painel-resumo (participantes/previsto/recebido/saldo) — extraído para atualizar só
+   esse trecho após uma edição, sem redesenhar a tela inteira. */
+function htmlResumoColetivo(idEvento){
+  const parts = participantesDoEvento(idEvento);
+  const totalPrevisto = parts.reduce((s,p) => s + contasDoParticipante(idEvento, p['ID Cliente']).previsto, 0);
+  const totalPago = parts.reduce((s,p) => s + contasDoParticipante(idEvento, p['ID Cliente']).pago, 0);
+  return `
+    <div style="display:flex;gap:24px;flex-wrap:wrap;">
+      <div><strong>${parts.length}</strong> participante${parts.length===1?'':'s'}</div>
+      <div>Previsto: <strong>${formatBRL(totalPrevisto)}</strong></div>
+      <div>Recebido: <strong>${formatBRL(totalPago)}</strong></div>
+      <div>Saldo: <strong>${formatBRL(totalPrevisto - totalPago)}</strong></div>
+    </div>`;
+}
+function atualizarResumoDetalheColetivo(idEvento){
+  const el = document.getElementById('resumoColetivo');
+  if (el) el.innerHTML = htmlResumoColetivo(idEvento);
+}
 function abrirDetalheColetivo(idEvento){
   const main = document.getElementById('mainArea');
   const ev = eventos.find(e => String(e['ID Evento']) === String(idEvento));
   if (!ev){ renderMain(); return; }
-  const parts = participantesDoEvento(idEvento);
-  const totalPrevisto = parts.reduce((s,p) => s + contasDoParticipante(idEvento, p['ID Cliente']).previsto, 0);
-  const totalPago = parts.reduce((s,p) => s + contasDoParticipante(idEvento, p['ID Cliente']).pago, 0);
   main.innerHTML = `
     <div class="view-header">
       <div>
@@ -154,17 +177,11 @@ function abrirDetalheColetivo(idEvento){
       <div style="display:flex;gap:8px;">
         <button class="btn-ghost" id="voltarColetivos">← Voltar</button>
         <button class="btn-ghost" id="editarColetivo">✏️ Editar cabeçalho</button>
+        <button class="btn-danger" id="excluirColetivo">🗑 Excluir evento</button>
       </div>
     </div>
 
-    <div class="panel" style="margin-bottom:16px;padding:16px;">
-      <div style="display:flex;gap:24px;flex-wrap:wrap;">
-        <div><strong>${parts.length}</strong> participante${parts.length===1?'':'s'}</div>
-        <div>Previsto: <strong>${formatBRL(totalPrevisto)}</strong></div>
-        <div>Recebido: <strong>${formatBRL(totalPago)}</strong></div>
-        <div>Saldo: <strong>${formatBRL(totalPrevisto - totalPago)}</strong></div>
-      </div>
-    </div>
+    <div class="panel" id="resumoColetivo" style="margin-bottom:16px;padding:16px;">${htmlResumoColetivo(idEvento)}</div>
 
     <div class="panel" style="margin-bottom:16px;padding:16px;">
       <h3 style="margin:0 0 8px;color:var(--gold);">Importar participantes</h3>
@@ -179,6 +196,7 @@ function abrirDetalheColetivo(idEvento){
   `;
   document.getElementById('voltarColetivos').addEventListener('click', () => renderMain());
   document.getElementById('editarColetivo').addEventListener('click', () => abrirFormEventoColetivo(ev));
+  document.getElementById('excluirColetivo').addEventListener('click', () => excluirEventoColetivoComConfirmacao(ev));
   document.getElementById('importarBtn').addEventListener('click', () => importarParticipantesUI(idEvento));
   document.getElementById('buscaParticipante').addEventListener('input', e => desenharTabelaParticipantes(idEvento, e.target.value));
   desenharTabelaParticipantes(idEvento, '');
@@ -231,17 +249,94 @@ async function importarParticipantesUI(idEvento){
     showToast(`Importados: ${r.criados} · Ignorados: ${r.ignorados}`);
   } catch(err){ mostrarErro('importarErr', err.message); btn.disabled=false; btn.textContent = 'Importar lista'; }
 }
+/* Aplica localmente a mudança de um participante (espelha atualizarParticipante do back-end),
+   para a tela refletir na hora. O back-end reconcilia depois. */
+function aplicarMudancaParticipanteLocal(ev, part, campos){
+  const idEvento = ev['ID Evento'], idCliente = part['ID Cliente'];
+  if (campos.statusCompra !== undefined){
+    part['Status compra'] = campos.statusCompra;
+    if (campos.statusCompra === 'Não quis'){
+      (financeiro || []).forEach(f => {
+        if (String(f['ID Evento']) === String(idEvento) && String(f['ID Cliente']) === String(idCliente) && String(f['Status']) !== 'Pago'){
+          f['Status'] = 'Cancelado';
+        }
+      });
+    }
+  }
+  if (campos.qtdFotosExtras !== undefined){
+    const qtd = Number(campos.qtdFotosExtras || 0);
+    part['Qtd fotos extras'] = qtd;
+    const totalExtras = qtd * valorFotoExtraDoEventoFront(ev);
+    const idx = (financeiro || []).findIndex(f =>
+      String(f['ID Evento']) === String(idEvento) && String(f['ID Cliente']) === String(idCliente) &&
+      String(f['Tipo cobrança']) === 'Fotos extras');
+    if (totalExtras > 0){
+      if (idx >= 0){
+        const pago = Number(financeiro[idx]['Valor pago'] || 0);
+        financeiro[idx]['Valor previsto'] = totalExtras;
+        financeiro[idx]['Saldo'] = totalExtras - pago;
+      } else {
+        financeiro.push({
+          'ID Parcela': 'tmp-' + Date.now(), 'ID Evento': idEvento, 'ID Cliente': idCliente,
+          'Cliente': part['Nome participante'], 'Tipo cobrança': 'Fotos extras',
+          'Vencimento': '', 'Valor previsto': totalExtras, 'Status': 'Pendente',
+          'Valor pago': 0, 'Saldo': totalExtras,
+        });
+      }
+    } else if (idx >= 0){
+      financeiro.splice(idx, 1);
+    }
+  }
+}
 async function salvarParticipante(idEvento, idParticipante, campos){
+  const ev = eventos.find(e => String(e['ID Evento']) === String(idEvento));
+  const part = (participantes || []).find(p => String(p['ID']) === String(idParticipante));
+  // 1) Atualização otimista: reflete na tela imediatamente, sem esperar o Apps Script.
+  if (ev && part) aplicarMudancaParticipanteLocal(ev, part, campos);
+  const filtro = (document.getElementById('buscaParticipante') || {}).value || '';
+  atualizarResumoDetalheColetivo(idEvento);
+  desenharTabelaParticipantes(idEvento, filtro);
+  // 2) Persiste em segundo plano e reconcilia com o estado fresco do back-end.
   try{
     const r = await apiCall('atualizarParticipante', Object.assign({ id: idParticipante }, campos));
-    // atualizarParticipante devolve o estado fresco — evita um carregarTudo extra (mais rápido).
     if (r && Array.isArray(r.participantes) && Array.isArray(r.financeiro)){
       participantes = r.participantes;
       financeiro = r.financeiro;
     } else {
       loaded = false; await carregarTudo();
     }
+    const f2 = (document.getElementById('buscaParticipante') || {}).value || filtro;
+    atualizarResumoDetalheColetivo(idEvento);
+    desenharTabelaParticipantes(idEvento, f2);
+  } catch(err){
+    loaded = false; await carregarTudo();
     abrirDetalheColetivo(idEvento);
-    showToast('Participante atualizado.');
-  } catch(err){ showToast('❌ ' + err.message); }
+    showToast('❌ ' + err.message);
+  }
+}
+/* Exclui o evento coletivo com as mesmas validações do evento individual (bloqueia se
+   houver valor recebido; permite exclusão forçada). Cascata no back-end remove também
+   os participantes, produção, agenda, custos e parcelas do Financeiro. */
+async function excluirEventoColetivoComConfirmacao(evento){
+  const n = participantesDoEvento(evento['ID Evento']).length;
+  const mensagem = `Excluir o evento coletivo "${evento['Tipo de evento']||'—'} · ${evento['Organizador']||evento['Cliente / Responsável']||''}"? Isso remove os ${n} participante${n===1?'':'s'} do evento, a produção, o compromisso na Agenda, os custos e as parcelas do Financeiro. Os clientes cadastrados continuam na base. Não pode ser desfeito.`;
+  if (!confirm(mensagem)) return;
+  const btn = document.getElementById('excluirColetivo');
+  if (btn){ btn.disabled = true; btn.textContent = 'Excluindo…'; }
+  try{
+    await apiCall('excluirEvento', { idEvento: evento['ID Evento'] });
+    loaded = false; await renderMain(); showToast('Evento coletivo excluído.');
+  } catch(err){
+    const bloqueadoPorPagamento = /recebido/.test(err.message);
+    if (bloqueadoPorPagamento && confirm(err.message + '\n\nSe for um evento de teste, você pode excluir mesmo assim — isso apaga também o valor recebido do Financeiro, sem estorno real. Confirma a exclusão forçada?')){
+      try{
+        await apiCall('excluirEvento', { idEvento: evento['ID Evento'], forcar: true });
+        loaded = false; await renderMain(); showToast('Evento coletivo excluído.');
+        return;
+      } catch(err2){ showToast('❌ ' + err2.message); }
+    } else {
+      showToast('❌ ' + err.message);
+    }
+    if (btn){ btn.disabled = false; btn.textContent = '🗑 Excluir evento'; }
+  }
 }
