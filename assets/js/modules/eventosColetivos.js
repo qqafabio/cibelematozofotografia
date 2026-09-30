@@ -233,8 +233,14 @@ async function importarParticipantesUI(idEvento){
 }
 async function salvarParticipante(idEvento, idParticipante, campos){
   try{
-    await apiCall('atualizarParticipante', Object.assign({ id: idParticipante }, campos));
-    loaded = false; await carregarTudo();
+    const r = await apiCall('atualizarParticipante', Object.assign({ id: idParticipante }, campos));
+    // atualizarParticipante devolve o estado fresco — evita um carregarTudo extra (mais rápido).
+    if (r && Array.isArray(r.participantes) && Array.isArray(r.financeiro)){
+      participantes = r.participantes;
+      financeiro = r.financeiro;
+    } else {
+      loaded = false; await carregarTudo();
+    }
     abrirDetalheColetivo(idEvento);
     showToast('Participante atualizado.');
   } catch(err){ showToast('❌ ' + err.message); }

@@ -175,7 +175,7 @@ Ao mexer no JS, valide a sintaxe de cada arquivo antes de publicar: `node --chec
 
 ### 2.8 Atualizando depois de publicado
 
-- **Mudou algo no front** (`crm.html`, `assets/css/*` ou `assets/js/*`): edite e suba de novo no GitHub. Vale na hora (o sufixo `?v=2.8.0` nas tags ajuda a furar o cache; incremente-o em mudanças grandes).
+- **Mudou algo no front** (`crm.html`, `assets/css/*` ou `assets/js/*`): edite e suba de novo no GitHub. Vale na hora (o sufixo `?v=2.8.1` nas tags ajuda a furar o cache; incremente-o em mudanças grandes).
 - **Mudou algo no back-end** (`backend.txt`): cole o conteúdo atualizado no `Código.gs`, no editor do Apps Script, e crie uma **Nova implantação** — sem isso, o CRM continua rodando a versão antiga do back-end mesmo com o `backend.txt` já atualizado aqui no repositório.
 
 ### 2.9 Cadastro de Pacotes (v2.7 — Fase 1)
@@ -241,6 +241,20 @@ v2.8 adiciona o conceito de **evento coletivo** sem quebrar os eventos individua
 
 > ⚠️ Esta fase também mexe no back-end (`backend.txt`) — é preciso **reimplantar** o `Código.gs`
 > (Nova implantação) para as abas/colunas novas e as actions de participantes passarem a existir.
+
+#### Correções v2.8.1 (após teste real)
+
+- **Status na importação por participante:** cada nome importado recebe **"Interessado"** quando
+  vem com telefone e **"Sem contato"** quando vem sem telefone (antes ficava "Comprou" para todos).
+- **Uma conta por participante no Financeiro:** o Financeiro agrupava as contas só por `ID Evento`,
+  então todos os participantes de um evento coletivo colapsavam numa **conta única** (a do 1º nome,
+  com a soma das parcelas). Agora o agrupamento é por **`ID Evento` + `ID Cliente`** — cada
+  participante é uma conta própria, onde entrada/parcelas/pagamento são lançados; editar ou excluir
+  a conta de um participante não afeta os demais. Eventos individuais (sem `ID Cliente`) seguem como
+  antes, uma conta por evento.
+- **Fotos extras mais rápidas:** lançar a quantidade de fotos extras de um participante deixou de
+  passar por `salvarConta` (que sincronizava a Agenda a cada mudança) e de recarregar tudo — agora
+  grava direto no Financeiro e atualiza só o estado necessário.
 
 ---
 

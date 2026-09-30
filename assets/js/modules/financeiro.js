@@ -11,13 +11,13 @@ async function excluirContaComConfirmacao(conta){
   const btn = document.getElementById('excluirConta');
   if (btn){ btn.disabled = true; btn.textContent = 'Excluindo…'; }
   try{
-    await apiCall('excluirContaFinanceiro', { idEvento: conta.idEvento });
+    await apiCall('excluirContaFinanceiro', { idEvento: conta.idEvento, idCliente: conta.idCliente || '' });
     loaded = false; fecharOverlay(); await renderMain(); showToast('Excluído.');
   } catch(err){
     const bloqueadoPorPagamento = /recebido/.test(err.message);
     if (bloqueadoPorPagamento && confirm(err.message + '\n\nSe for uma conta de teste, você pode excluir mesmo assim — isso apaga também o valor recebido, sem estorno real. Confirma a exclusão forçada?')){
       try{
-        await apiCall('excluirContaFinanceiro', { idEvento: conta.idEvento, forcar: true });
+        await apiCall('excluirContaFinanceiro', { idEvento: conta.idEvento, idCliente: conta.idCliente || '', forcar: true });
         loaded = false; fecharOverlay(); await renderMain(); showToast('Excluído.');
         return;
       } catch(err2){ mostrarErro('contaErr', err2.message); }
@@ -31,8 +31,11 @@ async function excluirContaComConfirmacao(conta){
 function agruparContas(){
   const grupos = {};
   financeiro.forEach(p => {
-    const key = p['ID Evento'];
-    if (!grupos[key]) grupos[key] = { idEvento: key, cliente: p['Cliente'], parcelas: [] };
+    // Em evento coletivo, cada participante (ID Cliente) é uma conta própria sob o mesmo
+    // ID Evento. Em evento individual, ID Cliente é vazio → 1 conta por evento (sem mudança).
+    const idCliente = p['ID Cliente'] || '';
+    const key = p['ID Evento'] + '|' + idCliente;
+    if (!grupos[key]) grupos[key] = { key: key, idEvento: p['ID Evento'], idCliente: idCliente, cliente: p['Cliente'], parcelas: [] };
     grupos[key].parcelas.push(p);
   });
   return Object.values(grupos).map(g => {
@@ -71,7 +74,7 @@ function desenharTabelaFinanceiro(){
     <table class="responsive-table">
       <thead><tr><th>Cliente</th><th>Parcelas</th><th>Total previsto</th><th>Recebido</th><th>Saldo</th><th>Status</th></tr></thead>
       <tbody>${ordenados.map(c => `
-        <tr class="clickable" data-id="${esc(c.idEvento)}">
+        <tr class="clickable" data-id="${esc(c.key)}">
           <td data-label="Cliente">${esc(c.cliente)}</td><td data-label="Parcelas">${c.parcelas.length}</td>
           <td data-label="Total previsto">${formatBRL(c.totalPrevisto)}</td><td data-label="Recebido">${formatBRL(c.totalPago)}</td>
           <td data-label="Saldo">${formatBRL(c.saldo)}</td>
@@ -79,7 +82,7 @@ function desenharTabelaFinanceiro(){
         </tr>`).join('')}</tbody>
     </table>`;
   el.querySelectorAll('tr.clickable').forEach(row => {
-    row.addEventListener('click', () => abrirFormConta(contas.find(c => String(c.idEvento) === row.dataset.id)));
+    row.addEventListener('click', () => abrirFormConta(contas.find(c => String(c.key) === row.dataset.id)));
   });
 }
 function abrirFormConta(conta){
@@ -122,7 +125,7 @@ function abrirFormConta(conta){
       </div>
     </div>`;
   document.getElementById('cancelarConta').addEventListener('click', fecharOverlay);
-  document.getElementById('salvarContaBtn').addEventListener('click', () => salvarConta(editando ? conta.idEvento : null));
+  document.getElementById('salvarContaBtn').addEventListener('click', () => salvarConta(editando ? conta : null));
   if (editando){
     document.getElementById('excluirConta').addEventListener('click', () => excluirContaComConfirmacao(conta));
   }
@@ -195,10 +198,10 @@ function renderLinhasParcelas(parcelasExistentes){
   wrap.querySelectorAll('.p-valor').forEach(inp => inp.addEventListener('input', atualizarSaldoEventoInfo));
   atualizarSaldoEventoInfo();
 }
-async function salvarConta(idEventoExistente){
-  const idEvento = idEventoExistente || document.getElementById('f_idEvento').value;
+async function salvarConta(contaExistente){
+  const idEvento = (contaExistente && contaExistente.idEvento) || document.getElementById('f_idEvento').value;
   if (!idEvento){ mostrarErro('contaErr','Escolha um evento.'); return; }
- 
+
   const entradaValor = Number(document.getElementById('f_entradaValor').value || 0);
   const entrada = entradaValor > 0 ? {
     idParcela: document.getElementById('f_entradaIdParcela').value || undefined,
@@ -207,7 +210,7 @@ async function salvarConta(idEventoExistente){
     formaPagamento: document.getElementById('f_entradaForma').value,
     dataPagamento: document.getElementById('f_entradaDataPagamento').value.trim(),
   } : null;
- 
+
   const parcelas = Array.from(document.querySelectorAll('.linha-parcela')).map(linha => ({
     idParcela: linha.dataset.idParcela || undefined,
     tipoCobranca: linha.querySelector('.p-tipo').value,
@@ -220,11 +223,19 @@ async function salvarConta(idEventoExistente){
   }));
   if (parcelas.some(p => !p.valor)){ mostrarErro('contaErr','Preencha o valor de todas as parcelas.'); return; }
   if (!entrada && !parcelas.length){ mostrarErro('contaErr','Informe a entrada ou ao menos uma parcela.'); return; }
- 
+
+  // Conta de participante (evento coletivo): mantém o vínculo com o cliente ao salvar,
+  // para não colar a parcela no responsável do evento.
+  const payload = { idEvento, entrada, parcelas };
+  if (contaExistente && contaExistente.idCliente){
+    payload.idCliente = contaExistente.idCliente;
+    payload.clienteNome = contaExistente.cliente;
+  }
+
   const btn = document.getElementById('salvarContaBtn'); btn.disabled = true; btn.textContent = 'Salvando…';
   try{
-    await apiCall('salvarConta', { idEvento, entrada, parcelas });
+    await apiCall('salvarConta', payload);
     loaded = false; fecharOverlay(); await renderMain(); showToast('Conta salva.');
-  } catch(err){ mostrarErro('contaErr', err.message); btn.disabled=false; btn.textContent = idEventoExistente?'Salvar conta':'Criar conta'; }
+  } catch(err){ mostrarErro('contaErr', err.message); btn.disabled=false; btn.textContent = contaExistente?'Salvar conta':'Criar conta'; }
 }
 
