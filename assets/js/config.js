@@ -13,6 +13,7 @@ const NAV = [
   { id:'dashboard', label:'Dashboard', ready:true },
   { id:'clientes', label:'Clientes', ready:true },
   { id:'eventos', label:'Eventos · Agenda', ready:true },
+  { id:'pacotes', label:'Pacotes', ready:true },
   { id:'leads', label:'CRM · Orçamentos', ready:true },
   { id:'financeiro', label:'Financeiro', ready:true },
   { id:'contasEmAtraso', label:'📧 Cobranças', ready:true },

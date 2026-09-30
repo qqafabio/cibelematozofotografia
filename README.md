@@ -151,8 +151,8 @@ assets/js/
   ui.js                  janela flutuante, toast, overlay, helpers (esc, máscaras, formatBRL...)
   router.js              renderNav + renderMain (roteador de views) + navegação mobile
   main.js                inicialização (carrega por último)
-  modules/               um arquivo por tela: dashboard, clientes, eventos, leads,
-                         financeiro, cobrancas, producao, custos, freelance,
+  modules/               um arquivo por tela: dashboard, clientes, eventos, pacotes,
+                         leads, financeiro, cobrancas, producao, custos, freelance,
                          templates, mensagens
 ```
 
@@ -175,8 +175,32 @@ Ao mexer no JS, valide a sintaxe de cada arquivo antes de publicar: `node --chec
 
 ### 2.8 Atualizando depois de publicado
 
-- **Mudou algo no front** (`crm.html`, `assets/css/*` ou `assets/js/*`): edite e suba de novo no GitHub. Vale na hora (o sufixo `?v=2.6.2` nas tags ajuda a furar o cache; incremente-o em mudanças grandes).
+- **Mudou algo no front** (`crm.html`, `assets/css/*` ou `assets/js/*`): edite e suba de novo no GitHub. Vale na hora (o sufixo `?v=2.7.0` nas tags ajuda a furar o cache; incremente-o em mudanças grandes).
 - **Mudou algo no back-end** (`backend.txt`): cole o conteúdo atualizado no `Código.gs`, no editor do Apps Script, e crie uma **Nova implantação** — sem isso, o CRM continua rodando a versão antiga do back-end mesmo com o `backend.txt` já atualizado aqui no repositório.
+
+### 2.9 Cadastro de Pacotes (v2.7 — Fase 1)
+
+Antes, "Pacote" era apenas um texto solto na aba `Listas` (sem valor). Na v2.7 os pacotes
+viraram **entidade própria**, com valor estruturado — base para os eventos coletivos (Fase 2).
+
+- **Nova tela "Pacotes"** (menu após Eventos), com CRUD completo (`assets/js/modules/pacotes.js`,
+  no molde de `modules/templates.js`). Campos: **Nome**, **Descrição**, **Valor pacote**,
+  **Qtd fotos incluídas** e **Valor foto extra**.
+- **Back-end:** nova aba `Pacotes` (colunas `ID`, `Nome`, `Descrição`, `Valor pacote`,
+  `Qtd fotos incluídas`, `Valor foto extra`, `Data criação`, `Data atualização`) e as actions
+  `listarPacotes` / `criarPacote` / `atualizarPacote` / `deletarPacote`. `carregarTudo` passou
+  a devolver `pacotes`. Na primeira carga, `garantirAbaPacotes_` **cria a aba e semeia** os
+  nomes que já existiam na lista `Pacote` (com valor 0, a preencher) — sem recadastro manual.
+- **Integração do campo "Pacote"** (Eventos e Leads): o `<select>` agora lê do cadastro de
+  Pacotes em vez da lista de texto, e ao escolher um pacote o valor é **autopreenchido** a
+  partir do "Valor pacote" do cadastro (`opcoesPacotes` / `vincularAutoValorPacote` em
+  `modules/pacotes.js`). Em **Eventos**, preenche o campo "Valor pacote" (sempre reflete a
+  escolha); em **Leads**, preenche "Valor estimado" apenas quando estiver vazio (não
+  sobrescreve um valor digitado à mão). Se ainda não houver pacotes cadastrados, o campo cai
+  no fallback da lista antiga, sem quebrar os formulários.
+
+> ⚠️ Esta fase mexe no back-end (`backend.txt`) — é preciso **reimplantar** o `Código.gs`
+> (Nova implantação) para a aba `Pacotes` e as novas actions passarem a existir.
 
 ---
 

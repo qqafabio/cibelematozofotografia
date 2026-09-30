@@ -88,7 +88,7 @@ function abrirFormEvento(evento){
           <div class="field"><label>Cidade</label><input id="f_cidade" value="${esc(editando?evento['Cidade']:'')}"></div>
         </div>
         <div class="row3">
-          <div class="field"><label>Pacote</label><select id="f_pacote">${opcoesSelect(listas['Pacote'], editando?evento['Pacote']:'')}</select></div>
+          <div class="field"><label>Pacote</label><select id="f_pacote">${opcoesPacotes(editando?evento['Pacote']:'')}</select></div>
           <div class="field"><label>Valor pacote</label><input id="f_valorPacote" type="number" step="0.01" value="${esc(editando?evento['Valor pacote']:'')}"></div>
           <div class="field"><label>Valor final</label><input id="f_valorFinal" type="number" step="0.01" value="${esc(editando?evento['Valor final']:'')}"></div>
         </div>
@@ -108,6 +108,7 @@ function abrirFormEvento(evento){
   aplicarMascara('f_data', maskData);
   aplicarMascara('f_horaIni', maskHora);
   aplicarMascara('f_horaFim', maskHora);
+  vincularAutoValorPacote('f_pacote', 'f_valorPacote');
 }
 async function salvarEvento(idEvento){
   const idCliente = document.getElementById('f_idCliente').value;

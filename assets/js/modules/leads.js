@@ -56,7 +56,7 @@ function abrirFormLead(lead){
         </div>
         <div class="row2">
           <div class="field"><label>Serviço de interesse</label><select id="f_servico">${opcoesSelect(listas['Serviço'], editando?lead['Serviço de interesse']:'')}</select></div>
-          <div class="field"><label>Pacote</label><select id="f_pacote">${opcoesSelect(listas['Pacote'], editando?lead['Pacote']:'')}</select></div>
+          <div class="field"><label>Pacote</label><select id="f_pacote">${opcoesPacotes(editando?lead['Pacote']:'')}</select></div>
         </div>
         <div class="row2">
           <div class="field"><label>Origem</label><select id="f_origem">${opcoesSelect(listas['Canal'], editando?lead['Origem']:'')}</select></div>
@@ -85,6 +85,7 @@ function abrirFormLead(lead){
   aplicarMascara('f_whatsapp', maskWhatsapp);
   aplicarMascara('f_dataDesejada', maskData);
   aplicarMascara('f_proximoContato', maskData);
+  vincularAutoValorPacote('f_pacote', 'f_valorEstimado', { somenteSeVazio: true });
 }
 async function salvarLead(idLead){
   const dados = {

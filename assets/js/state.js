@@ -14,6 +14,7 @@ let contasEmAtraso = [];
 let producao = [];
 let custos = [];
 let templates = [];
+let pacotes = [];
 let listas = {};
 let freelanceEventos = [];
 let dashboardCobrancas = null;
