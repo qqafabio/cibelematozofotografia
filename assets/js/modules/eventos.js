@@ -29,9 +29,10 @@ async function excluirEventoComConfirmacao(evento){
 }
 /* ============ EVENTOS ============ */
 function renderEventos(main){
+  const totalIndividuais = eventos.filter(e => String(e['Coletivo']) !== 'Sim').length;
   main.innerHTML = `
     <div class="view-header">
-      <div><h1>Eventos</h1><p>${eventos.length} registrados. Novo evento cria automaticamente o compromisso na Agenda.</p></div>
+      <div><h1>Eventos</h1><p>${totalIndividuais} registrados. Novo evento cria automaticamente o compromisso na Agenda.</p></div>
       <button class="btn-primary" id="novoEventoBtn">+ Novo evento</button>
     </div>
     <div class="panel"><div id="tabelaEventos"></div></div>
@@ -41,8 +42,9 @@ function renderEventos(main){
 }
 function desenharTabelaEventos(){
   const el = document.getElementById('tabelaEventos');
-  if (!eventos.length){ el.innerHTML = `<div class="empty-state">Nenhum evento cadastrado ainda.</div>`; return; }
-  const ordenados = [...eventos].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
+  const individuais = eventos.filter(e => String(e['Coletivo']) !== 'Sim');
+  if (!individuais.length){ el.innerHTML = `<div class="empty-state">Nenhum evento cadastrado ainda.</div>`; return; }
+  const ordenados = [...individuais].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
   el.innerHTML = `
     <table class="responsive-table">
       <thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Pacote</th><th>Valor</th><th>Status</th></tr></thead>

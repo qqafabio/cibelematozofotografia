@@ -151,9 +151,9 @@ assets/js/
   ui.js                  janela flutuante, toast, overlay, helpers (esc, máscaras, formatBRL...)
   router.js              renderNav + renderMain (roteador de views) + navegação mobile
   main.js                inicialização (carrega por último)
-  modules/               um arquivo por tela: dashboard, clientes, eventos, pacotes,
-                         leads, financeiro, cobrancas, producao, custos, freelance,
-                         templates, mensagens
+  modules/               um arquivo por tela: dashboard, clientes, eventos,
+                         eventosColetivos, pacotes, leads, financeiro, cobrancas,
+                         producao, custos, freelance, templates, mensagens
 ```
 
 > ⚠️ **Importante — não converter para ES Modules.** Os arquivos são carregados como
@@ -175,7 +175,7 @@ Ao mexer no JS, valide a sintaxe de cada arquivo antes de publicar: `node --chec
 
 ### 2.8 Atualizando depois de publicado
 
-- **Mudou algo no front** (`crm.html`, `assets/css/*` ou `assets/js/*`): edite e suba de novo no GitHub. Vale na hora (o sufixo `?v=2.7.0` nas tags ajuda a furar o cache; incremente-o em mudanças grandes).
+- **Mudou algo no front** (`crm.html`, `assets/css/*` ou `assets/js/*`): edite e suba de novo no GitHub. Vale na hora (o sufixo `?v=2.8.0` nas tags ajuda a furar o cache; incremente-o em mudanças grandes).
 - **Mudou algo no back-end** (`backend.txt`): cole o conteúdo atualizado no `Código.gs`, no editor do Apps Script, e crie uma **Nova implantação** — sem isso, o CRM continua rodando a versão antiga do back-end mesmo com o `backend.txt` já atualizado aqui no repositório.
 
 ### 2.9 Cadastro de Pacotes (v2.7 — Fase 1)
@@ -201,6 +201,46 @@ viraram **entidade própria**, com valor estruturado — base para os eventos co
 
 > ⚠️ Esta fase mexe no back-end (`backend.txt`) — é preciso **reimplantar** o `Código.gs`
 > (Nova implantação) para a aba `Pacotes` e as novas actions passarem a existir.
+
+### 2.10 Eventos Coletivos + Participantes (v2.8 — Fase 2)
+
+Alguns eventos da Cibele têm **muitos clientes num único evento** (Investidura, Formatura,
+Crisma, Primeira Comunhão, Casamento Comunitário). O CRM modelava "1 evento = 1 cliente"; a
+v2.8 adiciona o conceito de **evento coletivo** sem quebrar os eventos individuais.
+
+- **Nova tela "Eventos Coletivos"** (menu após Eventos — `assets/js/modules/eventosColetivos.js`):
+  - **Cabeçalho do evento** (criar/editar): tipo, data, horário, local, cidade, **organizador**
+    (igreja/escola — é o responsável, no lugar do cliente), **pacote padrão** (autopreenche o
+    valor por participante) e status. Um evento coletivo é um `Evento` com flag
+    **`Coletivo = "Sim"`** — reaproveita a **Produção única** e a **Agenda única** do fluxo
+    normal (criadas automaticamente), sem `ID Cliente`.
+  - **Importar participantes**: cole uma lista (um por linha, aceita `Nome` ou `Nome, WhatsApp`).
+    Cada nome vira **Cliente real** (dedup por WhatsApp via `localizarOuCriarCliente_`), entra
+    na aba `Participantes` e recebe **uma conta pendente no Financeiro** com o valor do pacote —
+    **sem vencimento**, para não entrar em Cobranças até haver uma data definida.
+  - **Tabela de participantes**: busca por nome, **status de compra** inline
+    (Sem contato / Interessado / Comprou / Pago / Não quis) e **qtd de fotos extras** inline;
+    cada linha mostra previsto / pago / **saldo** calculado do Financeiro do participante.
+- **Eventos individuais** (tela "Eventos") passam a **esconder** os coletivos
+  (`Coletivo = "Sim"`), que vivem só na tela nova — sem duplicar na lista.
+- **Back-end:**
+  - Aba `Eventos` ganha as colunas `Coletivo` e `Organizador` (criadas sob demanda por
+    `garantirColunas_`). Nova action `criarEventoColetivo` (não cria conta — as contas nascem
+    por participante).
+  - Nova aba `Participantes` (`ID`, `ID Evento`, `ID Cliente`, `Nome participante`, `WhatsApp`,
+    `Status compra`, `Qtd fotos extras`, `Observações`, `Data criação`) + actions
+    `listarParticipantes` / `importarParticipantes` / `atualizarParticipante`. `carregarTudo`
+    passou a devolver `participantes`.
+  - **Financeiro ganha a coluna `ID Cliente`** para distinguir a conta de cada participante sob
+    o mesmo evento coletivo (antes o vínculo era só o nome copiado). `salvarConta` foi estendida
+    de forma **retrocompatível**: aceita `idCliente`/`clienteNome` e, quando presentes, não
+    sobrescreve com o responsável do evento; `listarFinanceiro` preserva o nome do participante.
+  - `atualizarParticipante`: ao mudar **fotos extras**, (re)gera uma parcela "Fotos extras"
+    = `qtd × Valor foto extra` do pacote; status **"Não quis"** marca as contas não-pagas do
+    participante como `Cancelado` (somem de Cobranças).
+
+> ⚠️ Esta fase também mexe no back-end (`backend.txt`) — é preciso **reimplantar** o `Código.gs`
+> (Nova implantação) para as abas/colunas novas e as actions de participantes passarem a existir.
 
 ---
 

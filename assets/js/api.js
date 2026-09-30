@@ -20,6 +20,7 @@ async function carregarTudo(){
   freelanceEventos = r.freelanceEventos; templates = r.templates || [];
   contasEmAtraso = r.contasEmAtraso || [];
   pacotes = r.pacotes || [];
+  participantes = r.participantes || [];
   loaded = true;
 }
  

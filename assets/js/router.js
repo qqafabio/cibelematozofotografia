@@ -41,6 +41,7 @@ async function renderMain(){
   if (currentView === 'dashboard') renderDashboard(main);
   else if (currentView === 'clientes') renderClientes(main);
   else if (currentView === 'eventos') renderEventos(main);
+  else if (currentView === 'eventosColetivos') renderEventosColetivos(main);
   else if (currentView === 'pacotes') renderPacotes(main);
   else if (currentView === 'leads') renderLeads(main);
   else if (currentView === 'financeiro') renderFinanceiro(main);

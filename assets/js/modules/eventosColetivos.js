@@ -1,0 +1,241 @@
+/* ============================================================
+   CRM · Cibele Matozo Fotografia — Módulo: Eventos Coletivos
+   Carregado como <script> clássico (escopo global compartilhado).
+   NÃO usar import/export: os handlers onclick inline e o estado
+   global dependem deste escopo. Ordem de carga definida em crm.html.
+   ============================================================ */
+
+/* ============ EVENTOS COLETIVOS + PARTICIPANTES ============ */
+/* Um evento coletivo é um Evento com "Coletivo" = "Sim" (muitos clientes num
+   só evento: Formatura, Crisma, Investidura, etc.). O responsável é o
+   organizador (igreja/escola); cada participante vira Cliente real e ganha uma
+   conta no Financeiro com o valor do pacote. */
+
+const PARTICIPANTE_STATUS = ['Sem contato', 'Interessado', 'Comprou', 'Pago', 'Não quis'];
+
+function eventosColetivosLista(){
+  return eventos.filter(e => String(e['Coletivo']) === 'Sim');
+}
+function participantesDoEvento(idEvento){
+  return (participantes || []).filter(p => String(p['ID Evento']) === String(idEvento));
+}
+/* Soma as contas do participante no Financeiro (ignora Canceladas). */
+function contasDoParticipante(idEvento, idCliente){
+  const linhas = (financeiro || []).filter(f =>
+    String(f['ID Evento']) === String(idEvento) &&
+    String(f['ID Cliente']) === String(idCliente) &&
+    String(f['Status']) !== 'Cancelado');
+  const previsto = linhas.reduce((s, f) => s + Number(f['Valor previsto'] || 0), 0);
+  const pago = linhas.reduce((s, f) => s + Number(f['Valor pago'] || 0), 0);
+  return { previsto, pago, saldo: previsto - pago };
+}
+
+function renderEventosColetivos(main){
+  const lista = eventosColetivosLista();
+  main.innerHTML = `
+    <div class="view-header">
+      <div><h1>Eventos Coletivos</h1><p>${lista.length} evento${lista.length===1?'':'s'} com muitos participantes (formatura, crisma, investidura…).</p></div>
+      <button class="btn-primary" id="novoColetivoBtn">+ Novo evento coletivo</button>
+    </div>
+    <div class="panel"><div id="tabelaColetivos"></div></div>
+  `;
+  document.getElementById('novoColetivoBtn').addEventListener('click', () => abrirFormEventoColetivo(null));
+  desenharTabelaColetivos();
+}
+function desenharTabelaColetivos(){
+  const el = document.getElementById('tabelaColetivos');
+  const lista = eventosColetivosLista();
+  if (!lista.length){ el.innerHTML = `<div class="empty-state">Nenhum evento coletivo cadastrado ainda.</div>`; return; }
+  const ordenados = [...lista].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
+  el.innerHTML = `
+    <table class="responsive-table">
+      <thead><tr><th>Data</th><th>Tipo</th><th>Organizador</th><th>Local</th><th>Participantes</th><th>Pacote</th></tr></thead>
+      <tbody>${ordenados.map(e => `
+        <tr class="clickable" data-id="${esc(e['ID Evento'])}">
+          <td data-label="Data">${esc(e['Data do evento'])}</td>
+          <td data-label="Tipo">${esc(e['Tipo de evento'])}</td>
+          <td data-label="Organizador">${esc(e['Organizador']||e['Cliente / Responsável'])}</td>
+          <td data-label="Local">${esc(e['Local'])}</td>
+          <td data-label="Participantes">${participantesDoEvento(e['ID Evento']).length}</td>
+          <td data-label="Pacote">${esc(e['Pacote'])}</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+  el.querySelectorAll('tr.clickable').forEach(row => {
+    row.addEventListener('click', () => {
+      const ev = eventos.find(e => String(e['ID Evento']) === row.dataset.id);
+      abrirDetalheColetivo(ev['ID Evento']);
+    });
+  });
+}
+
+function abrirFormEventoColetivo(evento){
+  const editando = !!evento;
+  document.getElementById('overlayRoot').innerHTML = `
+    <div class="form-overlay" id="overlay">
+      <div class="form-panel">
+        <h2>${editando ? 'Editar evento coletivo' : 'Novo evento coletivo'}</h2>
+        <div class="form-err" id="coletivoErr" style="display:none;"></div>
+        <div class="row2">
+          <div class="field"><label>Tipo de evento</label><select id="f_tipo">${opcoesSelect(listas['Tipo de evento'], editando?evento['Tipo de evento']:'')}</select></div>
+          <div class="field"><label>Organizador (igreja/escola)</label><input id="f_organizador" value="${esc(editando?(evento['Organizador']||evento['Cliente / Responsável']):'')}"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Status</label><select id="f_status">${opcoesSelect(listas['Status evento'], editando?evento['Status']:'')}</select></div>
+          <div class="field"><label>Data do evento</label><input id="f_data" placeholder="DD/MM/AAAA" value="${esc(editando?evento['Data do evento']:'')}"></div>
+          <div class="field"><label>Local</label><input id="f_local" value="${esc(editando?evento['Local']:'')}"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Hora início</label><input id="f_horaIni" placeholder="HH:MM" value="${esc(editando?evento['Hora início']:'')}"></div>
+          <div class="field"><label>Hora fim</label><input id="f_horaFim" placeholder="HH:MM" value="${esc(editando?evento['Hora fim']:'')}"></div>
+          <div class="field"><label>Cidade</label><input id="f_cidade" value="${esc(editando?evento['Cidade']:'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Pacote padrão</label><select id="f_pacote">${opcoesPacotes(editando?evento['Pacote']:'')}</select></div>
+          <div class="field"><label>Valor pacote (por participante)</label><input id="f_valorPacote" type="number" step="0.01" value="${esc(editando?evento['Valor pacote']:'')}"></div>
+        </div>
+        <div class="field"><label>Observações</label><textarea id="f_obs" rows="2">${esc(editando?evento['Observações']:'')}</textarea></div>
+        <div class="form-actions">
+          <button class="btn-ghost" id="cancelarColetivo">Cancelar</button>
+          <button class="btn-primary" id="salvarColetivo">${editando?'Salvar alterações':'Criar evento coletivo'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cancelarColetivo').addEventListener('click', fecharOverlay);
+  document.getElementById('salvarColetivo').addEventListener('click', () => salvarEventoColetivo(editando ? evento['ID Evento'] : null));
+  aplicarMascara('f_data', maskData);
+  aplicarMascara('f_horaIni', maskHora);
+  aplicarMascara('f_horaFim', maskHora);
+  vincularAutoValorPacote('f_pacote', 'f_valorPacote');
+}
+async function salvarEventoColetivo(idEvento){
+  const dados = {
+    status: document.getElementById('f_status').value,
+    tipoEvento: document.getElementById('f_tipo').value.trim(),
+    organizador: document.getElementById('f_organizador').value.trim(),
+    dataEvento: document.getElementById('f_data').value.trim(),
+    horaInicio: document.getElementById('f_horaIni').value.trim(),
+    horaFim: document.getElementById('f_horaFim').value.trim(),
+    local: document.getElementById('f_local').value.trim(),
+    cidade: document.getElementById('f_cidade').value.trim(),
+    pacote: document.getElementById('f_pacote').value.trim(),
+    valorPacote: Number(document.getElementById('f_valorPacote').value || 0),
+    observacoes: document.getElementById('f_obs').value.trim(),
+  };
+  if (!dados.organizador){ mostrarErro('coletivoErr','Informe o organizador (igreja/escola).'); return; }
+  const btn = document.getElementById('salvarColetivo'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try{
+    let idAlvo = idEvento;
+    if (idEvento){
+      await apiCall('atualizarEvento', Object.assign({ idEvento }, dados));
+    } else {
+      const novo = await apiCall('criarEventoColetivo', dados);
+      idAlvo = novo && novo['ID Evento'];
+    }
+    loaded = false; await carregarTudo(); fecharOverlay();
+    if (idAlvo) abrirDetalheColetivo(idAlvo); else renderMain();
+    showToast(idEvento ? 'Evento atualizado.' : 'Evento coletivo criado.');
+  } catch(err){ mostrarErro('coletivoErr', err.message); btn.disabled=false; btn.textContent = idEvento?'Salvar alterações':'Criar evento coletivo'; }
+}
+
+/* ---------- Detalhe do evento coletivo (cabeçalho + importação + participantes) ---------- */
+function abrirDetalheColetivo(idEvento){
+  const main = document.getElementById('mainArea');
+  const ev = eventos.find(e => String(e['ID Evento']) === String(idEvento));
+  if (!ev){ renderMain(); return; }
+  const parts = participantesDoEvento(idEvento);
+  const totalPrevisto = parts.reduce((s,p) => s + contasDoParticipante(idEvento, p['ID Cliente']).previsto, 0);
+  const totalPago = parts.reduce((s,p) => s + contasDoParticipante(idEvento, p['ID Cliente']).pago, 0);
+  main.innerHTML = `
+    <div class="view-header">
+      <div>
+        <h1>${esc(ev['Tipo de evento']||'Evento coletivo')} · ${esc(ev['Organizador']||ev['Cliente / Responsável'])}</h1>
+        <p>${esc(ev['Data do evento']||'(sem data)')} · ${esc(ev['Local']||'')} · Pacote: ${esc(ev['Pacote']||'—')} (${formatBRL(ev['Valor pacote'])})</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-ghost" id="voltarColetivos">← Voltar</button>
+        <button class="btn-ghost" id="editarColetivo">✏️ Editar cabeçalho</button>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px;padding:16px;">
+      <div style="display:flex;gap:24px;flex-wrap:wrap;">
+        <div><strong>${parts.length}</strong> participante${parts.length===1?'':'s'}</div>
+        <div>Previsto: <strong>${formatBRL(totalPrevisto)}</strong></div>
+        <div>Recebido: <strong>${formatBRL(totalPago)}</strong></div>
+        <div>Saldo: <strong>${formatBRL(totalPrevisto - totalPago)}</strong></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px;padding:16px;">
+      <h3 style="margin:0 0 8px;color:var(--gold);">Importar participantes</h3>
+      <p style="margin:0 0 8px;color:var(--ink-soft);font-size:13px;">Um por linha. Aceita só o nome, ou <code>Nome, WhatsApp</code>. Cada um vira Cliente e recebe uma conta com o valor do pacote (${formatBRL(ev['Valor pacote'])}).</p>
+      <textarea id="importarLista" rows="5" style="width:100%;font-family:monospace;font-size:13px;" placeholder="Maria Silva, (41) 99999-0000&#10;João Souza&#10;Ana Paula"></textarea>
+      <div class="form-err" id="importarErr" style="display:none;margin-top:8px;"></div>
+      <div style="margin-top:8px;text-align:right;"><button class="btn-primary" id="importarBtn">Importar lista</button></div>
+    </div>
+
+    <div class="search-box"><input type="text" id="buscaParticipante" placeholder="Buscar participante por nome…"></div>
+    <div class="panel"><div id="tabelaParticipantes"></div></div>
+  `;
+  document.getElementById('voltarColetivos').addEventListener('click', () => renderMain());
+  document.getElementById('editarColetivo').addEventListener('click', () => abrirFormEventoColetivo(ev));
+  document.getElementById('importarBtn').addEventListener('click', () => importarParticipantesUI(idEvento));
+  document.getElementById('buscaParticipante').addEventListener('input', e => desenharTabelaParticipantes(idEvento, e.target.value));
+  desenharTabelaParticipantes(idEvento, '');
+}
+function desenharTabelaParticipantes(idEvento, filtro){
+  const el = document.getElementById('tabelaParticipantes');
+  if (!el) return;
+  const f = (filtro||'').trim().toLowerCase();
+  const parts = participantesDoEvento(idEvento)
+    .filter(p => !f || String(p['Nome participante']||'').toLowerCase().includes(f));
+  if (!parts.length){ el.innerHTML = `<div class="empty-state">Nenhum participante ${f?'encontrado':'importado ainda'}.</div>`; return; }
+  el.innerHTML = `
+    <table class="responsive-table">
+      <thead><tr><th>Nome</th><th>Status</th><th>Fotos extras</th><th>Previsto</th><th>Pago</th><th>Saldo</th></tr></thead>
+      <tbody>${parts.map(p => {
+        const c = contasDoParticipante(idEvento, p['ID Cliente']);
+        const statusOpts = PARTICIPANTE_STATUS.map(s => `<option value="${esc(s)}" ${String(p['Status compra'])===s?'selected':''}>${esc(s)}</option>`).join('');
+        return `
+        <tr data-id="${esc(p['ID'])}">
+          <td data-label="Nome">${esc(p['Nome participante'])}</td>
+          <td data-label="Status"><select class="part-status" data-id="${esc(p['ID'])}" style="padding:4px;">${statusOpts}</select></td>
+          <td data-label="Fotos extras"><input class="part-extras" data-id="${esc(p['ID'])}" type="number" step="1" min="0" value="${esc(p['Qtd fotos extras']||0)}" style="width:70px;padding:4px;"></td>
+          <td data-label="Previsto">${formatBRL(c.previsto)}</td>
+          <td data-label="Pago">${formatBRL(c.pago)}</td>
+          <td data-label="Saldo"><strong>${formatBRL(c.saldo)}</strong></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  el.querySelectorAll('.part-status').forEach(sel => {
+    sel.addEventListener('change', () => salvarParticipante(idEvento, sel.dataset.id, { statusCompra: sel.value }));
+  });
+  el.querySelectorAll('.part-extras').forEach(inp => {
+    inp.addEventListener('change', () => salvarParticipante(idEvento, inp.dataset.id, { qtdFotosExtras: Number(inp.value || 0) }));
+  });
+}
+async function importarParticipantesUI(idEvento){
+  const raw = document.getElementById('importarLista').value;
+  const lista = String(raw || '').split('\n').map(linha => {
+    const l = linha.trim();
+    if (!l) return null;
+    const partes = l.split(',');
+    return { nome: (partes[0]||'').trim(), whatsapp: (partes[1]||'').trim() };
+  }).filter(x => x && x.nome);
+  if (!lista.length){ mostrarErro('importarErr', 'Cole ao menos um nome.'); return; }
+  const btn = document.getElementById('importarBtn'); btn.disabled = true; btn.textContent = 'Importando…';
+  try{
+    const r = await apiCall('importarParticipantes', { idEvento, lista });
+    loaded = false; await carregarTudo();
+    abrirDetalheColetivo(idEvento);
+    showToast(`Importados: ${r.criados} · Ignorados: ${r.ignorados}`);
+  } catch(err){ mostrarErro('importarErr', err.message); btn.disabled=false; btn.textContent = 'Importar lista'; }
+}
+async function salvarParticipante(idEvento, idParticipante, campos){
+  try{
+    await apiCall('atualizarParticipante', Object.assign({ id: idParticipante }, campos));
+    loaded = false; await carregarTudo();
+    abrirDetalheColetivo(idEvento);
+    showToast('Participante atualizado.');
+  } catch(err){ showToast('❌ ' + err.message); }
+}
