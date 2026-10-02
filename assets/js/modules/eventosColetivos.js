@@ -19,23 +19,30 @@ function eventosColetivosLista(){
 function participantesDoEvento(idEvento){
   return (participantes || []).filter(p => String(p['ID Evento']) === String(idEvento));
 }
-/* "Valor foto extra" do pacote do evento (espelha valorFotoExtraDoEvento_ do back-end),
-   para calcular o previsto localmente e atualizar a tela na hora, sem esperar a rede. */
+/* "Valor foto extra" aplicável ao evento (espelha valorFotoExtraDoEvento_ do back-end):
+   prioriza o valor próprio do evento; se não houver, cai no cadastro de Pacotes pelo nome.
+   Usado para calcular o previsto localmente e atualizar a tela na hora, sem esperar a rede. */
 function valorFotoExtraDoEventoFront(ev){
+  const doEvento = Number(ev && ev['Valor foto extra'] || 0);
+  if (doEvento > 0) return doEvento;
   const nome = String(ev && ev['Pacote'] || '').trim();
   if (!nome) return 0;
   const p = (pacotes || []).find(x => String(x['Nome']).trim() === nome);
   return p ? Number(p['Valor foto extra'] || 0) : 0;
 }
-/* Soma as contas do participante no Financeiro (ignora Canceladas). */
+/* Soma as contas do participante no Financeiro (ignora Canceladas). As linhas de
+   "Desconto" não entram no previsto: viram um abatimento à parte, subtraído do saldo. */
 function contasDoParticipante(idEvento, idCliente){
   const linhas = (financeiro || []).filter(f =>
     String(f['ID Evento']) === String(idEvento) &&
     String(f['ID Cliente']) === String(idCliente) &&
     String(f['Status']) !== 'Cancelado');
-  const previsto = linhas.reduce((s, f) => s + Number(f['Valor previsto'] || 0), 0);
+  const previsto = linhas.filter(f => String(f['Tipo cobrança']) !== 'Desconto')
+    .reduce((s, f) => s + Number(f['Valor previsto'] || 0), 0);
   const pago = linhas.reduce((s, f) => s + Number(f['Valor pago'] || 0), 0);
-  return { previsto, pago, saldo: previsto - pago };
+  const desconto = linhas.filter(f => String(f['Tipo cobrança']) === 'Desconto')
+    .reduce((s, f) => s + Number(f['Valor previsto'] || 0), 0);
+  return { previsto, pago, desconto, saldo: previsto - pago - desconto };
 }
 
 function renderEventosColetivos(main){
@@ -101,6 +108,10 @@ function abrirFormEventoColetivo(evento){
           <div class="field"><label>Pacote padrão</label><select id="f_pacote">${opcoesPacotes(editando?evento['Pacote']:'')}</select></div>
           <div class="field"><label>Valor pacote (por participante)</label><input id="f_valorPacote" type="number" step="0.01" value="${esc(editando?evento['Valor pacote']:'')}"></div>
         </div>
+        <div class="row2">
+          <div class="field"><label>Valor foto extra (por foto)</label><input id="f_valorFotoExtra" type="number" step="0.01" value="${esc(editando?evento['Valor foto extra']:'')}"></div>
+          <div class="field"></div>
+        </div>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="2">${esc(editando?evento['Observações']:'')}</textarea></div>
         <div class="form-actions">
           <button class="btn-ghost" id="cancelarColetivo">Cancelar</button>
@@ -113,7 +124,7 @@ function abrirFormEventoColetivo(evento){
   aplicarMascara('f_data', maskData);
   aplicarMascara('f_horaIni', maskHora);
   aplicarMascara('f_horaFim', maskHora);
-  vincularAutoValorPacote('f_pacote', 'f_valorPacote');
+  vincularAutoValorPacote('f_pacote', 'f_valorPacote', { inputFotoExtraId: 'f_valorFotoExtra' });
 }
 async function salvarEventoColetivo(idEvento){
   const dados = {
@@ -127,6 +138,7 @@ async function salvarEventoColetivo(idEvento){
     cidade: document.getElementById('f_cidade').value.trim(),
     pacote: document.getElementById('f_pacote').value.trim(),
     valorPacote: Number(document.getElementById('f_valorPacote').value || 0),
+    valorFotoExtra: Number(document.getElementById('f_valorFotoExtra').value || 0),
     observacoes: document.getElementById('f_obs').value.trim(),
   };
   if (!dados.organizador){ mostrarErro('coletivoErr','Informe o organizador (igreja/escola).'); return; }
@@ -150,14 +162,20 @@ async function salvarEventoColetivo(idEvento){
    esse trecho após uma edição, sem redesenhar a tela inteira. */
 function htmlResumoColetivo(idEvento){
   const parts = participantesDoEvento(idEvento);
-  const totalPrevisto = parts.reduce((s,p) => s + contasDoParticipante(idEvento, p['ID Cliente']).previsto, 0);
-  const totalPago = parts.reduce((s,p) => s + contasDoParticipante(idEvento, p['ID Cliente']).pago, 0);
+  let totalPrevisto = 0, totalPago = 0, totalDesconto = 0, totalSaldo = 0;
+  parts.forEach(p => {
+    const c = contasDoParticipante(idEvento, p['ID Cliente']);
+    totalPrevisto += c.previsto; totalPago += c.pago; totalDesconto += c.desconto;
+    totalSaldo += Math.max(0, c.saldo);
+  });
+  const descontoHtml = totalDesconto > 0 ? `<div>Desconto: <strong>${formatBRL(totalDesconto)}</strong></div>` : '';
   return `
     <div style="display:flex;gap:24px;flex-wrap:wrap;">
       <div><strong>${parts.length}</strong> participante${parts.length===1?'':'s'}</div>
       <div>Previsto: <strong>${formatBRL(totalPrevisto)}</strong></div>
       <div>Recebido: <strong>${formatBRL(totalPago)}</strong></div>
-      <div>Saldo: <strong>${formatBRL(totalPrevisto - totalPago)}</strong></div>
+      ${descontoHtml}
+      <div>Saldo: <strong>${formatBRL(totalSaldo)}</strong></div>
     </div>`;
 }
 function atualizarResumoDetalheColetivo(idEvento){
@@ -210,7 +228,7 @@ function desenharTabelaParticipantes(idEvento, filtro){
   if (!parts.length){ el.innerHTML = `<div class="empty-state">Nenhum participante ${f?'encontrado':'importado ainda'}.</div>`; return; }
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th>Nome</th><th>Status</th><th>Fotos extras</th><th>Previsto</th><th>Pago</th><th>Saldo</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Status</th><th>Fotos extras</th><th>Previsto</th><th>Pago</th><th>Desconto</th><th>Saldo</th></tr></thead>
       <tbody>${parts.map(p => {
         const c = contasDoParticipante(idEvento, p['ID Cliente']);
         const statusOpts = PARTICIPANTE_STATUS.map(s => `<option value="${esc(s)}" ${String(p['Status compra'])===s?'selected':''}>${esc(s)}</option>`).join('');
@@ -221,7 +239,8 @@ function desenharTabelaParticipantes(idEvento, filtro){
           <td data-label="Fotos extras"><input class="part-extras" data-id="${esc(p['ID'])}" type="number" step="1" min="0" value="${esc(p['Qtd fotos extras']||0)}" style="width:70px;padding:4px;"></td>
           <td data-label="Previsto">${formatBRL(c.previsto)}</td>
           <td data-label="Pago">${formatBRL(c.pago)}</td>
-          <td data-label="Saldo"><strong>${formatBRL(c.saldo)}</strong></td>
+          <td data-label="Desconto"><input class="part-desconto" data-id="${esc(p['ID'])}" type="number" step="0.01" min="0" value="${esc(c.desconto||'')}" style="width:90px;padding:4px;"></td>
+          <td data-label="Saldo"><strong>${formatBRL(Math.max(0, c.saldo))}</strong></td>
         </tr>`;
       }).join('')}</tbody>
     </table>`;
@@ -230,6 +249,9 @@ function desenharTabelaParticipantes(idEvento, filtro){
   });
   el.querySelectorAll('.part-extras').forEach(inp => {
     inp.addEventListener('change', () => salvarParticipante(idEvento, inp.dataset.id, { qtdFotosExtras: Number(inp.value || 0) }));
+  });
+  el.querySelectorAll('.part-desconto').forEach(inp => {
+    inp.addEventListener('change', () => salvarParticipante(idEvento, inp.dataset.id, { desconto: Number(inp.value || 0) }));
   });
 }
 async function importarParticipantesUI(idEvento){
@@ -281,6 +303,27 @@ function aplicarMudancaParticipanteLocal(ev, part, campos){
           'Cliente': part['Nome participante'], 'Tipo cobrança': 'Fotos extras',
           'Vencimento': '', 'Valor previsto': totalExtras, 'Status': 'Pendente',
           'Valor pago': 0, 'Saldo': totalExtras,
+        });
+      }
+    } else if (idx >= 0){
+      financeiro.splice(idx, 1);
+    }
+  }
+  if (campos.desconto !== undefined){
+    const desc = Number(campos.desconto || 0);
+    const idx = (financeiro || []).findIndex(f =>
+      String(f['ID Evento']) === String(idEvento) && String(f['ID Cliente']) === String(idCliente) &&
+      String(f['Tipo cobrança']) === 'Desconto');
+    if (desc > 0){
+      if (idx >= 0){
+        financeiro[idx]['Valor previsto'] = desc;
+        financeiro[idx]['Saldo'] = 0;
+      } else {
+        financeiro.push({
+          'ID Parcela': 'tmp-' + Date.now(), 'ID Evento': idEvento, 'ID Cliente': idCliente,
+          'Cliente': part['Nome participante'], 'Tipo cobrança': 'Desconto',
+          'Vencimento': '', 'Valor previsto': desc, 'Status': 'Aplicado',
+          'Valor pago': 0, 'Saldo': 0,
         });
       }
     } else if (idx >= 0){

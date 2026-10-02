@@ -272,6 +272,47 @@ v2.8 adiciona o conceito de **evento coletivo** sem quebrar os eventos individua
   💰 Financeiro, 🎬 Produção, 💸 Custos, 🤝 Freelance), no mesmo padrão de 📧 Cobranças, 📊 Análise e
   ⚙️ Templates.
 
+### 2.11 Desconto (R$) + Valor foto extra por evento + reaplicar valores (v2.9)
+
+A v2.9 nasceu do uso real da v2.8.x e cobre três frentes.
+
+**1. Desconto (R$) em quatro menus, separado por natureza.** "Desconto" tem dois significados
+diferentes no fluxo, e misturá-los causaria contagem dupla. Por isso cada menu trata o seu:
+
+- **Desconto no valor contratado** (grava uma coluna no próprio registro):
+  - **Eventos · Agenda** — novo campo **"Desconto (R$)"**. O **Valor final** passa a ser calculado ao
+    vivo como `Valor pacote − Desconto` (e continua editável para ajuste manual).
+  - **CRM · Orçamentos** — novo campo **"Desconto (R$)"** ao lado de "Valor estimado", com o texto
+    **"Valor com desconto"** atualizado na hora. Ao **fechar o lead** (virar evento), o desconto e o
+    valor já descontado são levados para o evento.
+- **Desconto no saldo a receber** (lançado como uma linha dedicada no Financeiro, `Tipo cobrança =
+  "Desconto"`, sem vencimento — por isso **não aparece em Cobranças**):
+  - **Financeiro** — campo **"Desconto (R$)"** na conta; abate o saldo que o cliente ainda deve.
+  - **Eventos Coletivos** — coluna **"Desconto"** por participante, abatendo o saldo daquela pessoa.
+  - Em ambos, a tabela ganhou a coluna **"Desconto"**; o **Saldo** nunca fica negativo na tela
+    (desconto maior que o previsto simplesmente quita a conta), e zerar o campo remove o desconto.
+
+**2. "Valor foto extra" por evento (com prioridade sobre o cadastro).** Antes, o valor da foto extra
+vinha **só** do cadastro de Pacotes — se o pacote não tivesse esse valor, o cálculo do coletivo dava
+zero. Agora a **modal do evento coletivo** tem o campo **"Valor foto extra"** (autopreenchido ao
+escolher o pacote, mas editável): quando preenchido no evento, ele **tem prioridade** sobre o cadastro.
+
+**3. Reaplicar valores aos participantes ao editar o coletivo.** Antes, a parcela do pacote do
+participante só era criada **na importação** e **só se o valor do pacote já existisse** naquele
+momento — digitar/corrigir o "Valor pacote" ou o "Valor foto extra" do evento **depois** não
+atualizava as contas já criadas (bug relatado). Agora, ao salvar o evento coletivo com um desses
+valores alterado, o sistema **reaplica** a todos os participantes: ajusta/cria a parcela do pacote e
+recalcula as fotos extras (`quantidade × valor`), **preservando o que já foi pago**.
+
+**4. Fotos extras na conta do Financeiro.** Consequência direta do item 2: com "Valor foto extra" > 0,
+a parcela **"Fotos extras"** passa a ser criada e aparece na conta do participante no Financeiro,
+agrupada por `ID Evento | ID Cliente`, e **permanece** ao salvar a conta.
+
+> **Reimplantação obrigatória do back-end:** a v2.9 altera o `Código.gs` (novas colunas `Desconto` e
+> `Valor foto extra`, reaplicação de valores ao editar coletivo e tratamento do desconto nas contas).
+> Depois do deploy do front, cole o conteúdo de `backend.txt` no `Código.gs` e faça **Nova
+> implantação** (ver "Atualizando depois de publicado" na Parte 2).
+
 ---
 
 ## Sobre os limites gratuitos

@@ -39,12 +39,17 @@ function agruparContas(){
     grupos[key].parcelas.push(p);
   });
   return Object.values(grupos).map(g => {
-    const totalPrevisto = g.parcelas.reduce((s,p) => s + Number(p['Valor previsto']||0), 0);
+    // Linhas "Desconto" não entram no previsto nem na contagem de parcelas: viram
+    // um abatimento à parte, subtraído do saldo (fonte única de verdade do desconto).
+    const parcelasReais = g.parcelas.filter(p => String(p['Tipo cobrança']) !== 'Desconto');
+    const totalPrevisto = parcelasReais.reduce((s,p) => s + Number(p['Valor previsto']||0), 0);
     const totalPago = g.parcelas.reduce((s,p) => s + Number(p['Valor pago']||0), 0);
-    const saldo = totalPrevisto - totalPago;
-    const temVencida = g.parcelas.some(p => p['Status'] === 'Vencida');
+    const desconto = g.parcelas.filter(p => String(p['Tipo cobrança']) === 'Desconto')
+      .reduce((s,p) => s + Number(p['Valor previsto']||0), 0);
+    const saldo = totalPrevisto - totalPago - desconto;
+    const temVencida = parcelasReais.some(p => p['Status'] === 'Vencida');
     const status = saldo <= 0 ? 'Quitado' : (temVencida ? 'Vencida' : (totalPago > 0 ? 'Parcial' : 'Pendente'));
-    return Object.assign(g, { totalPrevisto, totalPago, saldo, status });
+    return Object.assign(g, { totalPrevisto, totalPago, desconto, saldo, status, parcelasReais });
   });
 }
 function renderFinanceiro(main){
@@ -72,12 +77,13 @@ function desenharTabelaFinanceiro(){
   const ordenados = [...contas].sort((a,b) => Number(b.idEvento) - Number(a.idEvento));
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th>Cliente</th><th>Parcelas</th><th>Total previsto</th><th>Recebido</th><th>Saldo</th><th>Status</th></tr></thead>
+      <thead><tr><th>Cliente</th><th>Parcelas</th><th>Total previsto</th><th>Recebido</th><th>Desconto</th><th>Saldo</th><th>Status</th></tr></thead>
       <tbody>${ordenados.map(c => `
         <tr class="clickable" data-id="${esc(c.key)}">
-          <td data-label="Cliente">${esc(c.cliente)}</td><td data-label="Parcelas">${c.parcelas.length}</td>
+          <td data-label="Cliente">${esc(c.cliente)}</td><td data-label="Parcelas">${c.parcelasReais.length}</td>
           <td data-label="Total previsto">${formatBRL(c.totalPrevisto)}</td><td data-label="Recebido">${formatBRL(c.totalPago)}</td>
-          <td data-label="Saldo">${formatBRL(c.saldo)}</td>
+          <td data-label="Desconto">${c.desconto > 0 ? formatBRL(c.desconto) : '—'}</td>
+          <td data-label="Saldo">${formatBRL(Math.max(0, c.saldo))}</td>
           <td data-label="Status"><span class="status-pill ${c.status==='Quitado'?'confirmado':(c.status==='Vencida'?'vencida':'')}">${c.status}</span></td>
         </tr>`).join('')}</tbody>
     </table>`;
@@ -88,9 +94,10 @@ function desenharTabelaFinanceiro(){
 function abrirFormConta(conta){
   const editando = !!conta;
   const opcoesEventos = eventos.map(e => `<option value="${esc(e['ID Evento'])}">${esc(e['Cliente / Responsável'])} — ${esc(e['Data do evento'])}</option>`).join('');
-  // Separa a linha de Entrada (Tipo cobrança = "Entrada") das demais parcelas, se existir.
+  // Separa a linha de Entrada (Tipo cobrança = "Entrada") e a de Desconto das demais parcelas.
   const entradaExistente = editando ? conta.parcelas.find(p => p['Tipo cobrança'] === 'Entrada') : null;
-  const parcelasRestantes = editando ? conta.parcelas.filter(p => p['Tipo cobrança'] !== 'Entrada') : [];
+  const descontoExistente = editando ? conta.parcelas.find(p => p['Tipo cobrança'] === 'Desconto') : null;
+  const parcelasRestantes = editando ? conta.parcelas.filter(p => p['Tipo cobrança'] !== 'Entrada' && p['Tipo cobrança'] !== 'Desconto') : [];
  
   document.getElementById('overlayRoot').innerHTML = `
     <div class="form-overlay" id="overlay">
@@ -117,6 +124,12 @@ function abrirFormConta(conta){
  
         <div class="field"><label>Total de parcelas</label><input id="f_totalParcelas" type="number" min="0" value="${editando ? parcelasRestantes.length : 1}"></div>
         <div id="parcelasLista"></div>
+
+        <hr style="border:none;border-top:1px solid var(--rule);margin:20px 0;">
+        <input type="hidden" id="f_descontoIdParcela" value="${esc(descontoExistente ? descontoExistente['ID Parcela'] : '')}">
+        <div class="field"><label>Desconto (R$)</label><input id="f_descontoValor" type="number" step="0.01" min="0" value="${esc(descontoExistente ? descontoExistente['Valor previsto'] : '')}"></div>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">Abatido do saldo que o cliente deve pagar. Deixe vazio ou 0 para remover o desconto.</p>
+
         <div class="form-actions">
           ${editando ? `<button class="btn-danger" id="excluirConta" type="button">Excluir conta</button>` : ''}
           <button class="btn-ghost" id="cancelarConta">Cancelar</button>
@@ -131,6 +144,7 @@ function abrirFormConta(conta){
   }
   document.getElementById('f_totalParcelas').addEventListener('input', () => renderLinhasParcelas(parcelasRestantes));
   document.getElementById('f_entradaValor').addEventListener('input', atualizarSaldoEventoInfo);
+  document.getElementById('f_descontoValor').addEventListener('input', atualizarSaldoEventoInfo);
   document.querySelectorAll('#overlayRoot .p-mask-data').forEach(inp => {
     if (!inp.closest('.linha-parcela')) inp.addEventListener('input', () => { inp.value = maskData(inp.value); });
   });
@@ -149,8 +163,11 @@ function atualizarSaldoEventoInfo(){
   const valorFinal = Number(evento['Valor final'] || 0);
   const entrada = Number(document.getElementById('f_entradaValor').value || 0);
   const somaParcelas = Array.from(document.querySelectorAll('.p-valor')).reduce((s, inp) => s + (Number(inp.value) || 0), 0);
+  const descEl = document.getElementById('f_descontoValor');
+  const desconto = descEl ? Number(descEl.value || 0) : 0;
   const restante = valorFinal - entrada - somaParcelas;
-  info.textContent = `Valor do evento: ${formatBRL(valorFinal)} · entrada: ${formatBRL(entrada)} · parcelas: ${formatBRL(somaParcelas)} · restante: ${formatBRL(restante)}`;
+  const descTxt = desconto > 0 ? ` · desconto: ${formatBRL(desconto)}` : '';
+  info.textContent = `Valor do evento: ${formatBRL(valorFinal)} · entrada: ${formatBRL(entrada)} · parcelas: ${formatBRL(somaParcelas)}${descTxt} · restante: ${formatBRL(restante)}`;
   info.style.color = restante < 0 ? 'var(--error)' : 'var(--ink-soft)';
 }
 function renderLinhasParcelas(parcelasExistentes){
@@ -227,6 +244,7 @@ async function salvarConta(contaExistente){
   // Conta de participante (evento coletivo): mantém o vínculo com o cliente ao salvar,
   // para não colar a parcela no responsável do evento.
   const payload = { idEvento, entrada, parcelas };
+  payload.desconto = Number(document.getElementById('f_descontoValor').value || 0);
   if (contaExistente && contaExistente.idCliente){
     payload.idCliente = contaExistente.idCliente;
     payload.clienteNome = contaExistente.cliente;

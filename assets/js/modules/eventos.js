@@ -92,8 +92,10 @@ function abrirFormEvento(evento){
         <div class="row3">
           <div class="field"><label>Pacote</label><select id="f_pacote">${opcoesPacotes(editando?evento['Pacote']:'')}</select></div>
           <div class="field"><label>Valor pacote</label><input id="f_valorPacote" type="number" step="0.01" value="${esc(editando?evento['Valor pacote']:'')}"></div>
-          <div class="field"><label>Valor final</label><input id="f_valorFinal" type="number" step="0.01" value="${esc(editando?evento['Valor final']:'')}"></div>
+          <div class="field"><label>Desconto (R$)</label><input id="f_desconto" type="number" step="0.01" min="0" value="${esc(editando?evento['Desconto']:'')}"></div>
         </div>
+        <div class="field"><label>Valor final</label><input id="f_valorFinal" type="number" step="0.01" value="${esc(editando?evento['Valor final']:'')}"></div>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">Calculado como Valor pacote − Desconto. Você pode ajustar manualmente.</p>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?evento['Observações']:'')}</textarea></div>
         <div class="form-actions">
           ${editando ? `<button class="btn-danger" id="excluirEvento" type="button">Excluir</button>` : ''}
@@ -111,6 +113,15 @@ function abrirFormEvento(evento){
   aplicarMascara('f_horaIni', maskHora);
   aplicarMascara('f_horaFim', maskHora);
   vincularAutoValorPacote('f_pacote', 'f_valorPacote');
+  // Valor final = Valor pacote − Desconto, recalculado ao vivo (campo segue editável).
+  const recalcularValorFinal = () => {
+    const vp = Number(document.getElementById('f_valorPacote').value || 0);
+    const desc = Number(document.getElementById('f_desconto').value || 0);
+    document.getElementById('f_valorFinal').value = Math.max(0, vp - desc);
+  };
+  document.getElementById('f_pacote').addEventListener('change', recalcularValorFinal);
+  document.getElementById('f_valorPacote').addEventListener('input', recalcularValorFinal);
+  document.getElementById('f_desconto').addEventListener('input', recalcularValorFinal);
 }
 async function salvarEvento(idEvento){
   const idCliente = document.getElementById('f_idCliente').value;
@@ -126,6 +137,7 @@ async function salvarEvento(idEvento){
     cidade: document.getElementById('f_cidade').value.trim(),
     pacote: document.getElementById('f_pacote').value.trim(),
     valorPacote: Number(document.getElementById('f_valorPacote').value || 0),
+    desconto: Number(document.getElementById('f_desconto').value || 0),
     valorFinal: Number(document.getElementById('f_valorFinal').value || 0),
     observacoes: document.getElementById('f_obs').value.trim(),
   };

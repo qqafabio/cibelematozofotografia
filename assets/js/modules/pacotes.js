@@ -112,17 +112,24 @@ function opcoesPacotes(selecionado){
    o valor com o "Valor pacote" do cadastro. Reusa o padrão select→derivar-valor
    de financeiro.js (atualizarSaldoEventoInfo). Com somenteSeVazio=true, só
    preenche quando o campo de valor estiver vazio (usado em Leads, p/ não
-   sobrescrever um valor estimado digitado à mão). */
+   sobrescrever um valor estimado digitado à mão). Com inputFotoExtraId, também
+   autopreenche o "Valor foto extra" a partir do cadastro (usado no evento coletivo). */
 function vincularAutoValorPacote(selectId, valorInputId, opcoes){
   const somenteSeVazio = !!(opcoes && opcoes.somenteSeVazio);
+  const inputFotoExtraId = opcoes && opcoes.inputFotoExtraId;
   const sel = document.getElementById(selectId);
   const input = document.getElementById(valorInputId);
   if (!sel || !input) return;
+  const inputFotoExtra = inputFotoExtraId ? document.getElementById(inputFotoExtraId) : null;
   sel.addEventListener('change', () => {
     const pacote = pacotes.find(p => String(p['Nome']) === sel.value);
     if (!pacote) return;
-    if (somenteSeVazio && String(input.value).trim() !== '') return;
-    input.value = Number(pacote['Valor pacote'] || 0);
+    if (!(somenteSeVazio && String(input.value).trim() !== '')){
+      input.value = Number(pacote['Valor pacote'] || 0);
+    }
+    if (inputFotoExtra && !(somenteSeVazio && String(inputFotoExtra.value).trim() !== '')){
+      inputFotoExtra.value = Number(pacote['Valor foto extra'] || 0);
+    }
   });
 }
 

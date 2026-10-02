@@ -64,8 +64,10 @@ function abrirFormLead(lead){
         </div>
         <div class="row2">
           <div class="field"><label>Valor estimado</label><input id="f_valorEstimado" type="number" step="0.01" value="${esc(editando?lead['Valor estimado']:'')}"></div>
-          <div class="field"><label>Próximo contato</label><input id="f_proximoContato" placeholder="DD/MM/AAAA" value="${esc(editando?lead['Próximo contato']:'')}"></div>
+          <div class="field"><label>Desconto (R$)</label><input id="f_desconto" type="number" step="0.01" min="0" value="${esc(editando?lead['Desconto']:'')}"></div>
         </div>
+        <p id="valorComDesconto" style="font-size:12.5px;color:var(--ink-soft);margin:-8px 0 14px;"></p>
+        <div class="field"><label>Próximo contato</label><input id="f_proximoContato" placeholder="DD/MM/AAAA" value="${esc(editando?lead['Próximo contato']:'')}"></div>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?lead['Observações']:'')}</textarea></div>
         <div class="form-actions">
           ${editando ? `<button class="btn-danger" id="excluirLead" type="button">Excluir</button>` : ''}
@@ -86,6 +88,17 @@ function abrirFormLead(lead){
   aplicarMascara('f_dataDesejada', maskData);
   aplicarMascara('f_proximoContato', maskData);
   vincularAutoValorPacote('f_pacote', 'f_valorEstimado', { somenteSeVazio: true });
+  // Mostra "Valor com desconto" = Valor estimado − Desconto, atualizado ao vivo.
+  const atualizarValorComDesconto = () => {
+    const est = Number(document.getElementById('f_valorEstimado').value || 0);
+    const desc = Number(document.getElementById('f_desconto').value || 0);
+    const el = document.getElementById('valorComDesconto');
+    el.textContent = desc > 0 ? `Valor com desconto: ${formatBRL(Math.max(0, est - desc))}` : '';
+  };
+  document.getElementById('f_valorEstimado').addEventListener('input', atualizarValorComDesconto);
+  document.getElementById('f_pacote').addEventListener('change', atualizarValorComDesconto);
+  document.getElementById('f_desconto').addEventListener('input', atualizarValorComDesconto);
+  atualizarValorComDesconto();
 }
 async function salvarLead(idLead){
   const dados = {
@@ -96,6 +109,7 @@ async function salvarLead(idLead){
     origem: document.getElementById('f_origem').value.trim(),
     etapa: document.getElementById('f_etapa').value,
     valorEstimado: Number(document.getElementById('f_valorEstimado').value || 0),
+    desconto: Number(document.getElementById('f_desconto').value || 0),
     proximoContato: document.getElementById('f_proximoContato').value.trim(),
     observacoes: document.getElementById('f_obs').value.trim(),
   };
