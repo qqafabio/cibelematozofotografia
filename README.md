@@ -313,6 +313,33 @@ agrupada por `ID Evento | ID Cliente`, e **permanece** ao salvar a conta.
 > Depois do deploy do front, cole o conteúdo de `backend.txt` no `Código.gs` e faça **Nova
 > implantação** (ver "Atualizando depois de publicado" na Parte 2).
 
+### 2.12 Refino visual do CRM (v3.0 — frontend)
+
+A v3.0 é um **polimento puramente visual**, feito **só em `assets/css/crm.css`** — sem mexer em
+HTML/JS, sem framework (Bootstrap/Tailwind etc.) e **sem custo de performance**. Preserva a identidade
+editorial do sistema (papel creme, tinta escura, dourado, títulos em Fraunces) e adiciona o acabamento
+que faltava, no padrão de CRMs de mercado:
+
+- **Design tokens no `:root`:** escala de espaçamento (4/8px), raios (`--r-sm/md/lg/pill`), **sombras em
+  camadas** tintadas com a cor da marca (`--shadow-sm/md/lg`), transição base e uma divisória mais suave
+  (`--rule-soft`). Base reutilizável para as próximas telas.
+- **KPI cards e panels:** cantos mais macios, sombra sutil e **leve elevação no hover** dos cards; a
+  tabela agora encaixa no card (`overflow:hidden`).
+- **Botões:** raio macio; o primário ganhou sombra e micro-elevação no hover; o secundário acende em
+  dourado.
+- **Campos de formulário e busca:** **foco visível com anel dourado** (não existia) — mais usável e
+  acessível.
+- **Navegação, status pills, modais e toast:** transições suaves, pills em formato pílula e elevação
+  adequada nos sobrepostos.
+- **Acessibilidade:** contorno de foco (`:focus-visible`) nos elementos navegáveis.
+
+> **Sem reimplantação de back-end nesta versão** — é só CSS. Basta publicar o front (o `?v=` dos assets
+> subiu para `3.0`, forçando o navegador a baixar o CSS novo).
+
+Faz parte de um plano maior (v3.x): a v3.0 cuida do visual; nas próximas fases, a **migração do banco**
+de Google Sheets/Apps Script para **PocketBase** (self-host no Oracle Cloud Always Free), começando por
+um POC antes de migrar tudo.
+
 ---
 
 ## Sobre os limites gratuitos
