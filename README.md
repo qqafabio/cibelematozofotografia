@@ -342,6 +342,48 @@ um POC antes de migrar tudo.
 
 ---
 
+### 2.13 POC PocketBase — só a tela de Clientes (v3.1)
+
+A v3.1 é uma **prova de conceito barata e reversível**: migra **apenas os Clientes** para o
+**PocketBase** (banco real, self-host no Oracle Cloud Always Free) e mantém **todo o resto do CRM no
+Apps Script**. O objetivo é **medir o ganho real de desempenho** (carga + CRUD) e o esforço de
+portabilidade **antes** de comprometer a migração completa.
+
+**Como funciona (interceptação mínima atrás de um flag):**
+
+- **`assets/js/config.js`** ganhou três constantes:
+  - `USE_POCKETBASE_CLIENTES` — liga/desliga o POC. **Vem `false`**; ligue (`true`) só quando a infra
+    estiver pronta.
+  - `PB_URL` — URL do PocketBase. **Já configurada:** `https://cibelecrm.duckdns.org`.
+  - `PB_EMAIL` — e-mail do usuário de app neutro (`app@cibelecrm.duckdns.org`; não é segredo — a
+    **senha nunca fica no código**, é pedida uma vez e o token fica salvo no navegador).
+- **`assets/js/pbClientes.js`** (novo) é o adapter: traduz os campos do PocketBase para as mesmas chaves
+  que o CRM já usa (`'ID Cliente'`, `'Nome / Responsável'`, …) e roteia criar/editar/excluir cliente.
+- **`assets/js/api.js`** só ganhou o roteamento condicional — `clientes.js`, `router.js` e `state.js`
+  **não mudaram**, então o **rollback é instantâneo**: volte `USE_POCKETBASE_CLIENTES` para `false`.
+
+**Infra provisionada (feita uma vez, fora do repositório):** VM **Oracle Cloud Always Free** (shape x86
+E2.1.Micro, **Oracle Linux 9**, usuário SSH `opc`, ~0,5 GB RAM + swap de 1,5 GB). O **PocketBase 0.22.55**
+(binário `linux_amd64`) roda como serviço **systemd** com **HTTPS automático** (Let's Encrypt) no domínio
+gratuito **`cibelecrm.duckdns.org`** (DuckDNS). A coleção `clientes` (campo **`id_cliente` numérico e
+único**, que preserva o mesmo ID da planilha para não orfanar eventos) e a importação dos clientes foram
+feitas por **migrations** do próprio PocketBase (`pb_migrations/`), e as regras de API exigem login
+(`@request.auth.id != ""`). O `firewalld` libera 80/443 (além da Security List da VCN). O SDK JS **0.21.5**
+(UMD via jsdelivr, já no `crm.html`) pareia com o servidor 0.22.x. Detalhes e armadilhas no plano da versão.
+
+> ⚠️ **Durante o POC, com o flag ligado, cadastre clientes SÓ pelo CRM** (que grava no PocketBase).
+> Não crie cliente direto na planilha em paralelo — o contador de "próximo ID" divergiria.
+
+**Medir o desempenho:** com o POC rodando, abra o Console do navegador (F12) e rode
+`console.table(window.__perf)`. Ele mostra, em milissegundos, o tempo do Apps Script × PocketBase para
+carregar e para cada operação de cliente. Rode uma vez "fria" (logo após abrir) e algumas "quentes" e
+compare as medianas — é isso que decide se vale migrar o resto.
+
+> **Sem reimplantação de back-end Apps Script nesta versão** — ele continua intacto e no ar. O POC só
+> adiciona o PocketBase ao lado. O `?v=` dos assets subiu para `3.1`.
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.
