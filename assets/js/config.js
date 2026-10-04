@@ -18,6 +18,16 @@ const USE_POCKETBASE_CLIENTES = true;              // POC v3.1 ligado (Clientes 
 const PB_URL = 'https://cibelecrm.duckdns.org';    // VM Oracle (PocketBase 0.22.55, auto-TLS)
 const PB_EMAIL = 'app@cibelecrm.duckdns.org';      // usuário de app neutro (a senha é pedida no 1º acesso)
 
+/* ============ v3.2 — Leitura total no PocketBase ============
+   Com esta flag TRUE, carregarTudo() monta TODO o payload a partir do
+   PocketBase (réplica de leitura rápida), eliminando a chamada lenta ao
+   Apps Script. O Sheets/Apps Script segue como MASTER de escrita e
+   espelha as mudanças no PB. Mantida FALSE até as coleções estarem
+   criadas e populadas na VM. Rollback = voltar para false.
+   No cutover, ligar esta e DESLIGAR USE_POCKETBASE_CLIENTES juntas
+   (as escritas de cliente voltam ao Apps Script, como as demais). */
+const USE_POCKETBASE_LEITURA = false;              // v3.2 desligado até popular o PB
+
 /* ============ NAVEGAÇÃO ============ */
 const NAV = [
   { id:'dashboard', label:'🏠 Dashboard', ready:true },

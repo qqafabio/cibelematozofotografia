@@ -1,52 +1,14 @@
 /* ============================================================
-   CRM · Cibele Matozo Fotografia — Adapter PocketBase (POC v3.1)
+   CRM · Cibele Matozo Fotografia — Adapter PocketBase · Clientes (v3.1/v3.2)
    Carregado como <script> clássico (escopo global compartilhado).
    NÃO usar import/export. Ordem de carga definida em crm.html:
-   deve vir DEPOIS do SDK UMD do PocketBase e de config.js, e ANTES
-   de main.js. Tudo aqui só age quando USE_POCKETBASE_CLIENTES === true.
+   DEPOIS do SDK UMD, de config.js e de pbCore.js (de onde vêm perfMark/
+   perfTime/pbInit/pbAuthGarantir/PB), e ANTES de pbLeitura.js / main.js.
 
-   POC: migra SOMENTE a tela de Clientes para o PocketBase, mantendo
-   todo o resto do CRM no Apps Script. A interceptação acontece em
-   api.js (apiCall roteia as mutações de cliente; carregarTudo sobrepõe
-   a global `clientes`). Este arquivo expõe o adapter e a tabela
-   PB_CLIENT_ACTIONS consumida por api.js.
+   Mutações de cliente são roteadas por api.js (PB_CLIENT_ACTIONS) quando
+   USE_POCKETBASE_CLIENTES === true. A leitura de clientes (pbCarregarClientes)
+   também é reutilizada pelo caminho de leitura total (pbLeitura.js, v3.2).
    ============================================================ */
-
-/* ---- Medição de desempenho (comparar Apps Script × PocketBase) ----
-   Empilha { label, ms, n } em window.__perf. Ver no console:
-   console.table(window.__perf)  */
-window.__perf = window.__perf || [];
-function perfMark(label, ms, n){
-  window.__perf.push({ label, ms: Math.round(ms), n: (n == null ? '' : n) });
-}
-// Cronometra uma promise e registra em __perf.
-async function perfTime(label, promise, nFn){
-  const t0 = performance.now();
-  const out = await promise;
-  const n = typeof nFn === 'function' ? nFn(out) : (nFn == null ? '' : nFn);
-  perfMark(label, performance.now() - t0, n);
-  return out;
-}
-
-/* ---- Instância & autenticação (lazy) ---- */
-let PB = null;
-function pbInit(){
-  if (PB) return PB;
-  if (typeof PocketBase === 'undefined') throw new Error('SDK do PocketBase não carregou (tag <script> UMD).');
-  PB = new PocketBase(PB_URL);
-  PB.autoCancellation(false); // evita abortar requests concorrentes (ex.: carregar + contar)
-  return PB;
-}
-// Garante um token válido. Pede a senha UMA vez; o token persiste no
-// localStorage (authStore). O repo é público, então nada de senha no código.
-async function pbAuthGarantir(){
-  pbInit();
-  if (PB.authStore.isValid) return;
-  const email = PB_EMAIL || window.prompt('E-mail de acesso ao PocketBase:');
-  const senha = window.prompt('Senha de acesso ao PocketBase (cliente ' + email + '):');
-  if (!email || !senha) throw new Error('Login no PocketBase cancelado.');
-  await PB.collection('users').authWithPassword(email, senha);
-}
 
 /* ---- Tradução de campos (contrato do resto do app) ---- */
 // PB record → objeto com as chaves rotuladas que clientes.js/eventos.js consomem.

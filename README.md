@@ -399,6 +399,48 @@ pacote monolítico.
 > **Sem reimplantação de back-end Apps Script nesta versão** — ele continua intacto e no ar. O POC só
 > adiciona o PocketBase ao lado. O `?v=` dos assets subiu para `3.1`.
 
+### 2.14 Leitura total no PocketBase (v3.2 — réplica de leitura)
+
+A v3.1 provou que o **gargalo do CRM é a leitura**: o `carregarTudo()` empacota todas as telas numa
+única chamada ao Apps Script que leva **~10 s**, enquanto o PocketBase devolve dados em dezenas de ms.
+A v3.2 ataca isso: com a flag ligada, **toda a leitura** passa a vir do PocketBase.
+
+**Arquitetura — réplica de leitura, sem reimplementar nada no back-end:**
+
+- O **Google Sheets / Apps Script continua sendo o master de ESCRITA** — ele gera os IDs e orquestra tudo
+  (sincronizar Google Agenda, criar linha de Produção, lançar conta no Financeiro ao confirmar evento,
+  deduplicar cliente a partir de lead/participante). Nada disso é reescrito.
+- O **PocketBase vira uma réplica de LEITURA rápida.** Como o Sheets guarda tudo, a perda do PB é
+  recuperável por reimportação (risco baixo).
+
+**O que muda no front:**
+
+- **`assets/js/config.js`** — nova flag **`USE_POCKETBASE_LEITURA`** (vem `false`). Ligada, o
+  `carregarTudo()` monta **todo** o payload a partir do PB, no mesmo formato que o Apps Script devolvia —
+  os módulos não percebem a diferença. Rollback = voltar para `false`.
+  - No cutover, ligue `USE_POCKETBASE_LEITURA` e **desligue `USE_POCKETBASE_CLIENTES` juntas**: assim as
+    escritas de cliente voltam ao Apps Script, como as demais (o master de escrita é o Sheets).
+- **`assets/js/pbSchema.js`** (novo) — **fonte única** do mapeamento `rótulo ↔ coluna snake_case ↔ tipo`
+  de cada entidade. É consumido **ao mesmo tempo** pelo adapter de leitura e pelo gerador de migrations,
+  então o esquema do PB **não diverge** do que o front lê.
+- **`assets/js/pbCore.js`** (novo) — núcleo reutilizável extraído do `pbClientes.js`: medição de
+  desempenho (`perfMark`/`perfTime`), instância do PocketBase (`pbInit`) e autenticação (`pbAuthGarantir`).
+- **`assets/js/pbLeitura.js`** (novo) — adapter genérico de leitura: traduz cada coleção do PB para as
+  chaves rotuladas, e **replica fielmente os campos derivados do back-end** (marcar parcela "Vencida",
+  contas em atraso para o alerta inicial, aninhamento de pagamentos no Freelance).
+
+**Infra (pasta `infra/`, aplicada na VM — não roda no GitHub Pages):**
+
+- **`infra/gen_pb_migrations.cjs`** — gera, a partir do `pbSchema.js`, as **11 migrations** de criação das
+  coleções (`eventos`, `pacotes`, `leads`, `financeiro`, `producao`, `custos`, `participantes`,
+  `templates`, `freelance_eventos`, `freelance_pagamentos`, `listas`). `clientes` já existe desde a v3.1.
+- Ver **`infra/README.md`** para aplicar na VM e para as pendências (import inicial, backup do `pb_data`,
+  e a função `sincronizarPB_()` no Apps Script que espelha cada escrita no PB).
+
+> Esta entrega adianta, **no repositório e com a flag desligada** (zero risco em produção), todo o código
+> de front e as migrations. A flag só liga depois que as coleções estiverem criadas e populadas na VM. O
+> `?v=` dos assets subiu para `3.2`.
+
 ---
 
 ## Sobre os limites gratuitos

@@ -20,6 +20,22 @@ async function apiCall(action, dados){
   return json.dados;
 }
 async function carregarTudo(){
+  // v3.2: leitura TOTAL do PocketBase. Monta o payload inteiro a partir do
+  // PB (réplica de leitura) no mesmo formato do Apps Script. Supera o ramo
+  // do POC de clientes. O Apps Script segue como master de escrita.
+  const usarLeituraPB = typeof USE_POCKETBASE_LEITURA !== 'undefined' && USE_POCKETBASE_LEITURA
+      && typeof pbCarregarTudoPB === 'function';
+  if (usarLeituraPB){
+    const t = performance.now();
+    const r = await pbCarregarTudoPB();
+    perfMark('PB carregarTudo', performance.now() - t);
+    aplicarListas_(r);
+    clientes = r.clientes;
+    for (const c of clientes){ c['Qtd. eventos'] = contarEventosDoCliente(c['ID Cliente']); }
+    loaded = true;
+    return;
+  }
+
   // POC v3.1: quando o flag liga, Clientes vêm do PocketBase e o resto do
   // Apps Script. Rodamos as duas fontes em paralelo e cronometramos cada
   // uma (window.__perf) para comparar o desempenho antes da migração total.
