@@ -379,6 +379,23 @@ feitas por **migrations** do próprio PocketBase (`pb_migrations/`), e as regras
 carregar e para cada operação de cliente. Rode uma vez "fria" (logo após abrir) e algumas "quentes" e
 compare as medianas — é isso que decide se vale migrar o resto.
 
+> ⚠️ A **1ª medição é enganosa**: o cronômetro do PB inclui o tempo do prompt de senha (você digitando).
+> Vale a **medição "a quente"** (recarregue sem Ctrl+F5, com o token já salvo).
+
+**Resultado medido (v3.1):**
+
+| Operação | PocketBase | Apps Script |
+| --- | --- | --- |
+| Carregar clientes (a quente) | **~42 ms** | — |
+| `carregarTudo` (payload inteiro) | — | **~10.000–11.400 ms** (e instável) |
+| Excluir cliente | **~78 ms** | — |
+
+Ressalva: não é maçã-com-maçã — o `carregarTudo` traz **tudo** e o PB traz **só os clientes**. Ainda
+assim, o ganho na fatia de clientes é de **~250×**, e o Apps Script não consegue devolver só os clientes
+rápido (empacota tudo numa chamada pelo limite de execuções simultâneas). **Conclusão:** caso forte para a
+**v3.2** (migrar o resto), em que cada tela buscaria seu dado no PB em dezenas de ms em vez dos ~10 s do
+pacote monolítico.
+
 > **Sem reimplantação de back-end Apps Script nesta versão** — ele continua intacto e no ar. O POC só
 > adiciona o PocketBase ao lado. O `?v=` dos assets subiu para `3.1`.
 
