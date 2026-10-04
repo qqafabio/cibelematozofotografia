@@ -58,9 +58,25 @@ node infra/gen_gas_sync.cjs
 Passo a passo de instalação (colar o `.gs`, Script Properties, gatilho no
 `doPost`, seed com `sincronizarPBTudo`) em **`infra/apps_script/README.md`**.
 
+## `vm/backup_pbdata.sh` — backup diário do pb_data
+
+Instalado na VM em `/opt/pocketbase/backup_pbdata.sh` e disparado pelo cron
+`/etc/cron.d/pocketbase-backup` (diário às **03:17 GMT**, como root). Faz `tar`
+do `pb_data` em `/opt/pocketbase/backups/pb_data_<stamp>.tgz` e remove backups
+com mais de **14 dias**. Mantém a réplica recuperável; o Sheets segue master.
+
+```bash
+# instalar/atualizar na VM
+scp -i ~/crm-key.key infra/vm/backup_pbdata.sh opc@163.176.154.238:/tmp/
+ssh -i ~/crm-key.key opc@163.176.154.238 \
+  'sudo install -o root -g root -m 0755 /tmp/backup_pbdata.sh /opt/pocketbase/backup_pbdata.sh'
+# rodar sob demanda
+ssh -i ~/crm-key.key opc@163.176.154.238 'sudo /opt/pocketbase/backup_pbdata.sh'
+```
+
 ## Pendências de infra (fora deste commit)
 
 - **Import one-time** dos dados atuais do Sheets: **dispensado** se a planilha
   só tem dados de teste — nesse caso o PB começa vazio e o `sincronizarPB.gs`
   o popula conforme o uso (ou rode `sincronizarPBTudo` para semear o que houver).
-- **Backup automático** do `pb_data` (cron diário com `tar` + retenção).
+- **Cópia off-site** dos backups (hoje ficam só na própria VM) — melhoria futura.
