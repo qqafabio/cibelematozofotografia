@@ -44,11 +44,23 @@ sudo systemctl restart pocketbase
 Se precisar reverter uma coleção, cada migration tem o `down` que faz
 `deleteCollection`.
 
+## `gen_gas_sync.cjs` — espelhamento Sheets → PocketBase
+
+Lê a **mesma** fonte única `assets/js/pbSchema.js` (+ o mapa de `clientes`) e
+gera `infra/apps_script/sincronizarPB.gs`: o módulo do Apps Script que espelha
+cada aba na coleção correspondente do PB a cada mutação (upsert + reconcile),
+mantendo o PB como **réplica de leitura**. O Sheets segue master de escrita.
+
+```bash
+node infra/gen_gas_sync.cjs
+```
+
+Passo a passo de instalação (colar o `.gs`, Script Properties, gatilho no
+`doPost`, seed com `sincronizarPBTudo`) em **`infra/apps_script/README.md`**.
+
 ## Pendências de infra (fora deste commit)
 
-- **Import one-time** dos dados atuais do Sheets preservando os IDs de
-  negócio (dump do `carregarTudo` no console → migrations de import).
+- **Import one-time** dos dados atuais do Sheets: **dispensado** se a planilha
+  só tem dados de teste — nesse caso o PB começa vazio e o `sincronizarPB.gs`
+  o popula conforme o uso (ou rode `sincronizarPBTudo` para semear o que houver).
 - **Backup automático** do `pb_data` (cron diário com `tar` + retenção).
-- **`sincronizarPB_()`** no Apps Script: upsert + reconcile no PB ao fim de
-  cada mutação (mantém PB == Sheets). Credenciais do usuário de serviço nas
-  **Script Properties**, nunca no repositório.

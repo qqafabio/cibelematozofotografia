@@ -434,8 +434,14 @@ A v3.2 ataca isso: com a flag ligada, **toda a leitura** passa a vir do PocketBa
 - **`infra/gen_pb_migrations.cjs`** — gera, a partir do `pbSchema.js`, as **11 migrations** de criação das
   coleções (`eventos`, `pacotes`, `leads`, `financeiro`, `producao`, `custos`, `participantes`,
   `templates`, `freelance_eventos`, `freelance_pagamentos`, `listas`). `clientes` já existe desde a v3.1.
-- Ver **`infra/README.md`** para aplicar na VM e para as pendências (import inicial, backup do `pb_data`,
-  e a função `sincronizarPB_()` no Apps Script que espelha cada escrita no PB).
+  **Aplicadas na VM** em 04/10/2026 (as 12 coleções existem).
+- **`infra/gen_gas_sync.cjs`** — gera, da **mesma** fonte única, o módulo do Apps Script
+  **`infra/apps_script/sincronizarPB.gs`**: espelha cada aba do Sheets na coleção do PB a cada mutação
+  (upsert + reconcile de deletes), com **fail-soft** (se o PB cair, a escrita no Sheets não quebra). É o
+  que mantém a réplica de leitura em dia. Instalação (colar o `.gs`, Script Properties com as credenciais
+  do usuário de app, gatilho `sincronizarPBPorAcao_(acao)` no `doPost`, seed com `sincronizarPBTudo`) em
+  **`infra/apps_script/README.md`**.
+- Ver **`infra/README.md`** para aplicar na VM e para as pendências (backup do `pb_data`).
 
 > Esta entrega adianta, **no repositório e com a flag desligada** (zero risco em produção), todo o código
 > de front e as migrations. A flag só liga depois que as coleções estiverem criadas e populadas na VM. O
