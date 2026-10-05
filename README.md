@@ -443,9 +443,16 @@ A v3.2 ataca isso: com a flag ligada, **toda a leitura** passa a vir do PocketBa
   **`infra/apps_script/README.md`**.
 - Ver **`infra/README.md`** para aplicar na VM e para as pendências (backup do `pb_data`).
 
-> Esta entrega adianta, **no repositório e com a flag desligada** (zero risco em produção), todo o código
-> de front e as migrations. A flag só liga depois que as coleções estiverem criadas e populadas na VM. O
-> `?v=` dos assets subiu para `3.2`.
+**Cutover (feito em 04/10/2026):** com as 12 coleções criadas e **semeadas** na VM pelo
+`sincronizarPBTudo` (184 registros espelhados do Sheets, sem erros), o cutover foi ligado em
+`config.js`: **`USE_POCKETBASE_LEITURA = true`** e **`USE_POCKETBASE_CLIENTES = false`** (a escrita de
+cliente volta ao Apps Script, como as demais). O `?v=` dos assets subiu para **`3.2.1`** para forçar o
+refetch do `config.js`. **Rollback instantâneo:** voltar as duas flags (`LEITURA=false`,
+`CLIENTES=true`) — o código de ambos os caminhos continua no repositório.
+
+**Endurecimento da VM:** a micro (~0,5 GB) travava a rede sob pressão de RAM (não era OOM do PB, que usa
+~10 MB). Mitigado com `infra/vm/99-pocketbase-lowmem.conf` (swappiness/vfs_cache_pressure/min_free_kbytes)
+e `tuned` desligado; backup diário do `pb_data` via cron (`infra/vm/backup_pbdata.sh`).
 
 ---
 

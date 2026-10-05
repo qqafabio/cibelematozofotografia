@@ -74,6 +74,26 @@ ssh -i ~/crm-key.key opc@163.176.154.238 \
 ssh -i ~/crm-key.key opc@163.176.154.238 'sudo /opt/pocketbase/backup_pbdata.sh'
 ```
 
+## `vm/99-pocketbase-lowmem.conf` — tuning de baixa RAM
+
+A VM é uma x86 E2.1.Micro (~0,5 GB). Quando a RAM enche (picos dos próprios
+agentes da Oracle), ela entra em *thrash* e o **sshd é o primeiro a sufocar**
+("banner exchange timeout"), exigindo reboot pelo Console. Este arquivo
+(instalado em `/etc/sysctl.d/99-pocketbase-lowmem.conf`) faz o kernel paginar
+**proativamente** (`vm.swappiness=100`), reclamar cache mais rápido
+(`vm.vfs_cache_pressure=150`) e manter folga mínima de RAM livre
+(`vm.min_free_kbytes`). Também desligamos o `tuned` (daemon dispensável na
+micro, ~19 MB). Não houve OOM matando o PocketBase — o PB usa só ~10 MB; o
+problema era pressão de RAM geral derrubando a rede.
+
+```bash
+scp -i ~/crm-key.key infra/vm/99-pocketbase-lowmem.conf opc@163.176.154.238:/tmp/
+ssh -i ~/crm-key.key opc@163.176.154.238 \
+  'sudo install -o root -g root -m 0644 /tmp/99-pocketbase-lowmem.conf \
+     /etc/sysctl.d/99-pocketbase-lowmem.conf && sudo sysctl --system >/dev/null \
+   && sudo systemctl disable --now tuned'
+```
+
 ## Pendências de infra (fora deste commit)
 
 - **Import one-time** dos dados atuais do Sheets: **dispensado** se a planilha
