@@ -28,6 +28,11 @@ const PB_EMAIL = 'app@cibelecrm.duckdns.org';      // usuário de app neutro (a 
    (as escritas de cliente voltam ao Apps Script, como as demais). */
 const USE_POCKETBASE_LEITURA = true;               // v3.2 cutover: carregarTudo() lê TODO o payload do PB
 
+/* Teto de espera da leitura do PB antes de cair para o Apps Script. O PB
+   normal responde em ~150 ms; 6 s pega a VM travada/lenta com folga, sem
+   falso positivo. Fallback = CRM "lento" (AS) em vez de "fora do ar". */
+const PB_LEITURA_TIMEOUT_MS = 6000;
+
 /* ============ NAVEGAÇÃO ============ */
 const NAV = [
   { id:'dashboard', label:'🏠 Dashboard', ready:true },

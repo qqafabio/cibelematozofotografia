@@ -26,14 +26,26 @@ async function carregarTudo(){
   const usarLeituraPB = typeof USE_POCKETBASE_LEITURA !== 'undefined' && USE_POCKETBASE_LEITURA
       && typeof pbCarregarTudoPB === 'function';
   if (usarLeituraPB){
-    const t = performance.now();
-    const r = await pbCarregarTudoPB();
-    perfMark('PB carregarTudo', performance.now() - t);
-    aplicarListas_(r);
-    clientes = r.clientes;
-    for (const c of clientes){ c['Qtd. eventos'] = contarEventosDoCliente(c['ID Cliente']); }
-    loaded = true;
-    return;
+    try {
+      const t = performance.now();
+      // Timeout: numa queda a VM fica LENTA (não dá erro na hora). Se o PB não
+      // responder a tempo, desistimos e caímos para o Apps Script (master),
+      // transformando "CRM fora do ar" em "CRM lento".
+      const r = await comTimeout_(pbCarregarTudoPB(), PB_LEITURA_TIMEOUT_MS, 'PocketBase sem resposta');
+      perfMark('PB carregarTudo', performance.now() - t);
+      aplicarListas_(r);
+      clientes = r.clientes;
+      for (const c of clientes){ c['Qtd. eventos'] = contarEventosDoCliente(c['ID Cliente']); }
+      loaded = true;
+      return;
+    } catch (e){
+      // Réplica de leitura fora/lenta: degrada para o Apps Script (sempre
+      // disponível, porém mais lento). Avisa no console e marca no __perf.
+      console.error('carregarTudo: PocketBase indisponível, caindo para o Apps Script — ' + e);
+      perfMark('PB->AS fallback', 0);
+      await carregarTudoViaAppsScript_();
+      return;
+    }
   }
 
   // POC v3.1: quando o flag liga, Clientes vêm do PocketBase e o resto do
@@ -55,10 +67,22 @@ async function carregarTudo(){
     loaded = true;
     return;
   }
+  await carregarTudoViaAppsScript_();
+}
+// Caminho base de leitura pelo Apps Script (master de escrita e fonte de
+// verdade). Usado quando a leitura do PB está desligada OU como fallback
+// quando o PB está indisponível.
+async function carregarTudoViaAppsScript_(){
   const r = await apiCall('carregarTudo');
   aplicarListas_(r);
   clientes = r.clientes;
   loaded = true;
+}
+// Corrida com timeout: resolve com a promise original ou rejeita após `ms`.
+function comTimeout_(promise, ms, msg){
+  let id;
+  const limite = new Promise((_, rej) => { id = setTimeout(() => rej(new Error(msg || ('timeout ' + ms + 'ms'))), ms); });
+  return Promise.race([promise, limite]).finally(() => clearTimeout(id));
 }
 // Atribui às globais tudo que vem do Apps Script, EXCETO `clientes`
 // (que no POC pode vir do PocketBase). Mantém uma única fonte da verdade.

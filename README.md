@@ -454,9 +454,17 @@ refetch do `config.js`. **Rollback instantâneo:** voltar as duas flags (`LEITUR
 (coleções em paralelo via `Promise.all`; a mais lenta foi `custos` 141 ms) contra **~10–11 s** do Apps
 Script — **≈ 70× mais rápido** no bootstrap que era o gargalo. Medido com `console.table(window.__perf)`.
 
+**Resiliência — fallback automático para o Apps Script:** como as telas passaram a ler do PB, uma queda
+da VM derrubaria o CRM. Para evitar isso, `carregarTudo()` tenta o PB com um **timeout**
+(`PB_LEITURA_TIMEOUT_MS`, 6 s) e, se o PB falhar **ou ficar lento**, **cai automaticamente** para o
+`carregarTudo` do Apps Script (master, sempre disponível). Resultado: uma indisponibilidade do PB vira
+**"CRM lento" (~10 s)**, não "CRM fora do ar". O desvio aparece como `PB->AS fallback` no `window.__perf`.
+
 **Endurecimento da VM:** a micro (~0,5 GB) travava a rede sob pressão de RAM (não era OOM do PB, que usa
 ~10 MB). Mitigado com `infra/vm/99-pocketbase-lowmem.conf` (swappiness/vfs_cache_pressure/min_free_kbytes)
-e `tuned` desligado; backup diário do `pb_data` via cron (`infra/vm/backup_pbdata.sh`).
+e `tuned` desligado; backup diário do `pb_data` via cron (`infra/vm/backup_pbdata.sh`). Como a RAM é a
+causa-raiz, o fim definitivo das quedas é migrar para o shape **ARM Ampere A1** (Always Free dá até 24 GB)
+— planejado; o `zram` (swap comprimido em RAM) é a mitigação intermediária no x86.
 
 ---
 
