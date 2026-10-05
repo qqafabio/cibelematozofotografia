@@ -107,6 +107,15 @@ habilitado no boot. Confira com `swapon --show` (zram0 deve ter PRIO 100).
 O fim **definitivo** das quedas é migrar para o shape ARM Ampere A1 (Always
 Free dá até 24 GB de RAM).
 
+## `vm/RUNBOOK_migracao_arm.md` — migração para ARM Ampere A1
+
+Passo a passo para trocar o shape x86 (~1 GB) pelo **ARM A1 Flex** (Always Free
+até 4 OCPU / 24 GB) — o fim **definitivo** das quedas por RAM. A sacada: o IP
+`163.176.154.238` é **reservado**, então reatribui-se ao novo host e, como o
+`pb_data` carrega o cache do certificado, o ARM sobe com **mesmo domínio e TLS**
+— sem tocar no DuckDNS nem no `config.js`. O fallback do front cobre os segundos
+do corte. Rollback = reatribuir o IP de volta ao x86.
+
 ## Pendências de infra (fora deste commit)
 
 - **Import one-time** dos dados atuais do Sheets: **dispensado** se a planilha
