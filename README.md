@@ -450,6 +450,10 @@ cliente volta ao Apps Script, como as demais). O `?v=` dos assets subiu para **`
 refetch do `config.js`. **Rollback instantâneo:** voltar as duas flags (`LEITURA=false`,
 `CLIENTES=true`) — o código de ambos os caminhos continua no repositório.
 
+**Resultado medido (04/10/2026, em produção):** `carregarTudo()` lendo do PocketBase levou **146 ms**
+(coleções em paralelo via `Promise.all`; a mais lenta foi `custos` 141 ms) contra **~10–11 s** do Apps
+Script — **≈ 70× mais rápido** no bootstrap que era o gargalo. Medido com `console.table(window.__perf)`.
+
 **Endurecimento da VM:** a micro (~0,5 GB) travava a rede sob pressão de RAM (não era OOM do PB, que usa
 ~10 MB). Mitigado com `infra/vm/99-pocketbase-lowmem.conf` (swappiness/vfs_cache_pressure/min_free_kbytes)
 e `tuned` desligado; backup diário do `pb_data` via cron (`infra/vm/backup_pbdata.sh`).
