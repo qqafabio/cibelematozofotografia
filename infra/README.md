@@ -94,6 +94,19 @@ ssh -i ~/crm-key.key opc@163.176.154.238 \
    && sudo systemctl disable --now tuned'
 ```
 
+## `vm/zram-swap.service` — swap comprimido em RAM (anti-thrash)
+
+Mesmo com o tuning acima, a VM ainda travava quando o kernel paginava para o
+swap **em disco** (I/O lento → *thrash* → sshd/PocketBase sufocam). O
+`zram-swap.service` cria um bloco de swap na própria RAM, comprimido com
+**zstd (~3:1)**, com **prioridade acima** dos swapfiles de disco — as páginas
+vão primeiro para o zram (rápido) e só transbordam para o disco em último
+caso. **É a mitigação que de fato corta as quedas** no shape x86. Instalado em
+`/etc/systemd/system/zram-swap.service` (+ `/etc/modules-load.d/zram.conf`),
+habilitado no boot. Confira com `swapon --show` (zram0 deve ter PRIO 100).
+O fim **definitivo** das quedas é migrar para o shape ARM Ampere A1 (Always
+Free dá até 24 GB de RAM).
+
 ## Pendências de infra (fora deste commit)
 
 - **Import one-time** dos dados atuais do Sheets: **dispensado** se a planilha
