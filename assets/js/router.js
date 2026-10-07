@@ -7,14 +7,20 @@
 
 function renderNav(){
   const el = document.getElementById('navList');
-  el.innerHTML = NAV.map(n => `
-    <div class="nav-item ${n.id===currentView?'active':''} ${!n.ready?'disabled':''}" data-id="${n.id}">
-      <span>${n.label}</span>
-      ${!n.ready ? '<span class="nav-soon">em breve</span>' : ''}
+  el.innerHTML = NAV.map(g => `
+    <div class="nav-group">
+      <div class="nav-group-title">${g.group}</div>
+      ${g.items.map(n => `
+        <div class="nav-item ${n.id===currentView?'active':''} ${!n.ready?'disabled':''}" data-id="${n.id}">
+          <span>${n.label}</span>
+          ${!n.ready ? '<span class="nav-soon">em breve</span>' : ''}
+        </div>
+      `).join('')}
     </div>
   `).join('');
+  const itens = NAV.flatMap(g => g.items);
   el.querySelectorAll('.nav-item').forEach(item => {
-    const nav = NAV.find(n => n.id === item.dataset.id);
+    const nav = itens.find(n => n.id === item.dataset.id);
     if (!nav.ready) return;
     item.addEventListener('click', () => { currentView = nav.id; renderNav(); renderMain(); toggleNavMobile(true); });
   });

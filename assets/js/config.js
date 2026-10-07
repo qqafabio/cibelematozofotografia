@@ -34,18 +34,34 @@ const USE_POCKETBASE_LEITURA = true;               // v3.2 cutover: carregarTudo
 const PB_LEITURA_TIMEOUT_MS = 6000;
 
 /* ============ NAVEGAÇÃO ============ */
+/* Sidebar agrupada por seção. Cada grupo tem um título (com emoji) e seus
+   itens; o emoji vive no cabeçalho da seção e os itens ficam com nome puro.
+   renderNav() (router.js) desenha os cabeçalhos + itens; a busca por id usa
+   NAV.flatMap(g => g.items). */
 const NAV = [
-  { id:'dashboard', label:'🏠 Dashboard', ready:true },
-  { id:'clientes', label:'👥 Clientes', ready:true },
-  { id:'eventos', label:'📅 Eventos · Agenda', ready:true },
-  { id:'eventosColetivos', label:'🎓 Eventos Coletivos', ready:true },
-  { id:'pacotes', label:'📦 Pacotes', ready:true },
-  { id:'leads', label:'🎯 CRM · Orçamentos', ready:true },
-  { id:'financeiro', label:'💰 Financeiro', ready:true },
-  { id:'contasEmAtraso', label:'📧 Cobranças', ready:true },
-  { id:'dashboardCobrancas', label:'📊 Análise', ready:true },
-  { id:'producao', label:'🎬 Produção', ready:true },
-  { id:'custos', label:'💸 Custos', ready:true },
-  { id:'templates', label:'⚙️ Templates', ready:true },
-  { id:'freelance', label:'🤝 Freelance', ready:true },
+  { group:'📊 Visão geral', items:[
+    { id:'dashboard', label:'Dashboard', ready:true },
+  ]},
+  { group:'👥 Clientes', items:[
+    { id:'clientes', label:'Clientes', ready:true },
+    { id:'leads', label:'CRM · Orçamentos', ready:true },
+  ]},
+  { group:'📅 Eventos', items:[
+    { id:'eventos', label:'Eventos', ready:true },
+    { id:'eventosColetivos', label:'Eventos Coletivos', ready:true },
+    { id:'producao', label:'Produção', ready:true },
+  ]},
+  { group:'💰 Financeiro', items:[
+    { id:'financeiro', label:'Financeiro', ready:true },
+    { id:'contasEmAtraso', label:'Cobranças', ready:true },
+    { id:'dashboardCobrancas', label:'Análise', ready:true },
+    { id:'custos', label:'Custos', ready:true },
+  ]},
+  { group:'📦 Serviços', items:[
+    { id:'pacotes', label:'Pacotes', ready:true },
+    { id:'freelance', label:'Freelance', ready:true },
+  ]},
+  { group:'💬 Comunicação', items:[
+    { id:'templates', label:'Templates', ready:true },
+  ]},
 ];

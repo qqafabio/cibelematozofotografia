@@ -468,6 +468,29 @@ causa-raiz, o fim definitivo das quedas é migrar para o shape **ARM Ampere A1**
 
 ---
 
+### 2.15 Botão "Emitir NFS-e" na Produção + sidebar agrupada (v3.3)
+
+Duas melhorias de usabilidade, sem mudança de backend:
+
+- **Emitir NFS-e (Produção):** cada linha da tabela de Produção ganhou uma coluna **NFS-e** com o botão
+  **"Emitir NFS-e"**, que abre em nova aba o **Emissor Nacional de NFS-e**
+  (`https://www.nfse.gov.br/EmissorNacional/Login?ReturnUrl=%2fEmissorNacional`). Como a linha inteira já
+  é clicável (abre o formulário de edição da produção), o botão usa `onclick="event.stopPropagation()"`
+  para não disparar a edição ao emitir a nota. O link leva só até o login do portal do governo — a emissão
+  em si é feita lá, com o certificado/credenciais da fotógrafa (o CRM não guarda nada disso).
+- **Sidebar agrupada por seção:** os módulos agora ficam organizados em **6 seções com cabeçalho** (emoji +
+  título): 📊 **Visão geral** (Dashboard); 👥 **Clientes** (Clientes, CRM · Orçamentos); 📅 **Eventos**
+  (Eventos, Eventos Coletivos, Produção); 💰 **Financeiro** (Financeiro, Cobranças, Análise, Custos);
+  📦 **Serviços** (Pacotes, Freelance); 💬 **Comunicação** (Templates). O array `NAV` (`config.js`) passou a
+  ser uma lista de grupos `{ group, items[] }` e o `renderNav()` (`router.js`) desenha cada cabeçalho
+  `.nav-group-title` seguido dos itens; a busca de item por id usa `NAV.flatMap(g => g.items)`.
+
+Arquivos: `assets/js/modules/producao.js` (coluna + botão), `assets/js/config.js` (grupos do `NAV`),
+`assets/js/router.js` (`renderNav` por grupos), `assets/css/crm.css` (`.btn-nfse`, `.nav-group*`),
+`crm.html` (bump `?v=3.3.0`).
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.

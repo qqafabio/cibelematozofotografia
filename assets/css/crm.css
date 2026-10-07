@@ -27,6 +27,9 @@
   .nav-item.disabled{color:#B7B2A6;cursor:default;}
   .nav-item.disabled:hover{background:none;}
   .nav-soon{font-size:10px;background:var(--rule);color:var(--ink-soft);padding:1px 6px;border-radius:8px;margin-left:auto;}
+  .nav-group{margin-bottom:10px;}
+  .nav-group-title{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:0 12px;margin:12px 0 5px;}
+  .nav-group:first-child .nav-group-title{margin-top:2px;}
 
   /* ---- Main ---- */
   .main{flex:1;min-width:0;padding:28px 32px 60px;}
@@ -62,6 +65,8 @@
   tr.clickable:hover{background:var(--gold-soft);}
   .status-pill{display:inline-block;font-size:11px;font-weight:500;padding:2px 9px;border-radius:var(--r-pill);background:var(--gold-soft);color:#6B5316;}
   .status-pill.confirmado{background:var(--ok-soft);color:#3E5636;}
+  .btn-nfse{display:inline-block;font-size:12px;font-weight:500;padding:5px 11px;border:1px solid var(--gold);border-radius:var(--r-sm);color:var(--gold);text-decoration:none;white-space:nowrap;transition:background var(--t),color var(--t);}
+  .btn-nfse:hover{background:var(--gold);color:var(--paper);}
 
   .empty-state{padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
 
