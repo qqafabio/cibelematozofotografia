@@ -791,6 +791,28 @@ Validação: `node --check assets/js/ui.js assets/js/modules/clientes.js assets/
 
 ---
 
+### 2.25 Detalhe do evento — anotações editáveis no lugar e fundo dos cards (v3.13)
+
+Ajustes no detalhe do evento (aba **Resumo**) após os testes da Fase 3:
+
+- **Botão "Editar" do topo removido.** Era redundante com **"Editar informações"** no card *Informações do evento*
+  (ambos abriam a mesma modal de edição). O topo agora traz só **Emitir NFS-e** e **Excluir**.
+- **"Anotações" passou a ser editável no próprio card.** Antes o botão abria a modal de edição do evento. Agora ele
+  troca o card por um `textarea` com **Salvar/Cancelar** e grava direto as observações (`editarAnotacoesEvento` /
+  `salvarAnotacoesEvento`). Como o backend regrava o registro inteiro, as anotações são enviadas junto com todos os
+  demais campos preservados (`dadosEventoPreservados`).
+- **Campo "Observações" saiu da modal de edição do evento.** Ficou duplicado com as Anotações; a modal não mexe mais
+  nesse campo e `salvarEvento` **preserva** o valor atual das observações em vez de lê-lo de um input inexistente.
+- **Fundo dos cards do Resumo** (*Informações do evento* e *Anotações*) agora usa `var(--paper-raised)` — a mesma cor
+  de fundo do sidebar.
+
+Arquivos: `assets/js/modules/eventos.js`, `assets/css/crm.css` (`#aba-resumo .detalhe-bloco`), `crm.html`
+(bump `?v=3.12.0 → 3.13.0`).
+
+Validação: `node --check assets/js/modules/eventos.js`.
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.

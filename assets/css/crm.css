@@ -189,7 +189,7 @@
   .detalhe-bloco-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
   .detalhe-bloco-head h3{margin:0;}
   /* Resumo (v3.10): os dois blocos viram cards lado a lado */
-  #aba-resumo .detalhe-bloco{height:100%;border:1px solid var(--rule-soft);border-radius:var(--r-md);padding:16px 18px;box-shadow:var(--shadow-sm);}
+  #aba-resumo .detalhe-bloco{height:100%;background:var(--paper-raised);border:1px solid var(--rule-soft);border-radius:var(--r-md);padding:16px 18px;box-shadow:var(--shadow-sm);}
   .detalhe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 20px;}
   .detalhe-campo{display:flex;flex-direction:column;gap:2px;}
   .detalhe-campo .dc-label{font-size:11.5px;color:var(--ink-soft);}

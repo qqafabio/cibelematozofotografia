@@ -164,7 +164,6 @@ function abrirFormEvento(evento){
         </div>
         <div class="field"><label>Valor final</label><input id="f_valorFinal" type="number" step="0.01" value="${esc(editando?evento['Valor final']:'')}"></div>
         <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">Calculado como Valor pacote − Desconto. Você pode ajustar manualmente.</p>
-        <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?evento['Observações']:'')}</textarea></div>
         <div class="form-actions">
           ${editando ? `<button class="btn-danger" id="excluirEvento" type="button">Excluir</button>` : ''}
           <button class="btn-ghost" id="cancelarEvento">Cancelar</button>
@@ -194,6 +193,8 @@ function abrirFormEvento(evento){
 async function salvarEvento(idEvento){
   const idCliente = document.getElementById('f_idCliente').value;
   if (!idCliente){ mostrarErro('eventoErr','Escolha um cliente.'); return; }
+  // Anotações não são mais editadas aqui (card "Anotações" cuida disso); preserva o valor atual.
+  const evAtual = idEvento ? eventos.find(e => String(e['ID Evento']) === String(idEvento)) : null;
   const dados = {
     idCliente,
     status: document.getElementById('f_status').value,
@@ -207,7 +208,7 @@ async function salvarEvento(idEvento){
     valorPacote: Number(document.getElementById('f_valorPacote').value || 0),
     desconto: Number(document.getElementById('f_desconto').value || 0),
     valorFinal: Number(document.getElementById('f_valorFinal').value || 0),
-    observacoes: document.getElementById('f_obs').value.trim(),
+    observacoes: evAtual ? (evAtual['Observações'] || '') : '',
   };
   const btn = document.getElementById('salvarEvento'); btn.disabled = true; btn.textContent = 'Salvando…';
   try{
@@ -252,7 +253,6 @@ function renderDetalheEvento(main){
       <div class="detalhe-head-top">
         <button class="btn-ghost" id="voltarEvento">← Voltar</button>
         <div class="detalhe-actions">
-          <button class="btn-ghost" id="editarEvento">✏️ Editar</button>
           <a class="btn-ghost" href="${NFSE_URL}" target="_blank" rel="noopener">Emitir NFS-e</a>
           <button class="btn-danger" id="excluirEventoDetalhe">🗑 Excluir</button>
         </div>
@@ -297,20 +297,74 @@ function renderDetalheEvento(main){
     </div>
   `;
   document.getElementById('voltarEvento').addEventListener('click', voltarParaEventos);
-  document.getElementById('editarEvento').addEventListener('click', () => abrirFormEvento(ev));
   document.getElementById('excluirEventoDetalhe').addEventListener('click', () => excluirEventoComConfirmacao(ev));
   const abrirConta = document.getElementById('abaAbrirConta');
   if (abrirConta){ const conta = contaDoEvento(ev['ID Evento']); abrirConta.addEventListener('click', () => abrirFormConta(conta)); }
   const abrirProd = document.getElementById('abaAbrirProducao');
   if (abrirProd){ const prod = producaoDoEvento(ev['ID Evento']); abrirProd.addEventListener('click', () => abrirFormProducao(prod)); }
-  // Botões "Editar informações"/"Editar anotações" (Resumo) → formulário do evento.
+  // "Editar informações" (Resumo) → formulário do evento.
   main.querySelectorAll('[data-edit-evento]').forEach(b => b.addEventListener('click', () => abrirFormEvento(ev)));
+  // "Editar anotações" (Resumo) → edição inline no próprio card (grava só Observações).
+  const btnAnot = document.getElementById('btnEditarAnotacoes');
+  if (btnAnot) btnAnot.addEventListener('click', () => editarAnotacoesEvento(ev));
   // "Abrir cadastro" (aba Cliente) → formulário do cliente.
   const abrirCad = document.getElementById('abaAbrirCliente');
   if (abrirCad){ const cli = clienteDoEvento(ev); if (cli) abrirCad.addEventListener('click', () => abrirFormCliente(cli)); }
   // "Abrir mensagens de cobrança" (aba Mensagens) → copiador da conta do evento.
   const abrirMsg = document.getElementById('abaAbrirMensagens');
   if (abrirMsg){ const conta = contaDoEvento(ev['ID Evento']); abrirMsg.addEventListener('click', () => abrirCopiadorMensagem(conta)); }
+}
+
+/* Monta o payload de atualizarEvento preservando todos os campos do evento
+   atual, sobrepondo só o que vier em `overrides` (ex.: anotações). Evita que o
+   backend (que grava o evento inteiro) zere campos não enviados. */
+function dadosEventoPreservados(ev, overrides){
+  return Object.assign({
+    idCliente: ev['ID Cliente'],
+    status: ev['Status'] || '',
+    dataEvento: ev['Data do evento'] || '',
+    tipoEvento: ev['Tipo de evento'] || '',
+    horaInicio: ev['Hora início'] || '',
+    horaFim: ev['Hora fim'] || '',
+    local: ev['Local'] || '',
+    cidade: ev['Cidade'] || '',
+    pacote: ev['Pacote'] || '',
+    valorPacote: Number(ev['Valor pacote'] || 0),
+    desconto: Number(ev['Desconto'] || 0),
+    valorFinal: Number(ev['Valor final'] || 0),
+    observacoes: ev['Observações'] || '',
+  }, overrides || {});
+}
+
+/* Edição inline das anotações (card Anotações do Resumo). */
+function editarAnotacoesEvento(ev){
+  const card = document.getElementById('cardAnotacoes');
+  if (!card) return;
+  const atual = ev['Observações'] || '';
+  card.innerHTML = `
+    <div class="detalhe-bloco-head"><h3>Anotações</h3></div>
+    <textarea id="anotacoesInput" class="inline-input" rows="5" style="resize:vertical;" placeholder="Anote observações sobre este evento…">${esc(atual)}</textarea>
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn-primary btn-sm" id="salvarAnotacoes">Salvar</button>
+      <button class="btn-ghost btn-sm" id="cancelarAnotacoes">Cancelar</button>
+    </div>`;
+  document.getElementById('cancelarAnotacoes').addEventListener('click', () => renderMain());
+  document.getElementById('salvarAnotacoes').addEventListener('click', () => salvarAnotacoesEvento(ev['ID Evento']));
+  document.getElementById('anotacoesInput').focus();
+}
+async function salvarAnotacoesEvento(idEvento){
+  const ev = eventos.find(e => String(e['ID Evento']) === String(idEvento));
+  if (!ev) return;
+  const observacoes = document.getElementById('anotacoesInput').value.trim();
+  const btn = document.getElementById('salvarAnotacoes');
+  if (btn){ btn.disabled = true; btn.textContent = 'Salvando…'; }
+  try{
+    await apiCall('atualizarEvento', Object.assign({ idEvento }, dadosEventoPreservados(ev, { observacoes })));
+    loaded = false; await renderMain(); showToast('Anotações salvas.');
+  } catch(err){
+    showToast('❌ ' + err.message);
+    if (btn){ btn.disabled = false; btn.textContent = 'Salvar'; }
+  }
 }
 
 /* -------- Aba Resumo: 2 cards (informações + anotações), dados reais -------- */
@@ -343,9 +397,9 @@ function htmlAbaResumo(ev){
         </div>
       </div>
       <div class="col-12 col-lg-6">
-        <div class="detalhe-bloco">
+        <div class="detalhe-bloco" id="cardAnotacoes">
           <div class="detalhe-bloco-head"><h3>Anotações</h3>
-            <button class="btn-ghost btn-sm" data-edit-evento="1">Editar anotações</button></div>
+            <button class="btn-ghost btn-sm" id="btnEditarAnotacoes">Editar anotações</button></div>
           ${anotacoes}
         </div>
       </div>
