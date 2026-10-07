@@ -570,6 +570,41 @@ Arquivos: `assets/js/modules/eventos.js` (busca/filtro, clique→detalhe, `rende
 
 ---
 
+### 2.18 Refino visual das telas antigas (v3.6 — Fase 3)
+
+Quatro telas ainda não tinham passado pelo pente-fino do padrão visual adotado na v3.4/v3.5 (Bootstrap
+tematizado + view-header → painel → tabela responsiva → `status-pill`/`empty-state`): **Pacotes, Custos,
+Templates e Freelance**. Esta fase é **puramente visual/consistência** — zero features novas, zero mudança
+de dados ou backend; todos os handlers, fluxos e chamadas `apiCall` foram preservados. O trabalho consistiu
+em remover estilos `inline` soltos e trocá-los por classes reutilizáveis.
+
+O que mudou:
+
+- **`assets/css/crm.css`** — novo bloco de utilitários de refino: `.panel.spaced` (espaço entre painéis),
+  `.field.tight` (campo de filtro sem margem), `.th-sort` (cabeçalho ordenável), `.rule-sep` (separador fino),
+  `.hint` (nota auxiliar), `.btn-row` (barra de botões), `.btn-sm` (botão compacto), `.form-stack` (formulário
+  empilhado), `.status-pill.info` (variante neutra do pill) e as classes dos cartões de template
+  (`.tpl-card`, `.tpl-card-head`, `.tpl-actions`, `.code-area`, `.preview-box`), com regra mobile para o
+  cabeçalho do cartão empilhar.
+- **`assets/js/modules/templates.js`** — cartões de template agora usam `.panel.tpl-card` + classes (sem
+  `style=` inline); badge "PADRÃO" virou `status-pill`; botões de ação viraram `.btn-ghost/.btn-danger` na
+  variante `.btn-sm` (o "Deletar" agora usa o vermelho de erro padrão, não um token inexistente);
+  empty-state padronizado; `<textarea>`/preview agora são `.code-area`/`.preview-box`; o `<form>` virou
+  `.form-stack`. Comportamento (criar/editar/deletar, preview ao vivo, `confirm()` nativo) inalterado.
+- **`assets/js/modules/freelance.js`** — inlines migrados para `.panel.spaced`, `.field.tight` e `.th-sort`;
+  sub-tela de pagamentos padronizada (`.rule-sep`, `.hint`, `.btn-row`, `.empty-state`); badge de serviço só
+  de edição agora usa `.status-pill.info` (antes caía numa classe sem estilo).
+- **`assets/js/modules/custos.js`** — único inline (`margin-bottom`) trocado por `.panel.spaced`.
+- **`crm.html`** — bump de cache-busting `?v=3.5.0 → 3.6.0` nos 25 assets próprios.
+
+`pacotes.js` já estava conforme o padrão e **não foi tocado**. Validação: `node --check` nos três módulos
+alterados.
+
+Arquivos: `assets/css/crm.css` (utilitários de refino), `assets/js/modules/templates.js`,
+`assets/js/modules/freelance.js`, `assets/js/modules/custos.js`, `crm.html` (bump `?v=3.6.0`).
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.
