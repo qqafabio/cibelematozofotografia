@@ -6,12 +6,19 @@
 <title>CRM — Cibele Matozo Fotografia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/crm.css?v=3.3.0">
+<!-- Bootstrap 5.3 + Icons (v3.4): base de grid/offcanvas/modal + ícones. Carregados ANTES do crm.css
+     para que o nosso tema (variáveis --bs-* no topo do crm.css) sobrescreva os defaults do framework. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="assets/css/crm.css?v=3.4.0">
 </head>
 <body>
 <div class="mobile-topbar">
   <button class="nav-toggle" id="navToggle" aria-label="Abrir menu">☰</button>
   <span class="mobile-topbar-title">CIBELE MATOZO · CRM</span>
+  <button class="app-bell" id="btnNotificacoesMobile" aria-label="Notificações">
+    <i class="bi bi-bell"></i><span class="app-bell-badge" id="bellBadgeMobile" hidden></span>
+  </button>
 </div>
 <div class="nav-backdrop" id="navBackdrop"></div>
 <div class="shell">
@@ -26,34 +33,54 @@
     </div>
     <div id="navList"></div>
   </aside>
-  <main class="main" id="mainArea"></main>
+  <main class="main">
+    <header class="app-topbar">
+      <div class="app-search">
+        <i class="bi bi-search"></i>
+        <input id="globalSearch" type="search" autocomplete="off" placeholder="Buscar clientes, eventos, leads…" aria-label="Busca global">
+        <div class="app-search-results" id="searchResults" hidden></div>
+      </div>
+      <button class="app-bell" id="btnNotificacoes" aria-label="Notificações">
+        <i class="bi bi-bell"></i><span class="app-bell-badge" id="bellBadge" hidden></span>
+      </button>
+    </header>
+    <div id="mainArea"></div>
+  </main>
 </div>
+<nav class="mobile-bottomnav" id="mobileBottomNav">
+  <button class="bottomnav-item" data-view="dashboard"><i class="bi bi-house-door"></i><span>Início</span></button>
+  <button class="bottomnav-item" data-view="clientes"><i class="bi bi-people"></i><span>Clientes</span></button>
+  <button class="bottomnav-item" data-view="eventos"><i class="bi bi-calendar-event"></i><span>Eventos</span></button>
+  <button class="bottomnav-item" data-view="__mais"><i class="bi bi-list"></i><span>Mais</span></button>
+</nav>
 <div id="overlayRoot"></div>
 <div id="toastRoot"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.5/dist/pocketbase.umd.js"></script>
-<script src="assets/js/config.js?v=3.3.0"></script>
-<script src="assets/js/state.js?v=3.3.0"></script>
-<script src="assets/js/pbSchema.js?v=3.3.0"></script>
-<script src="assets/js/pbCore.js?v=3.3.0"></script>
-<script src="assets/js/api.js?v=3.3.0"></script>
-<script src="assets/js/pbClientes.js?v=3.3.0"></script>
-<script src="assets/js/pbLeitura.js?v=3.3.0"></script>
-<script src="assets/js/ui.js?v=3.3.0"></script>
-<script src="assets/js/router.js?v=3.3.0"></script>
-<script src="assets/js/modules/dashboard.js?v=3.3.0"></script>
-<script src="assets/js/modules/clientes.js?v=3.3.0"></script>
-<script src="assets/js/modules/eventos.js?v=3.3.0"></script>
-<script src="assets/js/modules/eventosColetivos.js?v=3.3.0"></script>
-<script src="assets/js/modules/pacotes.js?v=3.3.0"></script>
-<script src="assets/js/modules/leads.js?v=3.3.0"></script>
-<script src="assets/js/modules/financeiro.js?v=3.3.0"></script>
-<script src="assets/js/modules/cobrancas.js?v=3.3.0"></script>
-<script src="assets/js/modules/producao.js?v=3.3.0"></script>
-<script src="assets/js/modules/custos.js?v=3.3.0"></script>
-<script src="assets/js/modules/freelance.js?v=3.3.0"></script>
-<script src="assets/js/modules/templates.js?v=3.3.0"></script>
-<script src="assets/js/modules/mensagens.js?v=3.3.0"></script>
-<script src="assets/js/main.js?v=3.3.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script src="assets/js/config.js?v=3.4.0"></script>
+<script src="assets/js/state.js?v=3.4.0"></script>
+<script src="assets/js/pbSchema.js?v=3.4.0"></script>
+<script src="assets/js/pbCore.js?v=3.4.0"></script>
+<script src="assets/js/api.js?v=3.4.0"></script>
+<script src="assets/js/pbClientes.js?v=3.4.0"></script>
+<script src="assets/js/pbLeitura.js?v=3.4.0"></script>
+<script src="assets/js/ui.js?v=3.4.0"></script>
+<script src="assets/js/router.js?v=3.4.0"></script>
+<script src="assets/js/modules/dashboard.js?v=3.4.0"></script>
+<script src="assets/js/modules/clientes.js?v=3.4.0"></script>
+<script src="assets/js/modules/eventos.js?v=3.4.0"></script>
+<script src="assets/js/modules/eventosColetivos.js?v=3.4.0"></script>
+<script src="assets/js/modules/pacotes.js?v=3.4.0"></script>
+<script src="assets/js/modules/leads.js?v=3.4.0"></script>
+<script src="assets/js/modules/financeiro.js?v=3.4.0"></script>
+<script src="assets/js/modules/cobrancas.js?v=3.4.0"></script>
+<script src="assets/js/modules/producao.js?v=3.4.0"></script>
+<script src="assets/js/modules/custos.js?v=3.4.0"></script>
+<script src="assets/js/modules/freelance.js?v=3.4.0"></script>
+<script src="assets/js/modules/templates.js?v=3.4.0"></script>
+<script src="assets/js/modules/mensagens.js?v=3.4.0"></script>
+<script src="assets/js/topbar.js?v=3.4.0"></script>
+<script src="assets/js/main.js?v=3.4.0"></script>
 </body>
 </html>

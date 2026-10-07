@@ -24,6 +24,26 @@ function renderNav(){
     if (!nav.ready) return;
     item.addEventListener('click', () => { currentView = nav.id; renderNav(); renderMain(); toggleNavMobile(true); });
   });
+  marcarBottomNav();
+}
+
+/* Bottom-nav mobile (v3.4): marca o item ativo conforme a view atual.
+   "Início" cobre o dashboard; "Mais" nunca fica ativo (é só a gaveta). */
+function marcarBottomNav(){
+  const mapaView = { dashboard:'dashboard', clientes:'clientes', eventos:'eventos' };
+  document.querySelectorAll('.bottomnav-item').forEach(btn => {
+    btn.classList.toggle('active', mapaView[currentView] === btn.dataset.view);
+  });
+}
+/* Fiação dos 4 botões do bottom-nav (uma vez, no boot — ver main.js). */
+function wireBottomNav(){
+  document.querySelectorAll('.bottomnav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = btn.dataset.view;
+      if (v === '__mais'){ toggleNavMobile(); return; }
+      currentView = v; renderNav(); renderMain(); toggleNavMobile(true);
+    });
+  });
 }
 function toggleNavMobile(forceClose){
   const sidebar = document.querySelector('.sidebar');

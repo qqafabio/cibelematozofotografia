@@ -491,6 +491,49 @@ Arquivos: `assets/js/modules/producao.js` (coluna + botão), `assets/js/config.j
 
 ---
 
+### 2.16 Redesign do layout — base Bootstrap + topbar + Dashboard + mobile (v3.4 — Fase 1)
+
+Evolução do visual para um padrão "SaaS profissional" **sem abandonar a identidade da marca**
+(creme + dourado + preto, Fraunces/Work Sans). Adoção **gradual** do Bootstrap 5.3 como base de
+grid/responsividade/componentes — não é uma reescrita. Esta é a **Fase 1**; a lista de Eventos nova e a
+tela de detalhe com abas ficam para a **Fase 2 (v3.5)**.
+
+- **Bootstrap 5.3 + Bootstrap Icons tematizados:** carregados **antes** do `crm.css` (via CDN jsDelivr).
+  Um bloco de tema no topo do `crm.css` re-encosta as variáveis `--bs-*` na paleta/fontes da marca
+  (`--bs-body-bg/-color/-font-*`, `--bs-border-color`, `--bs-primary` dourado) para o **Reboot** do framework
+  não "vazar" o visual padrão nas telas ainda não redesenhadas. Só essas duas libs entram agora; ApexCharts,
+  Flatpickr, Tom Select, SweetAlert2, SortableJS e DataTables ficam para as fases que as usarem.
+- **Topbar persistente + sino de notificações (🔔):** a topbar fica **fora** do `#mainArea` (não é recriada a
+  cada troca de tela). Traz **busca global** (paleta client-side que casa nome em clientes/eventos/leads e
+  navega ao registro) e um **sino** com selo numérico: ele reabre a **mesma notificação de contas em atraso**
+  que já aparece no startup (`alertaCobrancasVencidas`) — sem contas vencidas, mostra um estado vazio. **Não há**
+  chip de usuário (o CRM não tem gestão de usuários). Novo arquivo `assets/js/topbar.js`.
+- **Dashboard mais rico:** 4 KPIs (**Clientes, Eventos, Receita (mês), A receber**) com **linha de tendência
+  real** (`↑/↓ N% vs. mês anterior`). Receita = soma de `Valor pago` por `Data pagamento`; "A receber" = saldo
+  em aberto + contagem de contas em atraso. **Regra de honestidade:** quando não há base no mês anterior, o card
+  mostra **"—"**, nunca um percentual inventado. Abaixo, duas colunas: **Próximos eventos** (com bolinha de
+  status) e **Últimos clientes** (colunas reais — Nome, Cidade, Eventos).
+- **Mobile:** **bottom-nav** fixa com 4 atalhos (🏠 Início, 👥 Clientes, 📅 Eventos, ☰ Mais — "Mais" abre a
+  gaveta/sidebar), KPIs **2×2**, próximos eventos como **cartões empilhados**; o sino também aparece na
+  `mobile-topbar`.
+- **Rastreio de data de criação (backend — você implanta):** para as tendências de **Clientes/Eventos** serem
+  reais, passamos a carimbar a data de cadastro. Eventos ganham a coluna **"Data de cadastro"**
+  (`criarEvento`/`criarEventoColetivo` em `backend.txt`); Clientes reaproveitam o **"Primeiro contato"** já
+  existente. O espelhamento no PocketBase usa o campo `data_cadastro` (via `pbSchema.js` para eventos e
+  `gen_gas_sync.cjs`→`sincronizarPB.gs` para clientes), com a migration de atualização
+  `infra/pb_migrations/1793000200_add_data_cadastro.js`. **O front sobe e funciona antes disso** — as tendências
+  de volume mostram "—" até a data começar a fluir.
+
+Arquivos: `crm.html` (CDN Bootstrap/Icons, reestrutura da topbar + bottom-nav, `<script> topbar.js`, bump
+`?v=3.4.0`), `assets/css/crm.css` (tema `--bs-*`, `.app-topbar/.app-search/.app-bell`, `.mobile-bottomnav`,
+cards de KPI com tendência, ajustes mobile), `assets/js/topbar.js` (novo — sino + busca), `assets/js/modules/dashboard.js`
+(KPIs com tendência + 2 colunas; helpers `agregarMes`/`tendenciaMes`/`badgeTendencia`), `assets/js/router.js`
+(fiação do bottom-nav), `assets/js/main.js` (selo do sino no boot). Backend: `backend.txt`, `assets/js/pbSchema.js`,
+`assets/js/pbClientes.js`, `infra/gen_gas_sync.cjs` (+ `infra/apps_script/sincronizarPB.gs` regerado) e a nova
+migration.
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.
