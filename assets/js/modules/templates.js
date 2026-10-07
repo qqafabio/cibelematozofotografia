@@ -22,27 +22,27 @@ function renderTemplates(main) {
 function desenharTabelaTemplates() {
   const container = document.getElementById('tabelaTemplates');
   if (!templates.length) {
-    container.innerHTML = `<div style="padding:20px;text-align:center;color:var(--ink-soft);">Nenhum template disponível</div>`;
+    container.innerHTML = `<div class="panel"><div class="empty-state">Nenhum template disponível</div></div>`;
     return;
   }
 
   const cartoes = templates.map((tpl, idx) => {
-    const ehPadraoTag = tpl['Padrão'] === 'Sim' ? '<span style="background:var(--gold);color:white;padding:2px 8px;border-radius:2px;font-size:10px;margin-left:8px;">PADRÃO</span>' : '';
+    const ehPadraoTag = tpl['Padrão'] === 'Sim' ? '<span class="status-pill">PADRÃO</span>' : '';
     const acoesBotoes = tpl['Padrão'] === 'Sim'
       ? ''
-      : `<button class="btn-ghost" style="padding:4px 8px;font-size:12px;" onclick="abrirFormTemplate(${idx})">✏️ Editar</button>
-         <button class="btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--danger);" onclick="confirmarDeletarTemplate(${idx})">🗑️ Deletar</button>`;
+      : `<button class="btn-ghost btn-sm" onclick="abrirFormTemplate(${idx})">✏️ Editar</button>
+         <button class="btn-danger btn-sm" onclick="confirmarDeletarTemplate(${idx})">🗑️ Deletar</button>`;
 
     return `
-      <div class="panel" style="margin-bottom:16px;padding:16px;">
-        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+      <div class="panel tpl-card">
+        <div class="tpl-card-head">
           <div>
-            <h3 style="margin:0;color:var(--gold);">${esc(tpl['Nome'])}${ehPadraoTag}</h3>
-            <p style="margin:4px 0 0;color:var(--ink-soft);font-size:13px;">${esc(tpl['Descrição'])}</p>
+            <h3>${esc(tpl['Nome'])}${ehPadraoTag}</h3>
+            <p>${esc(tpl['Descrição'])}</p>
           </div>
-          <div style="display:flex;gap:8px;">${acoesBotoes}</div>
+          <div class="tpl-actions">${acoesBotoes}</div>
         </div>
-        <textarea readonly style="width:100%;min-height:100px;padding:10px;border:1px solid var(--rule);border-radius:3px;background:var(--paper);font-family:monospace;font-size:12px;resize:none;color:var(--ink);">${esc(tpl['Corpo'])}</textarea>
+        <textarea class="code-area" readonly>${esc(tpl['Corpo'])}</textarea>
       </div>
     `;
   }).join('');
@@ -62,7 +62,7 @@ async function abrirFormTemplate(indice) {
       <div class="form-panel">
         <h2>${titulo}</h2>
         <div id="formErr" class="form-err" style="display:none;"></div>
-        <form id="formTemplate" style="display:flex;flex-direction:column;gap:16px;">
+        <form id="formTemplate" class="form-stack">
           <div class="field">
             <label>Nome do Template *</label>
             <input type="text" id="tplNome" value="${esc(nome)}" placeholder="Ex: LEVE, MÉDIA, PESADA ou seu custom" required>
@@ -73,8 +73,8 @@ async function abrirFormTemplate(indice) {
           </div>
           <div class="field">
             <label>Corpo da Mensagem * (use {{cliente}}, {{valor}}, {{diasAtraso}}, {{vencimento}})</label>
-            <textarea id="tplCorpo" style="min-height:120px;font-family:monospace;font-size:12px;" placeholder="Escreva o corpo da mensagem com as variáveis..." required>${esc(corpo)}</textarea>
-            <div id="tplPreview" style="margin-top:12px;padding:12px;background:var(--paper);border:1px solid var(--rule);border-radius:3px;font-size:12px;white-space:pre-wrap;color:var(--ink);max-height:150px;overflow-y:auto;display:none;"></div>
+            <textarea id="tplCorpo" class="code-area" placeholder="Escreva o corpo da mensagem com as variáveis..." required>${esc(corpo)}</textarea>
+            <div id="tplPreview" class="preview-box" style="display:none;"></div>
           </div>
           <div class="form-actions">
             <button type="button" class="btn-ghost" onclick="fecharOverlay()">Cancelar</button>

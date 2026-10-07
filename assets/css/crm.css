@@ -184,6 +184,30 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:var(--r-pill);font-size:13px;z-index:30;box-shadow:var(--shadow-lg);}
   .loading-note{color:var(--ink-soft);font-size:13px;padding:20px 0;}
 
+  /* ---- Utilitários de refino (v3.6) ----
+     Classes que absorvem estilos inline recorrentes das telas antigas
+     (Templates/Freelance/Custos), para manter a identidade sem repetir style="". */
+  .panel.spaced{margin-bottom:20px;}            /* espaço entre painéis empilhados */
+  .field.tight{margin-bottom:0;}                /* campos de filtro lado a lado */
+  .th-sort{cursor:pointer;}                      /* cabeçalho de coluna ordenável */
+  .rule-sep{border:none;border-top:1px solid var(--rule);margin:18px 0;} /* separador fino */
+  .hint{font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;} /* nota auxiliar */
+  .hint .hint-soft{font-weight:400;}
+  .btn-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;} /* barra de botões */
+  .btn-sm{padding:4px 10px;font-size:12px;}      /* variante compacta p/ ações em cartão */
+  .form-stack{display:flex;flex-direction:column;gap:16px;} /* formulário empilhado */
+  /* variante neutra do pill (ex.: serviço só de edição no Freelance) */
+  .status-pill.info{background:var(--rule-soft);color:var(--ink-soft);}
+
+  /* Cartões de template (corpo longo: ficam em cartão, não em tabela) */
+  .tpl-card{padding:16px 18px;margin-bottom:16px;}
+  .tpl-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;}
+  .tpl-card-head h3{font-family:'Fraunces',serif;font-weight:500;font-size:16px;margin:0;color:var(--gold);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .tpl-card-head p{margin:4px 0 0;color:var(--ink-soft);font-size:13px;}
+  .tpl-actions{display:flex;gap:8px;flex-shrink:0;}
+  .code-area{width:100%;min-height:100px;padding:10px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--paper);font-family:monospace;font-size:12px;color:var(--ink);resize:vertical;}
+  .preview-box{margin-top:12px;padding:12px;background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-sm);font-size:12px;white-space:pre-wrap;color:var(--ink);max-height:150px;overflow-y:auto;}
+
   /* ---- Modal Flutuante (Task 2.1) ---- */
   .floating-window-overlay{position:fixed;inset:0;background:rgba(34,31,28,.35);z-index:19;}
   .floating-window{position:fixed;background:var(--paper-raised);border:1px solid var(--rule);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.15);min-width:400px;min-height:300px;display:flex;flex-direction:column;z-index:20;}
@@ -227,6 +251,10 @@
     .detalhe-fatos{flex-direction:column;gap:6px;}
     .nav-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;}
     .nav-tabs .nav-link{white-space:nowrap;}
+
+    /* cartão de template empilha título e ações no mobile (v3.6) */
+    .tpl-card-head{flex-direction:column;}
+    .tpl-actions{flex-wrap:wrap;}
 
     /* formulários em coluna única, ocupando a tela cheia */
     .row2,.row3{grid-template-columns:1fr;}

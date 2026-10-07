@@ -28,7 +28,7 @@ function renderCustos(main){
       <button class="btn-primary" id="novoCustoBtn">+ Novo custo</button>
     </div>
     <div class="kpi-row"><div class="kpi-card"><div class="kpi-label">Total lançado</div><div class="kpi-value">${formatBRL(total)}</div></div></div>
-    <div class="panel" style="margin-bottom:20px;">
+    <div class="panel spaced">
       <h2>Receita × custo por evento</h2>
       ${porEvento.length ? `<table class="responsive-table">
         <thead><tr><th>Cliente</th><th>Receita</th><th>Custos</th><th>Margem</th><th>Margem %</th></tr></thead>

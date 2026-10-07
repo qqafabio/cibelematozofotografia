@@ -15,7 +15,7 @@ const SERVICO_ICONES = {
 const SERVICOS_EDICAO_PURA = ['Edição de foto', 'Edição de vídeo'];
 function badgeServico(servico){
   const icone = SERVICO_ICONES[servico] || '📌';
-  const classe = SERVICOS_EDICAO_PURA.includes(servico) ? 'edicao' : '';
+  const classe = SERVICOS_EDICAO_PURA.includes(servico) ? 'info' : '';
   return `<span class="status-pill ${classe}">${icone} ${esc(servico || '—')}</span>`;
 }
 
@@ -32,10 +32,10 @@ function renderFreelance(main){
       <div class="kpi-card"><div class="kpi-label">Total pendente</div><div class="kpi-value">${formatBRL(totalPendente)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Recebido no período filtrado</div><div class="kpi-value" id="freelanceRecebidoFiltro">—</div></div>
     </div>
-    <div class="panel" style="margin-bottom:20px;padding:16px 18px;">
+    <div class="panel spaced" style="padding:16px 18px;">
       <div class="row2">
-        <div class="field" style="margin-bottom:0;"><label>De</label><input id="freelanceDe" placeholder="DD/MM/AAAA"></div>
-        <div class="field" style="margin-bottom:0;"><label>Até</label><input id="freelanceAte" placeholder="DD/MM/AAAA"></div>
+        <div class="field tight"><label>De</label><input id="freelanceDe" placeholder="DD/MM/AAAA"></div>
+        <div class="field tight"><label>Até</label><input id="freelanceAte" placeholder="DD/MM/AAAA"></div>
       </div>
     </div>
     <div class="panel"><div id="tabelaFreelance"></div></div>
@@ -73,7 +73,7 @@ function desenharTabelaFreelance(){
   const seta = freelanceOrdemData === 'desc' ? '↓' : '↑';
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th id="thDataFreelance" style="cursor:pointer;">Data ${seta}</th><th>Nome do evento</th><th>Fotografia</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th></tr></thead>
+      <thead><tr><th id="thDataFreelance" class="th-sort">Data ${seta}</th><th>Nome do evento</th><th>Fotografia</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th></tr></thead>
       <tbody>${ordenados.map(ev => `
         <tr class="clickable" data-id="${esc(ev['ID Evento'])}">
           <td data-label="Data">${esc(ev['Data'])}</td><td data-label="Nome do evento">${esc(ev['Nome do evento'])}</td>
@@ -127,15 +127,15 @@ function abrirFormFreelance(ev){
         </div>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="2">${esc(editando?ev['Observações']:'')}</textarea></div>
         ${editando ? `
-        <hr style="border:none;border-top:1px solid var(--rule);margin:18px 0;">
-        <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;">Pagamentos recebidos por este evento <span style="font-weight:400;">(clique num pagamento para editar)</span></p>
+        <hr class="rule-sep">
+        <p class="hint">Pagamentos recebidos por este evento <span class="hint-soft">(clique num pagamento para editar)</span></p>
         <div id="pagamentosFreelanceLista"></div>
         <input type="hidden" id="f_pagamentoEditando" value="">
         <div class="row2" style="margin-top:10px;">
           <div class="field"><label>Data do pagamento</label><input id="f_novoPagData" class="p-mask-data" placeholder="DD/MM/AAAA"></div>
           <div class="field"><label>Valor</label><input id="f_novoPagValor" type="number" step="0.01"></div>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;">
+        <div class="btn-row">
           <button class="btn-ghost" id="addPagamentoBtn" type="button">+ Registrar pagamento</button>
           <button class="btn-ghost" id="cancelarEdicaoPagBtn" type="button" style="display:none;">Cancelar edição</button>
           <button class="btn-danger" id="excluirPagamentoBtn" type="button" style="display:none;margin-right:0;">Excluir pagamento</button>
@@ -178,7 +178,7 @@ function limparFormPagamento(){
 }
 function desenharPagamentosFreelance(ev){
   const wrap = document.getElementById('pagamentosFreelanceLista');
-  if (!ev.pagamentos || !ev.pagamentos.length){ wrap.innerHTML = `<p style="font-size:13px;color:var(--ink-soft);">Nenhum pagamento registrado ainda para este evento.</p>`; return; }
+  if (!ev.pagamentos || !ev.pagamentos.length){ wrap.innerHTML = `<div class="empty-state">Nenhum pagamento registrado ainda para este evento.</div>`; return; }
   wrap.innerHTML = `<table class="responsive-table"><tbody>${ev.pagamentos.map(p => `
     <tr class="clickable" data-id-pagamento="${esc(p['ID Pagamento'])}">
       <td data-label="Data">${esc(p['Data do pagamento'])}</td><td data-label="Valor">${formatBRL(p['Valor pago'])}</td>
