@@ -605,6 +605,42 @@ Arquivos: `assets/css/crm.css` (utilitários de refino), `assets/js/modules/temp
 
 ---
 
+### 2.19 Gráficos no Dashboard (v3.7)
+
+O Dashboard mostrava 4 KPIs com setas de tendência (comparação de 2 meses) e duas tabelas, mas nenhuma
+**visualização temporal**. A v3.7 adiciona três gráficos de série mensal (últimos 12 meses) via
+**ApexCharts** (CDN), transformando dados que já existem em leitura de faturamento, sazonalidade e margem.
+É **só leitura** — nenhuma mudança de backend/dados e a lógica dos KPIs/tabelas atuais ficou intacta.
+
+Gráficos (todos dos últimos 12 meses):
+
+- **Receita por mês** (área) — soma de `'Valor pago'` do `financeiro` por `'Data pagamento'`; tooltip/eixo
+  em `formatBRL`. O último ponto bate com o KPI "Receita (mês)".
+- **Eventos por mês** (colunas) — contagem de eventos não coletivos por `'Data do evento'` (mostra sazonalidade).
+- **Receita × Custo por mês** (colunas agrupadas) — receita (`financeiro`/`'Valor pago'`) vs. custo
+  (`custos`/`'Valor'`) por mês, para enxergar a margem ao longo do tempo.
+
+Como foi feito (padrão compatível com o render atual):
+
+- **`assets/js/modules/dashboard.js`** — novo helper `serieMensal(itens, campoData, valorFn, nMeses=12)`
+  (mesmo bucketing `ano*12+mês` do `agregarMes`, reusando `parseDataBR`; devolve `{labels, valores}` com zeros
+  onde não há dado). Como `renderDashboard` monta todo o `innerHTML` de uma vez e não faz wiring pós-render,
+  os gráficos são instanciados por `desenharGraficosDashboard()` **depois** de o HTML entrar no DOM. As
+  instâncias ficam em `dashCharts[]` e são destruídas antes de recriar (sem vazamento ao revisitar a rota).
+  Se o CDN do ApexCharts estiver fora do ar, cada gráfico cai num `.empty-state` e o resto do Dashboard
+  segue normal.
+- **`crm.html`** — `<script>` do ApexCharts 3.54.1 (CDN, antes dos scripts locais) + bump `?v=3.6.0 → 3.7.0`.
+- **`assets/css/crm.css`** — `.chart-panel` (`overflow:visible`, p/ o tooltip não ser cortado) e `.chart-box`
+  (padding); altura e responsividade vêm das opções do próprio gráfico, dentro das colunas Bootstrap.
+
+Tema: cores da marca (dourado `#A8791E` receita, tinta `#221F1C` eventos, vermelho `#B23B2E` custo), fonte
+Work Sans, sem a toolbar padrão do ApexCharts. Validação: `node --check assets/js/modules/dashboard.js`.
+
+Arquivos: `assets/js/modules/dashboard.js` (`serieMensal`, `desenharGraficosDashboard`), `crm.html`
+(CDN ApexCharts + bump `?v=3.7.0`), `assets/css/crm.css` (`.chart-panel`/`.chart-box`).
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.
