@@ -108,6 +108,13 @@
   .kpi-trend.neutro{color:var(--ink-soft);font-weight:500;}
   .kpi-trend-sub{color:var(--ink-soft);font-weight:400;font-size:11px;}
   .dash-cols .panel{height:100%;}
+  /* Respiro entre o bloco de tabelas e o de gráficos, igual ao gutter (16px)
+     entre os gráficos que quebram de linha (v3.7) — sem isso ficam colados. */
+  .dash-cols{margin-bottom:16px;}
+  /* Gráficos do Dashboard (v3.7): overflow visível p/ o tooltip do ApexCharts
+     não ser cortado pelo .panel{overflow:hidden}; altura vem das opções do chart. */
+  .chart-panel{overflow:visible;}
+  .chart-box{padding:8px 12px 14px;}
   /* bolinha de status na lista de próximos eventos */
   .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle;background:var(--gold);}
   .status-dot.ok{background:var(--ok);}

@@ -27,6 +27,31 @@ function agregarMes(itens, campoData, valorFn){
 }
 function tendenciaMes(itens, campoData){ return agregarMes(itens, campoData); }
 
+/* Série dos últimos nMeses meses (terminando no mês atual) para os gráficos.
+   Mesma chave de bucketing de agregarMes (ano*12+mês), mas devolve um array
+   por mês — com zeros onde não há dado, para o gráfico sempre ter eixo.
+   valorFn ausente → contagem; presente → soma. Rótulos curtos pt-BR (out/25). */
+const MESES_CURTOS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function serieMensal(itens, campoData, valorFn, nMeses){
+  nMeses = nMeses || 12;
+  const hoje = new Date();
+  const base = (hoje.getFullYear() * 12 + hoje.getMonth()) - (nMeses - 1);
+  const labels = [], valores = [];
+  for (let i = 0; i < nMeses; i++){
+    const key = base + i;
+    labels.push(MESES_CURTOS[((key % 12) + 12) % 12] + '/' + String(Math.floor(key / 12)).slice(-2));
+    valores.push(0);
+  }
+  (itens || []).forEach(it => {
+    const d = parseDataBR(it[campoData]);
+    if (!d) return;
+    const idx = (d.getFullYear() * 12 + d.getMonth()) - base;
+    if (idx < 0 || idx >= nMeses) return;
+    valores[idx] += valorFn ? (Number(valorFn(it)) || 0) : 1;
+  });
+  return { labels, valores };
+}
+
 /* Linha de tendência de um KPI. Nunca mostra número falso: sem base no mês
    anterior → "— vs. mês anterior" (neutro). */
 function badgeTendencia(info){
@@ -41,6 +66,78 @@ function statusDot(status){
   const s = String(status || '').toLowerCase();
   const cls = s === 'confirmado' ? 'ok' : (s === 'cancelado' ? 'off' : 'pend');
   return `<span class="status-dot ${cls}" title="${esc(status || '')}"></span>`;
+}
+
+/* ============ Gráficos do Dashboard (v3.7 · ApexCharts) ============
+   renderDashboard reconstrói todo o innerHTML a cada visita e NÃO faz wiring
+   pós-render; por isso os gráficos são instanciados aqui, depois que os
+   containers já estão no DOM. Guardamos as instâncias para destruí-las antes
+   de recriar (evita vazar gráficos ao voltar para a rota). */
+let dashCharts = [];
+function desenharGraficosDashboard(dados){
+  const ids = ['grafReceitaMes', 'grafEventosMes', 'grafReceitaCusto'];
+  dashCharts.forEach(c => { try { c.destroy(); } catch(e){} });
+  dashCharts = [];
+  // CDN fora do ar: não quebra o resto do Dashboard, só avisa no lugar do gráfico.
+  if (typeof ApexCharts === 'undefined'){
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = '<div class="empty-state">Não foi possível carregar os gráficos.</div>'; });
+    return;
+  }
+  const GOLD = '#A8791E', INK = '#221F1C', INK_SOFT = '#6B6459', RULE = '#DCD4C4', RULE_SOFT = '#EBE4D6', ERROR = '#B23B2E';
+  const brlCompacto = v => {
+    v = Number(v) || 0;
+    return Math.abs(v) >= 1000
+      ? 'R$ ' + (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k'
+      : 'R$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+  };
+  // Base temática compartilhada (paleta da marca, Work Sans, sem toolbar).
+  const base = (categorias) => ({
+    chart: { fontFamily: "'Work Sans',sans-serif", height: 260, toolbar: { show: false }, parentHeightOffset: 0, animations: { enabled: true } },
+    dataLabels: { enabled: false },
+    grid: { borderColor: RULE_SOFT, strokeDashArray: 3 },
+    xaxis: {
+      categories: categorias,
+      labels: { style: { colors: INK_SOFT, fontSize: '11px', fontFamily: "'Work Sans',sans-serif" } },
+      axisBorder: { color: RULE }, axisTicks: { color: RULE },
+    },
+    legend: { fontFamily: "'Work Sans',sans-serif", labels: { colors: INK } },
+  });
+
+  const grafs = [
+    // 1) Receita por mês — área dourada, dinheiro em formatBRL.
+    Object.assign(base(dados.receitaMensal.labels), {
+      series: [{ name: 'Receita', data: dados.receitaMensal.valores }],
+      chart: Object.assign(base().chart, { id: 'grafReceitaMes', type: 'area' }),
+      colors: [GOLD], stroke: { curve: 'smooth', width: 2 },
+      fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05 } },
+      yaxis: { labels: { style: { colors: INK_SOFT }, formatter: brlCompacto } },
+      tooltip: { y: { formatter: v => formatBRL(v) } },
+    }),
+    // 2) Eventos por mês — colunas (contagem inteira).
+    Object.assign(base(dados.eventosMensal.labels), {
+      series: [{ name: 'Eventos', data: dados.eventosMensal.valores }],
+      chart: Object.assign(base().chart, { id: 'grafEventosMes', type: 'bar' }),
+      colors: [INK], plotOptions: { bar: { borderRadius: 3, columnWidth: '55%' } },
+      yaxis: { labels: { style: { colors: INK_SOFT }, formatter: v => String(Math.round(v)) } },
+      tooltip: { y: { formatter: v => Math.round(v) + (Math.round(v) === 1 ? ' evento' : ' eventos') } },
+    }),
+    // 3) Receita × Custo por mês — colunas agrupadas (ouro × vermelho).
+    Object.assign(base(dados.receitaMensal.labels), {
+      series: [{ name: 'Receita', data: dados.receitaMensal.valores }, { name: 'Custo', data: dados.custoMensal.valores }],
+      chart: Object.assign(base().chart, { id: 'grafReceitaCusto', type: 'bar' }),
+      colors: [GOLD, ERROR], plotOptions: { bar: { borderRadius: 3, columnWidth: '60%' } },
+      yaxis: { labels: { style: { colors: INK_SOFT }, formatter: brlCompacto } },
+      tooltip: { y: { formatter: v => formatBRL(v) } },
+    }),
+  ];
+
+  ids.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const chart = new ApexCharts(el, grafs[i]);
+    chart.render();
+    dashCharts.push(chart);
+  });
 }
 
 /* ============ DASHBOARD ============ */
@@ -83,6 +180,11 @@ function renderDashboard(main){
       return (Number(b['ID Cliente']) || 0) - (Number(a['ID Cliente']) || 0);
     })
     .slice(0, 6);
+
+  // --- Séries mensais para os gráficos (últimos 12 meses) ---
+  const receitaMensal = serieMensal(financeiro, 'Data pagamento', p => p['Valor pago']);
+  const eventosMensal = serieMensal(eventos.filter(e => String(e['Coletivo']) !== 'Sim'), 'Data do evento');
+  const custoMensal   = serieMensal(custos, 'Data', c => c['Valor']);
 
   main.innerHTML = `
     <div class="view-header"><div><h1>Dashboard</h1><p>Panorama geral do negócio.</p></div></div>
@@ -152,7 +254,31 @@ function renderDashboard(main){
         </div>
       </div>
     </div>
+
+    <div class="row g-3 chart-row">
+      <div class="col-12 col-lg-6">
+        <div class="panel chart-panel">
+          <h2>Receita por mês</h2>
+          <div class="chart-box" id="grafReceitaMes"></div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="panel chart-panel">
+          <h2>Eventos por mês</h2>
+          <div class="chart-box" id="grafEventosMes"></div>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="panel chart-panel">
+          <h2>Receita × Custo por mês</h2>
+          <div class="chart-box" id="grafReceitaCusto"></div>
+        </div>
+      </div>
+    </div>
   `;
+
+  // Gráficos: instanciados após o innerHTML (containers já no DOM).
+  desenharGraficosDashboard({ receitaMensal, eventosMensal, custoMensal });
 }
 function parseDataBR(s){
   const p = String(s).split('/');
