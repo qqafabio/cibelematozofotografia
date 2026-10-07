@@ -21,3 +21,9 @@ let freelanceEventos = [];
 let dashboardCobrancas = null;
 let loaded = false;
 
+/* Eventos (v3.5): critérios da lista (sobrevivem ao re-render da tabela) e
+   id do evento aberto na tela de detalhe com abas. */
+let eventosBusca = '';
+let eventosFiltroStatus = '';
+let eventoDetalheId = null;
+

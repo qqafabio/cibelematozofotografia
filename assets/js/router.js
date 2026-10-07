@@ -7,11 +7,13 @@
 
 function renderNav(){
   const el = document.getElementById('navList');
+  // 'eventoDetalhe' não é item de menu: destaca a seção Eventos enquanto aberto.
+  const viewAtiva = currentView === 'eventoDetalhe' ? 'eventos' : currentView;
   el.innerHTML = NAV.map(g => `
     <div class="nav-group">
       <div class="nav-group-title">${g.group}</div>
       ${g.items.map(n => `
-        <div class="nav-item ${n.id===currentView?'active':''} ${!n.ready?'disabled':''}" data-id="${n.id}">
+        <div class="nav-item ${n.id===viewAtiva?'active':''} ${!n.ready?'disabled':''}" data-id="${n.id}">
           <span>${n.label}</span>
           ${!n.ready ? '<span class="nav-soon">em breve</span>' : ''}
         </div>
@@ -30,7 +32,7 @@ function renderNav(){
 /* Bottom-nav mobile (v3.4): marca o item ativo conforme a view atual.
    "Início" cobre o dashboard; "Mais" nunca fica ativo (é só a gaveta). */
 function marcarBottomNav(){
-  const mapaView = { dashboard:'dashboard', clientes:'clientes', eventos:'eventos' };
+  const mapaView = { dashboard:'dashboard', clientes:'clientes', eventos:'eventos', eventoDetalhe:'eventos' };
   document.querySelectorAll('.bottomnav-item').forEach(btn => {
     btn.classList.toggle('active', mapaView[currentView] === btn.dataset.view);
   });
@@ -67,6 +69,7 @@ async function renderMain(){
   if (currentView === 'dashboard') renderDashboard(main);
   else if (currentView === 'clientes') renderClientes(main);
   else if (currentView === 'eventos') renderEventos(main);
+  else if (currentView === 'eventoDetalhe') renderDetalheEvento(main);
   else if (currentView === 'eventosColetivos') renderEventosColetivos(main);
   else if (currentView === 'pacotes') renderPacotes(main);
   else if (currentView === 'leads') renderLeads(main);

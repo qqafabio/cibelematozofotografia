@@ -30,21 +30,38 @@ async function excluirEventoComConfirmacao(evento){
 /* ============ EVENTOS ============ */
 function renderEventos(main){
   const totalIndividuais = eventos.filter(e => String(e['Coletivo']) !== 'Sim').length;
+  const opcoesStatus = `<option value="">Todos os status</option>` +
+    (listas['Status evento'] || []).map(v =>
+      `<option value="${esc(v)}" ${eventosFiltroStatus===v?'selected':''}>${esc(v)}</option>`).join('');
   main.innerHTML = `
     <div class="view-header">
       <div><h1>Eventos</h1><p>${totalIndividuais} registrados. Novo evento cria automaticamente o compromisso na Agenda.</p></div>
       <button class="btn-primary" id="novoEventoBtn">+ Novo evento</button>
     </div>
+    <div class="list-toolbar">
+      <div class="search-box"><input type="text" id="buscaEvento" placeholder="Buscar por cliente ou tipo…" value="${esc(eventosBusca)}"></div>
+      <select id="filtroStatusEvento" class="list-filter">${opcoesStatus}</select>
+    </div>
     <div class="panel"><div id="tabelaEventos"></div></div>
   `;
   document.getElementById('novoEventoBtn').addEventListener('click', () => abrirFormEvento(null));
+  document.getElementById('buscaEvento').addEventListener('input', e => { eventosBusca = e.target.value; desenharTabelaEventos(); });
+  document.getElementById('filtroStatusEvento').addEventListener('change', e => { eventosFiltroStatus = e.target.value; desenharTabelaEventos(); });
   desenharTabelaEventos();
 }
 function desenharTabelaEventos(){
   const el = document.getElementById('tabelaEventos');
   const individuais = eventos.filter(e => String(e['Coletivo']) !== 'Sim');
   if (!individuais.length){ el.innerHTML = `<div class="empty-state">Nenhum evento cadastrado ainda.</div>`; return; }
-  const ordenados = [...individuais].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
+  const termo = (eventosBusca || '').trim().toLowerCase();
+  const filtrados = individuais.filter(e => {
+    if (eventosFiltroStatus && String(e.Status) !== eventosFiltroStatus) return false;
+    if (!termo) return true;
+    const alvo = `${e['Cliente / Responsável']||''} ${e['Tipo de evento']||''}`.toLowerCase();
+    return alvo.includes(termo);
+  });
+  if (!filtrados.length){ el.innerHTML = `<div class="empty-state">Nenhum evento encontrado com esses filtros.</div>`; return; }
+  const ordenados = [...filtrados].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
   el.innerHTML = `
     <table class="responsive-table">
       <thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Pacote</th><th>Valor</th><th>Status</th></tr></thead>
@@ -56,10 +73,7 @@ function desenharTabelaEventos(){
         </tr>`).join('')}</tbody>
     </table>`;
   el.querySelectorAll('tr.clickable').forEach(row => {
-    row.addEventListener('click', () => {
-      const evento = eventos.find(e => String(e['ID Evento']) === row.dataset.id);
-      abrirFormEvento(evento);
-    });
+    row.addEventListener('click', () => abrirDetalheEvento(row.dataset.id));
   });
 }
 function abrirFormEvento(evento){
@@ -148,4 +162,187 @@ async function salvarEvento(idEvento){
     loaded = false; fecharOverlay(); await renderMain(); showToast(idEvento ? 'Evento atualizado.' : 'Evento criado e adicionado à Agenda.');
   } catch(err){ mostrarErro('eventoErr', err.message); btn.disabled=false; btn.textContent = idEvento?'Salvar alterações':'Criar evento'; }
 }
- 
+
+/* ============ DETALHE DO EVENTO (individual) — tela com abas ============ */
+const NFSE_URL = 'https://www.nfse.gov.br/EmissorNacional/Login?ReturnUrl=%2fEmissorNacional';
+
+/* Navega para a tela de detalhe do evento. Usa a view 'eventoDetalhe' (router.js)
+   para que re-renders após editar/salvar permaneçam no detalhe. */
+function abrirDetalheEvento(idEvento){
+  eventoDetalheId = idEvento;
+  currentView = 'eventoDetalhe';
+  renderNav();
+  renderMain();
+}
+function voltarParaEventos(){
+  currentView = 'eventos';
+  renderNav();
+  renderMain();
+}
+/* Conta do evento individual no Financeiro (idCliente vazio ⇒ 1 conta por evento). */
+function contaDoEvento(idEvento){
+  return agruparContas().find(c => String(c.idEvento) === String(idEvento) && !c.idCliente) || null;
+}
+function producaoDoEvento(idEvento){
+  return (producao || []).find(p => String(p['ID Evento']) === String(idEvento)) || null;
+}
+
+function renderDetalheEvento(main){
+  const ev = eventos.find(e => String(e['ID Evento']) === String(eventoDetalheId));
+  if (!ev){ voltarParaEventos(); return; } // evento sumiu (ex.: excluído) → volta à lista
+  const confirmado = String(ev.Status).toLowerCase() === 'confirmado';
+  const hora = [ev['Hora início'], ev['Hora fim']].filter(Boolean).join(' – ');
+  const localCidade = [ev['Local'], ev['Cidade']].filter(Boolean).join(' · ');
+  main.innerHTML = `
+    <div class="detalhe-head">
+      <div class="detalhe-head-top">
+        <button class="btn-ghost" id="voltarEvento">← Voltar</button>
+        <div class="detalhe-actions">
+          <button class="btn-ghost" id="editarEvento">✏️ Editar</button>
+          <a class="btn-ghost" href="${NFSE_URL}" target="_blank" rel="noopener">Emitir NFS-e</a>
+          <button class="btn-danger" id="excluirEventoDetalhe">🗑 Excluir</button>
+        </div>
+      </div>
+      <h1>${esc(ev['Cliente / Responsável']||'Evento')} <span class="status-pill ${confirmado?'confirmado':''}">${esc(ev.Status)}</span></h1>
+      <div class="detalhe-fatos">
+        <span><i class="bi bi-calendar-event"></i> ${esc(ev['Data do evento']||'—')}</span>
+        ${hora ? `<span><i class="bi bi-clock"></i> ${esc(hora)}</span>` : ''}
+        ${ev['Tipo de evento'] ? `<span><i class="bi bi-camera"></i> ${esc(ev['Tipo de evento'])}</span>` : ''}
+        ${localCidade ? `<span><i class="bi bi-geo-alt"></i> ${esc(localCidade)}</span>` : ''}
+        <span><i class="bi bi-cash-coin"></i> ${formatBRL(ev['Valor final'])}</span>
+      </div>
+    </div>
+
+    <ul class="nav nav-tabs" id="abasEvento" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#aba-resumo" type="button" role="tab">Resumo</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-financeiro" type="button" role="tab">Financeiro</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-producao" type="button" role="tab">Produção</button>
+      </li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="aba-resumo" role="tabpanel">${htmlAbaResumo(ev)}</div>
+      <div class="tab-pane fade" id="aba-financeiro" role="tabpanel">${htmlAbaFinanceiro(ev)}</div>
+      <div class="tab-pane fade" id="aba-producao" role="tabpanel">${htmlAbaProducao(ev)}</div>
+    </div>
+  `;
+  document.getElementById('voltarEvento').addEventListener('click', voltarParaEventos);
+  document.getElementById('editarEvento').addEventListener('click', () => abrirFormEvento(ev));
+  document.getElementById('excluirEventoDetalhe').addEventListener('click', () => excluirEventoComConfirmacao(ev));
+  const abrirConta = document.getElementById('abaAbrirConta');
+  if (abrirConta){ const conta = contaDoEvento(ev['ID Evento']); abrirConta.addEventListener('click', () => abrirFormConta(conta)); }
+  const abrirProd = document.getElementById('abaAbrirProducao');
+  if (abrirProd){ const prod = producaoDoEvento(ev['ID Evento']); abrirProd.addEventListener('click', () => abrirFormProducao(prod)); }
+}
+
+/* -------- Aba Resumo: campos do evento + mini-resumo financeiro + produção -------- */
+function htmlAbaResumo(ev){
+  const conta = contaDoEvento(ev['ID Evento']);
+  const prod = producaoDoEvento(ev['ID Evento']);
+  const fato = (rotulo, valor) => `<div class="detalhe-campo"><span class="dc-label">${rotulo}</span><span class="dc-valor">${valor}</span></div>`;
+  const campos = [
+    fato('Pacote', esc(ev['Pacote']||'—')),
+    fato('Valor pacote', formatBRL(ev['Valor pacote'])),
+    fato('Desconto', Number(ev['Desconto']||0) > 0 ? formatBRL(ev['Desconto']) : '—'),
+    fato('Valor final', formatBRL(ev['Valor final'])),
+  ].join('');
+  let financeiroResumo = '<p class="detalhe-vazio">Sem conta lançada no Financeiro.</p>';
+  if (conta){
+    financeiroResumo = `<div class="detalhe-grid">
+      ${fato('Previsto', formatBRL(conta.totalPrevisto))}
+      ${fato('Recebido', formatBRL(conta.totalPago))}
+      ${conta.desconto > 0 ? fato('Desconto', formatBRL(conta.desconto)) : ''}
+      ${fato('Saldo', formatBRL(Math.max(0, conta.saldo)))}
+    </div>`;
+  }
+  const entrega = prod ? (prod['Entrega'] || prod['Entrega final'] || '—') : null;
+  const producaoResumo = prod
+    ? `<div class="detalhe-grid">${fato('Entrega', esc(entrega))}${fato('Edição foto', esc(prod['Edição foto']||'—'))}</div>`
+    : '<p class="detalhe-vazio">Sem registro de produção.</p>';
+  const obs = ev['Observações'] ? `<div class="detalhe-bloco"><h3>Observações</h3><p>${esc(ev['Observações'])}</p></div>` : '';
+  return `
+    <div class="detalhe-bloco"><h3>Dados do evento</h3><div class="detalhe-grid">${campos}</div></div>
+    <div class="detalhe-bloco"><h3>Financeiro</h3>${financeiroResumo}</div>
+    <div class="detalhe-bloco"><h3>Produção</h3>${producaoResumo}</div>
+    ${obs}`;
+}
+
+/* -------- Aba Financeiro: parcelas da conta do evento -------- */
+function htmlAbaFinanceiro(ev){
+  const conta = contaDoEvento(ev['ID Evento']);
+  if (!conta){
+    return `<div class="detalhe-bloco"><p class="detalhe-vazio">Nenhuma conta lançada para este evento.</p>
+      <button class="btn-primary" onclick="abrirFormConta(null)">+ Nova conta</button></div>`;
+  }
+  const parcelas = conta.parcelas.filter(p => String(p['Tipo cobrança']) !== 'Desconto');
+  const linhas = parcelas.map(p => {
+    const st = String(p['Status']||'');
+    const cls = st === 'Pago' ? 'confirmado' : (st === 'Vencida' ? 'vencida' : '');
+    return `<tr>
+      <td data-label="Tipo">${esc(p['Tipo cobrança']||'—')}</td>
+      <td data-label="Vencimento">${esc(p['Vencimento']||'—')}</td>
+      <td data-label="Previsto">${formatBRL(p['Valor previsto'])}</td>
+      <td data-label="Pago">${formatBRL(p['Valor pago'])}</td>
+      <td data-label="Status"><span class="status-pill ${cls}">${esc(st||'—')}</span></td>
+    </tr>`;
+  }).join('');
+  return `
+    <div class="detalhe-bloco">
+      <div class="detalhe-resumo-linha">
+        <span>Previsto: <strong>${formatBRL(conta.totalPrevisto)}</strong></span>
+        <span>Recebido: <strong>${formatBRL(conta.totalPago)}</strong></span>
+        ${conta.desconto > 0 ? `<span>Desconto: <strong>${formatBRL(conta.desconto)}</strong></span>` : ''}
+        <span>Saldo: <strong>${formatBRL(Math.max(0, conta.saldo))}</strong></span>
+        <button class="btn-ghost" id="abaAbrirConta" style="margin-left:auto;">Abrir conta</button>
+      </div>
+      ${parcelas.length ? `<table class="responsive-table">
+        <thead><tr><th>Tipo</th><th>Vencimento</th><th>Previsto</th><th>Pago</th><th>Status</th></tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>` : '<p class="detalhe-vazio">Conta sem parcelas lançadas.</p>'}
+    </div>`;
+}
+
+/* -------- Aba Produção: etapas e entrega (read-only) -------- */
+function htmlAbaProducao(ev){
+  const prod = producaoDoEvento(ev['ID Evento']);
+  if (!prod){ return `<div class="detalhe-bloco"><p class="detalhe-vazio">Nenhum registro de produção para este evento.</p></div>`; }
+  const pill = (valor) => {
+    const v = String(valor||'');
+    const cls = v.toLowerCase() === 'concluído' ? 'confirmado' : '';
+    return `<span class="status-pill ${cls}">${esc(v||'—')}</span>`;
+  };
+  const etapa = (rotulo, valor) => `<div class="detalhe-campo"><span class="dc-label">${rotulo}</span><span class="dc-valor">${pill(valor)}</span></div>`;
+  const campo = (rotulo, valor) => `<div class="detalhe-campo"><span class="dc-label">${rotulo}</span><span class="dc-valor">${esc(valor||'—')}</span></div>`;
+  const link = prod['Link das fotos']
+    ? `<div class="detalhe-campo"><span class="dc-label">Link das fotos</span><span class="dc-valor"><a href="${esc(prod['Link das fotos'])}" target="_blank" rel="noopener">abrir</a></span></div>`
+    : '';
+  return `
+    <div class="detalhe-bloco"><h3>Etapas</h3>
+      <div class="detalhe-grid">
+        ${etapa('Backup', prod['Backup'])}
+        ${etapa('Seleção', prod['Seleção'])}
+        ${etapa('Edição foto', prod['Edição foto'])}
+        ${etapa('Edição vídeo', prod['Edição vídeo'])}
+        ${etapa('Álbum', prod['Álbum'])}
+        ${etapa('Aprovação', prod['Aprovação'])}
+        ${etapa('Entrega', prod['Entrega'])}
+      </div>
+    </div>
+    <div class="detalhe-bloco"><h3>Responsáveis e entrega</h3>
+      <div class="detalhe-grid">
+        ${campo('Fotógrafo', prod['Foto responsável'])}
+        ${campo('Cinegrafista', prod['Vídeo responsável'])}
+        ${campo('Data entrega', prod['Data entrega'])}
+        ${campo('Hora entrega', prod['Hora entrega'])}
+        ${campo('Local entrega', prod['Local de entrega'])}
+        ${link}
+      </div>
+      ${prod['Pendências'] ? `<p style="margin:12px 0 0;"><strong>Pendências:</strong> ${esc(prod['Pendências'])}</p>` : ''}
+      <div style="margin-top:14px;"><button class="btn-ghost" id="abaAbrirProducao">Abrir produção</button></div>
+    </div>`;
+}
+

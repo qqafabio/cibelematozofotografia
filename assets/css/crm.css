@@ -126,6 +126,7 @@
   tr.clickable:hover{background:var(--gold-soft);}
   .status-pill{display:inline-block;font-size:11px;font-weight:500;padding:2px 9px;border-radius:var(--r-pill);background:var(--gold-soft);color:#6B5316;}
   .status-pill.confirmado{background:var(--ok-soft);color:#3E5636;}
+  .status-pill.vencida{background:#F4DAD6;color:#8A2D22;}
   .btn-nfse{display:inline-block;font-size:12px;font-weight:500;padding:5px 11px;border:1px solid var(--gold);border-radius:var(--r-sm);color:var(--gold);text-decoration:none;white-space:nowrap;transition:background var(--t),color var(--t);}
   .btn-nfse:hover{background:var(--gold);color:var(--paper);}
 
@@ -134,6 +135,38 @@
   /* ---- Search ---- */
   .search-box{margin-bottom:16px;}
   .search-box input{width:100%;max-width:320px;font-size:14px;padding:10px 12px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--paper-raised);transition:border-color var(--t),box-shadow var(--t);}
+
+  /* ---- Toolbar de lista (busca + filtro), v3.5 ---- */
+  .list-toolbar{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+  .list-toolbar .search-box{margin-bottom:0;flex:1;min-width:200px;}
+  .list-toolbar .search-box input{max-width:none;}
+  .list-filter{font-size:14px;padding:10px 12px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--paper-raised);color:var(--ink);font-family:'Work Sans',sans-serif;transition:border-color var(--t),box-shadow var(--t);}
+  .list-filter:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
+
+  /* ---- Detalhe do evento (tela com abas), v3.5 ---- */
+  .detalhe-head{margin-bottom:18px;}
+  .detalhe-head-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .detalhe-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .detalhe-head h1{font-family:'Fraunces',serif;font-weight:500;font-size:25px;margin:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .detalhe-fatos{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;color:var(--ink-soft);font-size:13.5px;}
+  .detalhe-fatos .bi{color:var(--gold);margin-right:4px;}
+
+  /* nav-tabs tematizadas (dourado/tinta da marca, sem o azul padrão do Bootstrap) */
+  .nav-tabs{border-bottom:1px solid var(--rule);gap:2px;margin-bottom:18px;}
+  .nav-tabs .nav-link{border:none;border-bottom:2px solid transparent;border-radius:0;color:var(--ink-soft);font-family:'Work Sans',sans-serif;font-size:14px;font-weight:500;padding:9px 16px;background:none;margin-bottom:-1px;transition:color var(--t),border-color var(--t),background var(--t);}
+  .nav-tabs .nav-link:hover{color:var(--ink);background:var(--gold-soft);}
+  .nav-tabs .nav-link.active{color:var(--ink);background:none;border-bottom-color:var(--gold);}
+
+  .detalhe-bloco{padding:16px 0;border-bottom:1px solid var(--rule-soft);}
+  .detalhe-bloco:last-child{border-bottom:none;}
+  .detalhe-bloco h3{font-family:'Fraunces',serif;font-weight:500;font-size:15px;color:var(--gold);margin:0 0 12px;}
+  .detalhe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 20px;}
+  .detalhe-campo{display:flex;flex-direction:column;gap:2px;}
+  .detalhe-campo .dc-label{font-size:11.5px;color:var(--ink-soft);}
+  .detalhe-campo .dc-valor{font-size:14px;color:var(--ink);}
+  .detalhe-vazio{color:var(--ink-soft);font-size:13.5px;margin:0;}
+  .detalhe-resumo-linha{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-bottom:14px;font-size:13.5px;color:var(--ink-soft);}
+  .detalhe-resumo-linha strong{color:var(--ink);}
 
   /* ---- Form panel (create/edit) ---- */
   .form-overlay{position:fixed;inset:0;background:rgba(34,31,28,.35);display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;z-index:20;}
@@ -184,6 +217,16 @@
     .main{padding:20px 16px 76px;}
     .view-header{flex-direction:column;align-items:stretch;}
     .view-header .btn-primary{width:100%;}
+
+    /* Toolbar de lista e detalhe (v3.5) empilham no mobile */
+    .list-toolbar{flex-direction:column;align-items:stretch;}
+    .list-filter{width:100%;}
+    .detalhe-head-top{flex-direction:column;align-items:stretch;}
+    .detalhe-actions{flex-wrap:wrap;}
+    .detalhe-actions > *{flex:1;text-align:center;}
+    .detalhe-fatos{flex-direction:column;gap:6px;}
+    .nav-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .nav-tabs .nav-link{white-space:nowrap;}
 
     /* formulários em coluna única, ocupando a tela cheia */
     .row2,.row3{grid-template-columns:1fr;}
