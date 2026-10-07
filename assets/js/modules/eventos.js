@@ -5,6 +5,32 @@
    global dependem deste escopo. Ordem de carga definida em crm.html.
    ============================================================ */
 
+/* Paginação da lista (v3.10). eventosBusca/eventosFiltroStatus/eventoDetalheId
+   ficam em state.js; a página é estado local desta tela. htmlPaginacao vem de
+   clientes.js (carregado antes). */
+let eventosPagina = 1;
+const EVENTOS_POR_PAGINA = 10;
+
+/* Cliente vinculado ao evento (por ID Cliente, com fallback pelo nome). */
+function clienteDoEvento(ev){
+  const id = ev['ID Cliente'], nome = ev['Cliente / Responsável'];
+  return (clientes || []).find(c =>
+    (id != null && id !== '' && String(c['ID Cliente']) === String(id)) ||
+    (nome && c['Nome / Responsável'] === nome)) || null;
+}
+/* Pacote do evento (referenciado por nome). */
+function pacoteDoEvento(ev){
+  const nome = ev['Pacote'];
+  if (!nome) return null;
+  return (pacotes || []).find(p => p['Nome'] === nome) || null;
+}
+/* Só dígitos (p/ link wa.me) → centralizado em ui.js: telParaWhatsapp. */
+/* Rota no Google Maps para o local do evento. */
+function linkMapsEvento(ev){
+  const destino = [ev['Local'], ev['Cidade']].filter(Boolean).join(', ');
+  return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(destino);
+}
+
 async function excluirEventoComConfirmacao(evento){
   const mensagem = `Excluir o evento de "${evento['Cliente / Responsável']}" em ${evento['Data do evento'] || '(sem data)'}? Isso remove também a produção, o compromisso na Agenda, os custos e as parcelas do Financeiro. Não pode ser desfeito.`;
   if (!confirm(mensagem)) return;
@@ -39,14 +65,14 @@ function renderEventos(main){
       <button class="btn-primary" id="novoEventoBtn">+ Novo evento</button>
     </div>
     <div class="list-toolbar">
-      <div class="search-box"><input type="text" id="buscaEvento" placeholder="Buscar por cliente ou tipo…" value="${esc(eventosBusca)}"></div>
+      <div class="search-box"><input type="text" id="buscaEvento" placeholder="Buscar por cliente ou evento…" value="${esc(eventosBusca)}"></div>
       <select id="filtroStatusEvento" class="list-filter">${opcoesStatus}</select>
     </div>
-    <div class="panel"><div id="tabelaEventos"></div></div>
+    <div class="panel panel-list"><div id="tabelaEventos"></div></div>
   `;
   document.getElementById('novoEventoBtn').addEventListener('click', () => abrirFormEvento(null));
-  document.getElementById('buscaEvento').addEventListener('input', e => { eventosBusca = e.target.value; desenharTabelaEventos(); });
-  document.getElementById('filtroStatusEvento').addEventListener('change', e => { eventosFiltroStatus = e.target.value; desenharTabelaEventos(); });
+  document.getElementById('buscaEvento').addEventListener('input', e => { eventosBusca = e.target.value; eventosPagina = 1; desenharTabelaEventos(); });
+  document.getElementById('filtroStatusEvento').addEventListener('change', e => { eventosFiltroStatus = e.target.value; eventosPagina = 1; desenharTabelaEventos(); });
   desenharTabelaEventos();
 }
 function desenharTabelaEventos(){
@@ -62,19 +88,47 @@ function desenharTabelaEventos(){
   });
   if (!filtrados.length){ el.innerHTML = `<div class="empty-state">Nenhum evento encontrado com esses filtros.</div>`; return; }
   const ordenados = [...filtrados].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
+
+  const totalPaginas = Math.max(1, Math.ceil(ordenados.length / EVENTOS_POR_PAGINA));
+  if (eventosPagina > totalPaginas) eventosPagina = totalPaginas;
+  const ini = (eventosPagina - 1) * EVENTOS_POR_PAGINA;
+  const pagina = ordenados.slice(ini, ini + EVENTOS_POR_PAGINA);
+
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Pacote</th><th>Valor</th><th>Status</th></tr></thead>
-      <tbody>${ordenados.map(e => `
+      <thead><tr><th>Data</th><th>Cliente</th><th>Evento</th><th>Pacote</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody>${pagina.map(e => `
         <tr class="clickable" data-id="${esc(e['ID Evento'])}">
-          <td data-label="Data">${esc(e['Data do evento'])}</td><td data-label="Cliente">${esc(e['Cliente / Responsável'])}</td><td data-label="Tipo">${esc(e['Tipo de evento'])}</td>
+          <td data-label="Data">${esc(e['Data do evento'])}</td><td data-label="Cliente">${esc(e['Cliente / Responsável'])}</td><td data-label="Evento">${esc(e['Tipo de evento'])}</td>
           <td data-label="Pacote">${esc(e['Pacote'])}</td><td data-label="Valor">${formatBRL(e['Valor final'])}</td>
           <td data-label="Status"><span class="status-pill ${String(e.Status).toLowerCase()==='confirmado'?'confirmado':''}">${esc(e.Status)}</span></td>
+          <td data-label="Ações"><div class="row-actions">
+            <button class="btn-icon" data-view="${esc(e['ID Evento'])}" title="Abrir detalhe"><i class="bi bi-eye"></i></button>
+            <div class="dropdown d-inline-block">
+              <button class="btn-icon" data-bs-toggle="dropdown" aria-expanded="false" title="Mais"><i class="bi bi-three-dots-vertical"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><button class="dropdown-item text-danger" data-del="${esc(e['ID Evento'])}"><i class="bi bi-trash"></i> Excluir</button></li>
+              </ul>
+            </div>
+          </div></td>
         </tr>`).join('')}</tbody>
-    </table>`;
+    </table>
+    ${htmlPaginacao(eventosPagina, totalPaginas)}`;
+
   el.querySelectorAll('tr.clickable').forEach(row => {
     row.addEventListener('click', () => abrirDetalheEvento(row.dataset.id));
   });
+  // Ações não devem disparar o clique da linha.
+  el.querySelectorAll('.row-actions').forEach(a => a.addEventListener('click', ev => ev.stopPropagation()));
+  el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => abrirDetalheEvento(b.dataset.view)));
+  el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    const evItem = eventos.find(x => String(x['ID Evento']) === b.dataset.del);
+    if (evItem) excluirEventoComConfirmacao(evItem);
+  }));
+  el.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => {
+    const p = Number(b.dataset.pg);
+    if (p >= 1){ eventosPagina = p; desenharTabelaEventos(); }
+  }));
 }
 function abrirFormEvento(evento){
   const editando = !!evento;
@@ -215,19 +269,31 @@ function renderDetalheEvento(main){
 
     <ul class="nav nav-tabs" id="abasEvento" role="tablist">
       <li class="nav-item" role="presentation">
-        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#aba-resumo" type="button" role="tab">Resumo</button>
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#aba-resumo" type="button" role="tab"><i class="bi bi-card-text"></i> Resumo</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-financeiro" type="button" role="tab">Financeiro</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-cliente" type="button" role="tab"><i class="bi bi-person"></i> Cliente</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-producao" type="button" role="tab">Produção</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-pacote" type="button" role="tab"><i class="bi bi-box-seam"></i> Pacote</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-financeiro" type="button" role="tab"><i class="bi bi-cash-coin"></i> Financeiro</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-producao" type="button" role="tab"><i class="bi bi-camera"></i> Produção</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#aba-mensagens" type="button" role="tab"><i class="bi bi-chat-dots"></i> Mensagens</button>
       </li>
     </ul>
     <div class="tab-content">
       <div class="tab-pane fade show active" id="aba-resumo" role="tabpanel">${htmlAbaResumo(ev)}</div>
+      <div class="tab-pane fade" id="aba-cliente" role="tabpanel">${htmlAbaCliente(ev)}</div>
+      <div class="tab-pane fade" id="aba-pacote" role="tabpanel">${htmlAbaPacote(ev)}</div>
       <div class="tab-pane fade" id="aba-financeiro" role="tabpanel">${htmlAbaFinanceiro(ev)}</div>
       <div class="tab-pane fade" id="aba-producao" role="tabpanel">${htmlAbaProducao(ev)}</div>
+      <div class="tab-pane fade" id="aba-mensagens" role="tabpanel">${htmlAbaMensagens(ev)}</div>
     </div>
   `;
   document.getElementById('voltarEvento').addEventListener('click', voltarParaEventos);
@@ -237,38 +303,120 @@ function renderDetalheEvento(main){
   if (abrirConta){ const conta = contaDoEvento(ev['ID Evento']); abrirConta.addEventListener('click', () => abrirFormConta(conta)); }
   const abrirProd = document.getElementById('abaAbrirProducao');
   if (abrirProd){ const prod = producaoDoEvento(ev['ID Evento']); abrirProd.addEventListener('click', () => abrirFormProducao(prod)); }
+  // Botões "Editar informações"/"Editar anotações" (Resumo) → formulário do evento.
+  main.querySelectorAll('[data-edit-evento]').forEach(b => b.addEventListener('click', () => abrirFormEvento(ev)));
+  // "Abrir cadastro" (aba Cliente) → formulário do cliente.
+  const abrirCad = document.getElementById('abaAbrirCliente');
+  if (abrirCad){ const cli = clienteDoEvento(ev); if (cli) abrirCad.addEventListener('click', () => abrirFormCliente(cli)); }
+  // "Abrir mensagens de cobrança" (aba Mensagens) → copiador da conta do evento.
+  const abrirMsg = document.getElementById('abaAbrirMensagens');
+  if (abrirMsg){ const conta = contaDoEvento(ev['ID Evento']); abrirMsg.addEventListener('click', () => abrirCopiadorMensagem(conta)); }
 }
 
-/* -------- Aba Resumo: campos do evento + mini-resumo financeiro + produção -------- */
+/* -------- Aba Resumo: 2 cards (informações + anotações), dados reais -------- */
 function htmlAbaResumo(ev){
-  const conta = contaDoEvento(ev['ID Evento']);
-  const prod = producaoDoEvento(ev['ID Evento']);
+  const hora = [ev['Hora início'], ev['Hora fim']].filter(Boolean).join(' – ');
+  const temLocal = !!(ev['Local'] || ev['Cidade']);
+  const localTxt = [ev['Local'], ev['Cidade']].filter(Boolean).join(' · ');
+  const local = temLocal
+    ? `<a href="${linkMapsEvento(ev)}" target="_blank" rel="noopener" title="Abrir rota no Google Maps">${esc(localTxt)} <i class="bi bi-geo-alt"></i></a>`
+    : '—';
+  const confirmado = String(ev.Status).toLowerCase() === 'confirmado';
   const fato = (rotulo, valor) => `<div class="detalhe-campo"><span class="dc-label">${rotulo}</span><span class="dc-valor">${valor}</span></div>`;
-  const campos = [
-    fato('Pacote', esc(ev['Pacote']||'—')),
-    fato('Valor pacote', formatBRL(ev['Valor pacote'])),
-    fato('Desconto', Number(ev['Desconto']||0) > 0 ? formatBRL(ev['Desconto']) : '—'),
-    fato('Valor final', formatBRL(ev['Valor final'])),
-  ].join('');
-  let financeiroResumo = '<p class="detalhe-vazio">Sem conta lançada no Financeiro.</p>';
-  if (conta){
-    financeiroResumo = `<div class="detalhe-grid">
-      ${fato('Previsto', formatBRL(conta.totalPrevisto))}
-      ${fato('Recebido', formatBRL(conta.totalPago))}
-      ${conta.desconto > 0 ? fato('Desconto', formatBRL(conta.desconto)) : ''}
-      ${fato('Saldo', formatBRL(Math.max(0, conta.saldo)))}
-    </div>`;
-  }
-  const entrega = prod ? (prod['Entrega'] || prod['Entrega final'] || '—') : null;
-  const producaoResumo = prod
-    ? `<div class="detalhe-grid">${fato('Entrega', esc(entrega))}${fato('Edição foto', esc(prod['Edição foto']||'—'))}</div>`
-    : '<p class="detalhe-vazio">Sem registro de produção.</p>';
-  const obs = ev['Observações'] ? `<div class="detalhe-bloco"><h3>Observações</h3><p>${esc(ev['Observações'])}</p></div>` : '';
+  const anotacoes = ev['Observações']
+    ? `<p style="white-space:pre-wrap;margin:0;">${esc(ev['Observações'])}</p>`
+    : `<p class="detalhe-vazio">Sem anotações para este evento.</p>`;
   return `
-    <div class="detalhe-bloco"><h3>Dados do evento</h3><div class="detalhe-grid">${campos}</div></div>
-    <div class="detalhe-bloco"><h3>Financeiro</h3>${financeiroResumo}</div>
-    <div class="detalhe-bloco"><h3>Produção</h3>${producaoResumo}</div>
-    ${obs}`;
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="detalhe-bloco">
+          <div class="detalhe-bloco-head"><h3>Informações do evento</h3>
+            <button class="btn-ghost btn-sm" data-edit-evento="1">Editar informações</button></div>
+          <div class="detalhe-grid">
+            ${fato('Data', esc(ev['Data do evento']||'—'))}
+            ${fato('Horário', esc(hora||'—'))}
+            ${fato('Local', local)}
+            ${fato('Evento', esc(ev['Tipo de evento']||'—'))}
+            ${fato('Status', `<span class="status-pill ${confirmado?'confirmado':''}">${esc(ev.Status||'—')}</span>`)}
+            ${fato('Pacote', esc(ev['Pacote']||'—'))}
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="detalhe-bloco">
+          <div class="detalhe-bloco-head"><h3>Anotações</h3>
+            <button class="btn-ghost btn-sm" data-edit-evento="1">Editar anotações</button></div>
+          ${anotacoes}
+        </div>
+      </div>
+    </div>`;
+}
+
+/* -------- Aba Cliente: contato do cliente vinculado -------- */
+function htmlAbaCliente(ev){
+  const cli = clienteDoEvento(ev);
+  if (!cli){ return `<div class="detalhe-bloco"><p class="detalhe-vazio">Cliente não encontrado no cadastro.</p></div>`; }
+  const fato = (rotulo, valor) => `<div class="detalhe-campo"><span class="dc-label">${rotulo}</span><span class="dc-valor">${valor}</span></div>`;
+  const zap = telParaWhatsapp(cli['WhatsApp']);
+  const tel = cli['WhatsApp']
+    ? `<a href="https://wa.me/${zap}" target="_blank" rel="noopener">${esc(cli['WhatsApp'])} <i class="bi bi-whatsapp"></i></a>` : '—';
+  const email = cli['E-mail'] ? `<a href="mailto:${esc(cli['E-mail'])}">${esc(cli['E-mail'])}</a>` : '—';
+  const insta = cli['Instagram']
+    ? `<a href="https://instagram.com/${esc(String(cli['Instagram']).replace(/^@/, ''))}" target="_blank" rel="noopener">${esc(cli['Instagram'])}</a>` : '—';
+  return `
+    <div class="detalhe-bloco">
+      <div class="detalhe-bloco-head"><h3>${esc(cli['Nome / Responsável']||'Cliente')}</h3>
+        <button class="btn-ghost btn-sm" id="abaAbrirCliente">Abrir cadastro</button></div>
+      <div class="detalhe-grid">
+        ${fato('Telefone', tel)}
+        ${fato('E-mail', email)}
+        ${fato('Cidade', esc(cli['Cidade']||'—'))}
+        ${fato('Instagram', insta)}
+      </div>
+    </div>`;
+}
+
+/* -------- Aba Pacote: pacote referenciado pelo evento -------- */
+function htmlAbaPacote(ev){
+  const fato = (rotulo, valor) => `<div class="detalhe-campo"><span class="dc-label">${rotulo}</span><span class="dc-valor">${valor}</span></div>`;
+  const pac = pacoteDoEvento(ev);
+  if (!pac){
+    // Sem pacote cadastrado por nome: mostra ao menos o que está no evento.
+    if (!ev['Pacote']){ return `<div class="detalhe-bloco"><p class="detalhe-vazio">Nenhum pacote associado a este evento.</p></div>`; }
+    return `<div class="detalhe-bloco"><h3>${esc(ev['Pacote'])}</h3>
+      <div class="detalhe-grid">${fato('Valor pacote', formatBRL(ev['Valor pacote']))}${fato('Valor final', formatBRL(ev['Valor final']))}</div></div>`;
+  }
+  const desc = pac['Descrição'] ? `<p style="white-space:pre-wrap;margin:0 0 12px;">${esc(pac['Descrição'])}</p>` : '';
+  return `
+    <div class="detalhe-bloco">
+      <h3>${esc(pac['Nome']||ev['Pacote'])}</h3>
+      ${desc}
+      <div class="detalhe-grid">
+        ${fato('Valor do pacote', formatBRL(pac['Valor pacote']))}
+        ${fato('Fotos incluídas', esc(pac['Qtd fotos incluídas']||'—'))}
+        ${fato('Foto extra', Number(pac['Valor foto extra']||0) > 0 ? formatBRL(pac['Valor foto extra']) : '—')}
+        ${fato('Valor neste evento', formatBRL(ev['Valor final']))}
+      </div>
+    </div>`;
+}
+
+/* -------- Aba Mensagens: atalho de WhatsApp e copiador de cobrança -------- */
+function htmlAbaMensagens(ev){
+  const cli = clienteDoEvento(ev);
+  const zap = cli ? telParaWhatsapp(cli['WhatsApp']) : '';
+  const conta = contaDoEvento(ev['ID Evento']);
+  const btnZap = zap
+    ? `<a class="btn-primary" href="https://wa.me/${zap}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> Enviar WhatsApp</a>`
+    : `<p class="detalhe-vazio">Cliente sem telefone cadastrado.</p>`;
+  const btnMsg = conta
+    ? `<button class="btn-ghost" id="abaAbrirMensagens">Mensagens de cobrança</button>`
+    : '';
+  return `
+    <div class="detalhe-bloco">
+      <h3>Contato</h3>
+      <p class="hint">Abra uma conversa no WhatsApp com o cliente ou copie uma mensagem de cobrança pronta para enviar.</p>
+      <div class="btn-row">${btnZap}${btnMsg}</div>
+    </div>`;
 }
 
 /* -------- Aba Financeiro: parcelas da conta do evento -------- */

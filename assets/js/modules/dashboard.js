@@ -68,6 +68,84 @@ function statusDot(status){
   return `<span class="status-dot ${cls}" title="${esc(status || '')}"></span>`;
 }
 
+/* ============ Período do Dashboard (v3.8) ============
+   Presets no topo direito. 'ano' = de janeiro ao mês atual; 'mes' = mês corrente.
+   As funções traduzem o preset em nº de meses (janela dos gráficos) e em data de
+   início (recorte dos KPIs e da lista de últimos clientes). Estado global de módulo. */
+let dashPeriodo = '12';
+const DASH_PERIODOS = [
+  { v:'mes', label:'Este mês' },
+  { v:'3',   label:'Últimos 3 meses' },
+  { v:'6',   label:'Últimos 6 meses' },
+  { v:'12',  label:'Últimos 12 meses' },
+  { v:'ano', label:'Este ano' },
+];
+function opcoesPeriodo(){
+  return DASH_PERIODOS.map(p => `<option value="${p.v}" ${p.v === dashPeriodo ? 'selected' : ''}>${p.label}</option>`).join('');
+}
+function periodoMeses(){
+  if (dashPeriodo === 'ano') return new Date().getMonth() + 1;
+  if (dashPeriodo === 'mes') return 1;
+  return Number(dashPeriodo) || 12;
+}
+function periodoInicio(){
+  const h = new Date(); h.setHours(0,0,0,0);
+  if (dashPeriodo === 'ano') return new Date(h.getFullYear(), 0, 1);
+  const n = periodoMeses();
+  return new Date(h.getFullYear(), h.getMonth() - (n - 1), 1);
+}
+// Conta/soma itens no período; devolve também quantos têm data, p/ fallback
+// quando o backend ainda não carimbou as datas (ver comentário dos KPIs).
+function contarNoPeriodo(itens, campoData, inicio){
+  let comData = 0, noPeriodo = 0;
+  (itens || []).forEach(it => { const d = parseDataBR(it[campoData]); if (d){ comData++; if (d >= inicio) noPeriodo++; } });
+  return { comData, noPeriodo };
+}
+function somarNoPeriodo(itens, campoData, valorFn, inicio){
+  let total = 0, comData = 0;
+  (itens || []).forEach(it => { const d = parseDataBR(it[campoData]); if (d){ comData++; if (d >= inicio) total += Number(valorFn(it)) || 0; } });
+  return { total, comData };
+}
+
+/* ============ Status em pílula — Dashboard/Clientes (v3.8) ============
+   Reaproveitadas pelas telas de Clientes (Fase 2) e Eventos (Fase 3), pois o
+   escopo de <script> é global. Mapeiam o texto do status para as classes de
+   .status-pill já existentes no crm.css. */
+function pillStatusEvento(status){
+  const s = String(status || '').toLowerCase();
+  let cls = '';
+  if (s === 'confirmado') cls = 'confirmado';
+  else if (s === 'cancelado') cls = 'vencida';
+  else if (s === 'pendente' || s === 'a confirmar' || s === 'orçamento') cls = 'info';
+  // "Em andamento" e demais → pílula âmbar (base).
+  return `<span class="status-pill ${cls}">${esc(status || '—')}</span>`;
+}
+// Status derivado do cliente: tem evento vinculado → "Ativo"; senão → "Lead".
+function statusCliente(cli){
+  const id = cli['ID Cliente'], nome = cli['Nome / Responsável'];
+  const temEvento = (eventos || []).some(e =>
+    (id != null && id !== '' && String(e['ID Cliente']) === String(id)) ||
+    (nome && e['Cliente / Responsável'] === nome));
+  return temEvento ? 'Ativo' : 'Lead';
+}
+function pillStatusCliente(cli){
+  const st = statusCliente(cli);
+  return `<span class="status-pill ${st === 'Ativo' ? 'confirmado' : 'lead'}">${st}</span>`;
+}
+// Tipo do evento mais recente do cliente (coluna "Evento" em Últimos clientes).
+function eventoRecenteDoCliente(cli){
+  const id = cli['ID Cliente'], nome = cli['Nome / Responsável'];
+  const evs = (eventos || []).filter(e =>
+    (id != null && id !== '' && String(e['ID Cliente']) === String(id)) ||
+    (nome && e['Cliente / Responsável'] === nome));
+  if (!evs.length) return '';
+  evs.sort((a,b) => {
+    const da = parseDataBR(a['Data do evento']), db = parseDataBR(b['Data do evento']);
+    return (db ? db.getTime() : 0) - (da ? da.getTime() : 0);
+  });
+  return evs[0]['Tipo de evento'] || '';
+}
+
 /* ============ Gráficos do Dashboard (v3.7 · ApexCharts) ============
    renderDashboard reconstrói todo o innerHTML a cada visita e NÃO faz wiring
    pós-render; por isso os gráficos são instanciados aqui, depois que os
@@ -143,8 +221,10 @@ function desenharGraficosDashboard(dados){
 /* ============ DASHBOARD ============ */
 function renderDashboard(main){
   const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const inicio = periodoInicio();
+  const nMeses = periodoMeses();
 
-  // --- Próximos eventos (individuais; coletivos têm tela própria) ---
+  // --- Próximos eventos (sempre prospectivo; coletivos têm tela própria) ---
   const proximos = eventos
     .filter(e => e['Data do evento'] && String(e['Coletivo']) !== 'Sim')
     .map(e => ({ ...e, _data: parseDataBR(e['Data do evento']) }))
@@ -152,8 +232,17 @@ function renderDashboard(main){
     .sort((a,b) => a._data - b._data)
     .slice(0, 8);
 
-  // --- Financeiro: receita do mês (por Data pagamento) e saldo a receber ---
-  const receita = agregarMes(financeiro, 'Data pagamento', p => p['Valor pago']);
+  // --- KPIs no período selecionado ---
+  // Clientes/Eventos contam no período; com fallback para o total quando o
+  // backend ainda não carimbou as datas (senão o card mostraria 0). Receita
+  // soma o período. "A receber" é saldo pendente global (não depende do período).
+  const evNaoColetivos = eventos.filter(e => String(e['Coletivo']) !== 'Sim');
+  const cCli = contarNoPeriodo(clientes, 'Data de cadastro', inicio);
+  const nClientes = cCli.comData ? cCli.noPeriodo : clientes.length;
+  const cEv = contarNoPeriodo(evNaoColetivos, 'Data do evento', inicio);
+  const totalEventos = cEv.comData ? cEv.noPeriodo : evNaoColetivos.length;
+  const receitaPeriodo = somarNoPeriodo(financeiro, 'Data pagamento', p => p['Valor pago'], inicio);
+
   let previsto = 0, pago = 0, descontoTot = 0;
   (financeiro || []).forEach(p => {
     pago += Number(p['Valor pago'] || 0);
@@ -163,15 +252,16 @@ function renderDashboard(main){
   const aReceber = Math.max(0, previsto - pago - descontoTot);
   const nAtraso = (contasEmAtraso && contasEmAtraso.length) || 0;
 
-  // --- Tendências de volume (contam por data de cadastro; "—" até o backend
-  //     carimbar as datas — ver Parte 5 do plano v3.4) ---
+  // --- Tendências mês-a-mês (contexto secundário; independem do período) ---
   const tClientes = tendenciaMes(clientes, 'Data de cadastro');
-  const tEventos  = tendenciaMes(eventos.filter(e => String(e['Coletivo']) !== 'Sim'), 'Data de cadastro');
-  const totalEventos = eventos.filter(e => String(e['Coletivo']) !== 'Sim').length;
+  const tEventos  = tendenciaMes(evNaoColetivos, 'Data de cadastro');
+  const receitaMes = agregarMes(financeiro, 'Data pagamento', p => p['Valor pago']);
 
-  // --- Últimos clientes: por data de cadastro desc; sem data, maior ID
-  //     Cliente = mais recente. Colunas reais (clientes não têm "status"). ---
-  const ultimosClientes = [...(clientes || [])]
+  // --- Últimos clientes: recorte do período (fallback = todos), recentes 1º ---
+  const clientesBase = cCli.comData
+    ? clientes.filter(c => { const d = parseDataBR(c['Data de cadastro']); return d && d >= inicio; })
+    : [...(clientes || [])];
+  const ultimosClientes = clientesBase
     .sort((a,b) => {
       const da = parseDataBR(a['Data de cadastro']), db = parseDataBR(b['Data de cadastro']);
       if (da && db) return db - da;
@@ -181,39 +271,42 @@ function renderDashboard(main){
     })
     .slice(0, 6);
 
-  // --- Séries mensais para os gráficos (últimos 12 meses) ---
-  const receitaMensal = serieMensal(financeiro, 'Data pagamento', p => p['Valor pago']);
-  const eventosMensal = serieMensal(eventos.filter(e => String(e['Coletivo']) !== 'Sim'), 'Data do evento');
-  const custoMensal   = serieMensal(custos, 'Data', c => c['Valor']);
+  // --- Séries mensais para os gráficos (janela do período selecionado) ---
+  const receitaMensal = serieMensal(financeiro, 'Data pagamento', p => p['Valor pago'], nMeses);
+  const eventosMensal = serieMensal(evNaoColetivos, 'Data do evento', null, nMeses);
+  const custoMensal   = serieMensal(custos, 'Data', c => c['Valor'], nMeses);
 
   main.innerHTML = `
-    <div class="view-header"><div><h1>Dashboard</h1><p>Panorama geral do negócio.</p></div></div>
+    <div class="view-header">
+      <div><h1>Dashboard</h1><p>Panorama geral do negócio.</p></div>
+      <select class="list-filter" id="dashPeriodo" aria-label="Período">${opcoesPeriodo()}</select>
+    </div>
 
     <div class="row g-3 kpi-grid">
       <div class="col-6 col-lg-3">
         <div class="kpi-card">
-          <div class="kpi-head"><span class="kpi-label">Clientes</span><i class="bi bi-people kpi-icon"></i></div>
-          <div class="kpi-value">${clientes.length}</div>
+          <div class="kpi-head"><span class="kpi-label">Clientes</span><span class="kpi-icon-badge azul"><i class="bi bi-people"></i></span></div>
+          <div class="kpi-value">${nClientes}</div>
           <div class="kpi-foot">${badgeTendencia(tClientes)}</div>
         </div>
       </div>
       <div class="col-6 col-lg-3">
         <div class="kpi-card">
-          <div class="kpi-head"><span class="kpi-label">Eventos</span><i class="bi bi-calendar-event kpi-icon"></i></div>
+          <div class="kpi-head"><span class="kpi-label">Eventos</span><span class="kpi-icon-badge roxo"><i class="bi bi-calendar-event"></i></span></div>
           <div class="kpi-value">${totalEventos}</div>
           <div class="kpi-foot">${badgeTendencia(tEventos)}</div>
         </div>
       </div>
       <div class="col-6 col-lg-3">
         <div class="kpi-card">
-          <div class="kpi-head"><span class="kpi-label">Receita (mês)</span><i class="bi bi-cash-coin kpi-icon"></i></div>
-          <div class="kpi-value">${formatBRL(receita.atual)}</div>
-          <div class="kpi-foot">${badgeTendencia(receita)}</div>
+          <div class="kpi-head"><span class="kpi-label">Receita (período)</span><span class="kpi-icon-badge verde"><i class="bi bi-cash-coin"></i></span></div>
+          <div class="kpi-value">${formatBRL(receitaPeriodo.total)}</div>
+          <div class="kpi-foot">${badgeTendencia(receitaMes)}</div>
         </div>
       </div>
       <div class="col-6 col-lg-3">
         <div class="kpi-card">
-          <div class="kpi-head"><span class="kpi-label">A receber</span><i class="bi bi-hourglass-split kpi-icon"></i></div>
+          <div class="kpi-head"><span class="kpi-label">A receber</span><span class="kpi-icon-badge rosa"><i class="bi bi-wallet2"></i></span></div>
           <div class="kpi-value">${formatBRL(aReceber)}</div>
           <div class="kpi-foot">${nAtraso > 0
             ? `<span class="kpi-trend down">${nAtraso} em atraso</span>`
@@ -225,30 +318,36 @@ function renderDashboard(main){
     <div class="row g-3 dash-cols">
       <div class="col-12 col-lg-7">
         <div class="panel">
-          <h2>Próximos eventos</h2>
+          <div class="panel-head">
+            <h2><i class="bi bi-calendar-event"></i>Próximos eventos</h2>
+            <button class="panel-link" data-goto="eventos">Ver todos <i class="bi bi-arrow-right"></i></button>
+          </div>
           ${proximos.length ? `<table class="responsive-table">
-            <thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Pacote</th><th>Status</th></tr></thead>
+            <thead><tr><th>Data</th><th>Cliente</th><th>Evento</th><th>Status</th></tr></thead>
             <tbody>${proximos.map(e => `
               <tr>
                 <td data-label="Data">${esc(e['Data do evento'])}</td>
                 <td data-label="Cliente">${esc(e['Cliente / Responsável'])}</td>
-                <td data-label="Tipo">${esc(e['Tipo de evento'])}</td>
-                <td data-label="Pacote">${esc(e['Pacote'])}</td>
-                <td data-label="Status">${statusDot(e.Status)}${esc(e.Status)}</td>
+                <td data-label="Evento">${esc(e['Tipo de evento'])}</td>
+                <td data-label="Status">${pillStatusEvento(e.Status)}</td>
               </tr>`).join('')}</tbody></table>`
             : `<div class="empty-state">Nenhum evento futuro cadastrado ainda.</div>`}
         </div>
       </div>
       <div class="col-12 col-lg-5">
         <div class="panel">
-          <h2>Últimos clientes</h2>
+          <div class="panel-head">
+            <h2><i class="bi bi-people"></i>Últimos clientes</h2>
+            <button class="panel-link" data-goto="clientes">Ver todos <i class="bi bi-arrow-right"></i></button>
+          </div>
           ${ultimosClientes.length ? `<table class="responsive-table">
-            <thead><tr><th>Nome</th><th>Cidade</th><th>Eventos</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Evento</th><th>Contato</th><th>Status</th></tr></thead>
             <tbody>${ultimosClientes.map(c => `
               <tr>
                 <td data-label="Nome">${esc(c['Nome / Responsável'])}</td>
-                <td data-label="Cidade">${esc(c['Cidade']) || '—'}</td>
-                <td data-label="Eventos">${esc(c['Qtd. eventos'] != null ? c['Qtd. eventos'] : '0')}</td>
+                <td data-label="Evento">${esc(eventoRecenteDoCliente(c)) || '—'}</td>
+                <td data-label="Contato">${c['WhatsApp'] ? `<span class="tel-cell">${esc(c['WhatsApp'])}${iconeWhatsapp(c['WhatsApp'])}</span>` : '—'}</td>
+                <td data-label="Status">${pillStatusCliente(c)}</td>
               </tr>`).join('')}</tbody></table>`
             : `<div class="empty-state">Nenhum cliente cadastrado ainda.</div>`}
         </div>
@@ -276,6 +375,13 @@ function renderDashboard(main){
       </div>
     </div>
   `;
+
+  // Wiring pós-render (v3.8): filtro de período + navegação "Ver todos".
+  const selP = document.getElementById('dashPeriodo');
+  if (selP) selP.addEventListener('change', e => { dashPeriodo = e.target.value; renderDashboard(document.getElementById('mainArea')); });
+  main.querySelectorAll('[data-goto]').forEach(a => a.addEventListener('click', () => {
+    currentView = a.dataset.goto; renderNav(); renderMain();
+  }));
 
   // Gráficos: instanciados após o innerHTML (containers já no DOM).
   desenharGraficosDashboard({ receitaMensal, eventosMensal, custoMensal });

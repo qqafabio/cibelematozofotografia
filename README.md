@@ -641,6 +641,156 @@ Arquivos: `assets/js/modules/dashboard.js` (`serieMensal`, `desenharGraficosDash
 
 ---
 
+### 2.20 Dashboard — ícones, filtro de período e cards redesenhados (v3.8 — Fase 1 do overhaul)
+
+Primeira fase do overhaul responsivo para aproximar a UI dos mockups de referência. Toca **só o Dashboard**
+(sem mudança de backend):
+
+- **Ícones dos KPIs em selo colorido** — cada card ganha um `.kpi-icon-badge` com cor suave própria
+  (Clientes = azul, Eventos = roxo, Receita = verde, A receber = rosa), no lugar do ícone dourado solto.
+- **Filtro de período** (`<select class="list-filter" id="dashPeriodo">` no topo direito): presets **Este mês /
+  Últimos 3 / 6 / 12 meses / Este ano** (padrão: últimos 12 meses). Recorta **KPIs**, **gráficos** (janela de
+  meses) e **Últimos clientes**. Os KPIs Clientes/Eventos contam no período com **fallback para o total** quando
+  o backend ainda não carimbou as datas (senão o card mostraria 0). "A receber" é saldo pendente **global**
+  (não depende do período). "Próximos eventos" permanece prospectivo (sempre os futuros).
+- **Card "Próximos eventos"** — ícone no título, link **"Ver todos" → Eventos**, coluna **Pacote** removida,
+  **Tipo → Evento**, e Status agora em **pílula colorida** (`pillStatusEvento`): Confirmado = verde,
+  Em andamento = âmbar, Pendente = cinza, Cancelado = vermelho.
+- **Card "Últimos clientes"** — ícone no título, link **"Ver todos" → Clientes**, colunas agora
+  **Nome · Evento · Contato · Status** (Evento = tipo do evento mais recente do cliente; Status = Ativo/Lead).
+
+Como foi feito:
+
+- **`assets/js/modules/dashboard.js`** — novos helpers (escopo global, reusados nas Fases 2/3): `periodoInicio`/
+  `periodoMeses`/`opcoesPeriodo` + `contarNoPeriodo`/`somarNoPeriodo` (com fallback de data); `pillStatusEvento`,
+  `statusCliente`/`pillStatusCliente` (tem evento → Ativo, senão Lead) e `eventoRecenteDoCliente`. `renderDashboard`
+  passou a fazer um wiring mínimo pós-render (troca de período re-renderiza; "Ver todos" navega via
+  `currentView`/`renderNav`/`renderMain`).
+- **`assets/css/crm.css`** — `.kpi-icon-badge` (+ cores `azul`/`roxo`/`verde`/`rosa`), `.panel-head`/`.panel-link`
+  (cabeçalho de painel com ação à direita) e `.status-pill.lead` (azul).
+- **`crm.html`** — bump `?v=3.7.0 → 3.8.0`.
+
+Validação: `node --check assets/js/modules/dashboard.js`.
+
+---
+
+### 2.21 Clientes — status, ações (olho/lápis/⋮), edição inline e paginação (v3.9 — Fase 2 do overhaul)
+
+Segunda fase do overhaul, na tela de **Clientes** (sem mudança de backend — reads = PocketBase, writes = Apps Script):
+
+- **Colunas e rótulos** — a tabela passa a **Nome · Telefone · E-mail · Status · Ações**. "Telefone" é só o rótulo
+  de UI (tabela e formulário); a chave de dados continua `WhatsApp`.
+- **Status Ativo/Lead** — reusa `statusCliente`/`pillStatusCliente` do Dashboard (cliente com evento vinculado =
+  **Ativo**, senão **Lead**) + filtro **"Todos os status / Ativo / Lead"** ao lado da busca.
+- **Busca** por nome, telefone ou e-mail (`#buscaCliente`).
+- **Coluna "Ações"**:
+  - 👁 **olho** → abre o cadastro completo (`abrirFormCliente`).
+  - ✏️ **lápis** → **edição rápida na própria linha** de Nome/Telefone/E-mail (inputs + salvar/cancelar). Ao salvar,
+    reenvia os **demais campos preservados** do registro (CPF, cidade, Instagram, canal, observações) porque o
+    backend grava o cliente inteiro — assim nada é apagado.
+  - ⋮ **3 pontos** (dropdown Bootstrap) → **Excluir** (reusa `excluirComConfirmacao`; backend bloqueia se houver eventos).
+- **Paginação 10/página** — helper global `htmlPaginacao(pagina, totalPaginas)` (definido aqui, reaproveitável na
+  Fase 3/Eventos). Busca/filtro resetam para a página 1.
+
+Como foi feito:
+
+- **`assets/js/modules/clientes.js`** — reescrito: estado de tela em variáveis de módulo (`clientesBusca`/
+  `clientesStatusFiltro`/`clientesPagina`/`clienteEditandoId`); `desenharTabelaClientes` (filtro + paginação),
+  `linhaCliente` (modo normal × modo edição), `wireTabelaClientes` (liga olho/lápis/⋮/salvar/cancelar/paginação) e
+  `salvarEdicaoInlineCliente`. Rótulo "WhatsApp → Telefone" no `abrirFormCliente`.
+- **`assets/css/crm.css`** — `.panel-list` (libera overflow para o menu ⋮), `.row-actions`/`.btn-icon`,
+  `.inline-input` e `.pager`/`.pager-btn`.
+- **`crm.html`** — bump `?v=3.8.0 → 3.9.0`.
+
+Responsivo: a tabela já colapsa em cartões no mobile (`.responsive-table` + `data-label` nas novas colunas);
+botões de ação e paginação com área de toque confortável.
+
+Validação: `node --check assets/js/modules/clientes.js`.
+
+---
+
+### 2.22 Eventos — lista com ações/paginação + detalhe com 6 abas (v3.10 — Fase 3 do overhaul)
+
+Terceira fase do overhaul, na tela de **Eventos** (sem mudança de backend):
+
+- **Lista** — cabeçalho **Tipo → Evento**; nova coluna **Ações** (👁 abre o detalhe; ⋮ dropdown → **Excluir**, reusa
+  `excluirEventoComConfirmacao`). O clique na linha continua abrindo o detalhe; os botões de ação usam
+  `stopPropagation` para não disparar o clique da linha. **Paginação 10/página** (helper global `htmlPaginacao`,
+  definido em `clientes.js`), preservando o filtro `Coletivo !== 'Sim'`; busca/filtro resetam para a página 1.
+- **Detalhe com 6 abas** (antes eram 3) — **Resumo · Cliente · Pacote · Financeiro · Produção · Mensagens**, cada uma
+  com ícone:
+  - **Resumo** — dois **cards**: *Informações do evento* (data, horário, **local clicável → rota no Google Maps**,
+    evento, status em pílula, pacote + "Editar informações") e *Anotações* (campo `Observações` + "Editar anotações").
+  - **Cliente** — nome, **telefone com link `wa.me`**, e-mail (`mailto`), cidade, Instagram e atalho "Abrir cadastro".
+  - **Pacote** — nome, descrição, valor do pacote, fotos incluídas, valor de foto extra e o valor aplicado no evento
+    (dados do cadastro de Pacotes, com fallback para o que está no próprio evento).
+  - **Financeiro** / **Produção** — reaproveitam `htmlAbaFinanceiro` / `htmlAbaProducao`.
+  - **Mensagens** — CTA **"Enviar WhatsApp"** (link `wa.me` para o cliente) e atalho para as **mensagens de cobrança**
+    (`abrirCopiadorMensagem`) quando o evento tem conta no Financeiro.
+
+Como foi feito:
+
+- **`assets/js/modules/eventos.js`** — paginação (`eventosPagina`/`EVENTOS_POR_PAGINA`) e wiring de ações na lista;
+  helpers `clienteDoEvento`/`pacoteDoEvento`/`telParaWhatsapp`/`linkMapsEvento`; `renderDetalheEvento` com 6 abas;
+  novo `htmlAbaResumo` (2 cards) + `htmlAbaCliente`/`htmlAbaPacote`/`htmlAbaMensagens`.
+- **`assets/css/crm.css`** — `.detalhe-bloco-head` (título + ação) e visual de card para os blocos do Resumo
+  (`#aba-resumo .detalhe-bloco`). A lista reusa `.panel-list`/`.row-actions`/`.btn-icon`/`.pager` da Fase 2.
+- **`crm.html`** — bump `?v=3.9.0 → 3.10.0`.
+
+Responsivo: a lista colapsa em cartões no mobile (`data-label` incluído em Evento/Ações); as abas do Bootstrap já
+rolam na horizontal e os cards do Resumo empilham em coluna única.
+
+Validação: `node --check assets/js/modules/eventos.js`.
+
+---
+
+### 2.23 Sidebar em accordion + "Gerador de link" no menu (v3.11 — Fase 4 do overhaul)
+
+Quarta e última fase do overhaul, na **navegação lateral**:
+
+- **Accordion** — os grupos da sidebar agora **recolhem**: o cabeçalho virou botão clicável com **chevron**, e **só um
+  grupo fica aberto por vez** (estado `grupoAberto` em `router.js`). Por padrão abre o grupo que contém a rota atual;
+  ao navegar para outra tela, o grupo dessa rota abre sozinho — sem desfazer um recolhimento que o usuário tenha feito
+  manualmente no cabeçalho (detectado por `navUltimaView`, já que o toggle não muda a view).
+- **"Gerador de link" no menu** — novo grupo **🔗 Ferramentas** com o item **Gerador de link**, que aponta para a
+  página `gerador-de-link.html` (já existente na raiz) e abre **na mesma aba** (`location.href`). Itens de menu com
+  `href` são tratados como link externo em `renderNav`.
+
+Como foi feito:
+
+- **`assets/js/router.js`** — `renderNav` reescrito: desenha grupos `open`/`collapsed`, liga o toggle do cabeçalho
+  (accordion) e trata itens com `href`.
+- **`assets/js/config.js`** — novo grupo "🔗 Ferramentas" no `NAV` com o item `geradorLink` (`href:'gerador-de-link.html'`).
+- **`assets/css/crm.css`** — `.nav-group-title` como botão com `.nav-chevron` (gira ao recolher) e
+  `.nav-group.collapsed .nav-group-items{display:none}`.
+- **`crm.html`** — bump `?v=3.10.0 → 3.11.0`.
+
+Com isso encerra o overhaul responsivo (v3.8 → v3.11): Dashboard, Clientes, Eventos e navegação alinhados aos mockups.
+
+Validação: `node --check assets/js/router.js assets/js/config.js`.
+
+---
+
+### 2.24 Atalho de WhatsApp no telefone do cliente (v3.12)
+
+Ao lado do número de telefone passou a aparecer um **ícone do WhatsApp** que abre a conversa com o cliente
+(`https://wa.me/<número>`, em nova aba). Aparece na **lista de Clientes** e no card **"Últimos clientes"** do Dashboard.
+
+Como foi feito:
+
+- **`assets/js/ui.js`** — helpers compartilhados `telParaWhatsapp(tel)` (normaliza para o formato do `wa.me`,
+  prefixando o DDI **55** quando o número vem sem) e `iconeWhatsapp(tel)` (devolve o ícone-link; `''` quando não há
+  telefone; `stopPropagation` no clique para não disparar ações da linha).
+- **`assets/js/modules/clientes.js`** e **`assets/js/modules/dashboard.js`** — a célula de telefone/contato agora
+  mostra `número + ícone` via `.tel-cell`.
+- **`assets/js/modules/eventos.js`** — a função `telParaWhatsapp` local foi removida (passou a vir do `ui.js`).
+- **`assets/css/crm.css`** — `.tel-cell` e `.wa-link` (selo verde do WhatsApp).
+- **`crm.html`** — bump `?v=3.11.0 → 3.12.0`.
+
+Validação: `node --check assets/js/ui.js assets/js/modules/clientes.js assets/js/modules/dashboard.js assets/js/modules/eventos.js`.
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.

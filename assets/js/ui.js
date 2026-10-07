@@ -206,6 +206,21 @@ function maskWhatsapp(v){
   else v = v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
   return v;
 }
+/* WhatsApp: normaliza o telefone para o formato do wa.me (só dígitos, com DDI
+   55 quando vier sem). Compartilhado por Clientes e pelo detalhe de Eventos. */
+function telParaWhatsapp(tel){
+  let d = String(tel || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.length <= 11) d = '55' + d;
+  return d;
+}
+/* Ícone-link do WhatsApp (abre a conversa em nova aba). Devolve '' se não houver
+   telefone. stopPropagation no clique p/ não disparar ações da linha. */
+function iconeWhatsapp(tel){
+  const d = telParaWhatsapp(tel);
+  if (!d) return '';
+  return `<a class="wa-link" href="https://wa.me/${d}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp" onclick="event.stopPropagation()"><i class="bi bi-whatsapp"></i></a>`;
+}
 function maskData(v){
   v = v.replace(/\D/g,'').slice(0,8);
   v = v.replace(/(\d{2})(\d)/,'$1/$2').replace(/(\d{2})\/(\d{2})(\d)/,'$1/$2/$3');

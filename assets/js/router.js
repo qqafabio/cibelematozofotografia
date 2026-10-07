@@ -5,26 +5,58 @@
    global dependem deste escopo. Ordem de carga definida em crm.html.
    ============================================================ */
 
+/* Accordion da sidebar (v3.11): só um grupo expandido por vez.
+   grupoAberto = índice do grupo aberto (ou null = todos fechados).
+   navUltimaView detecta troca de view para abrir o grupo da rota ativa sem
+   sobrescrever um toggle manual do usuário (que não muda a view). */
+let grupoAberto = null;
+let navUltimaView = null;
+
 function renderNav(){
   const el = document.getElementById('navList');
   // 'eventoDetalhe' não é item de menu: destaca a seção Eventos enquanto aberto.
   const viewAtiva = currentView === 'eventoDetalhe' ? 'eventos' : currentView;
-  el.innerHTML = NAV.map(g => `
-    <div class="nav-group">
-      <div class="nav-group-title">${g.group}</div>
-      ${g.items.map(n => `
-        <div class="nav-item ${n.id===viewAtiva?'active':''} ${!n.ready?'disabled':''}" data-id="${n.id}">
-          <span>${n.label}</span>
-          ${!n.ready ? '<span class="nav-soon">em breve</span>' : ''}
-        </div>
-      `).join('')}
+  const idxAtivo = NAV.findIndex(g => g.items.some(n => n.id === viewAtiva));
+  // Ao navegar (view mudou), abre o grupo da rota ativa; toggles manuais do
+  // cabeçalho não mexem na view, então são respeitados.
+  if (navUltimaView !== currentView){
+    navUltimaView = currentView;
+    if (idxAtivo >= 0) grupoAberto = idxAtivo;
+  }
+  if (grupoAberto === null && navUltimaView === null) grupoAberto = idxAtivo >= 0 ? idxAtivo : 0;
+
+  el.innerHTML = NAV.map((g, gi) => `
+    <div class="nav-group ${gi===grupoAberto?'open':'collapsed'}">
+      <button class="nav-group-title" type="button" data-group-toggle="${gi}">
+        <span>${g.group}</span><i class="bi bi-chevron-down nav-chevron"></i>
+      </button>
+      <div class="nav-group-items">
+        ${g.items.map(n => `
+          <div class="nav-item ${n.id===viewAtiva?'active':''} ${!n.ready?'disabled':''}" data-id="${n.id}">
+            <span>${n.label}</span>
+            ${!n.ready ? '<span class="nav-soon">em breve</span>' : ''}
+          </div>
+        `).join('')}
+      </div>
     </div>
   `).join('');
+
+  // Accordion: clicar no cabeçalho abre esse grupo e fecha o anterior (ou fecha
+  // se já estava aberto). Não altera a navegação.
+  el.querySelectorAll('[data-group-toggle]').forEach(h => h.addEventListener('click', () => {
+    const gi = Number(h.dataset.groupToggle);
+    grupoAberto = (grupoAberto === gi) ? null : gi;
+    renderNav();
+  }));
+
   const itens = NAV.flatMap(g => g.items);
   el.querySelectorAll('.nav-item').forEach(item => {
     const nav = itens.find(n => n.id === item.dataset.id);
     if (!nav.ready) return;
-    item.addEventListener('click', () => { currentView = nav.id; renderNav(); renderMain(); toggleNavMobile(true); });
+    item.addEventListener('click', () => {
+      if (nav.href){ location.href = nav.href; return; } // item externo (mesma aba)
+      currentView = nav.id; renderNav(); renderMain(); toggleNavMobile(true);
+    });
   });
   marcarBottomNav();
 }

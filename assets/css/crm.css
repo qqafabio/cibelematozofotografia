@@ -50,7 +50,13 @@
   .nav-item.disabled:hover{background:none;}
   .nav-soon{font-size:10px;background:var(--rule);color:var(--ink-soft);padding:1px 6px;border-radius:8px;margin-left:auto;}
   .nav-group{margin-bottom:10px;}
-  .nav-group-title{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:0 12px;margin:12px 0 5px;}
+  /* Accordion (v3.11): cabeçalho vira botão clicável com chevron. */
+  .nav-group-title{display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;cursor:pointer;font-family:'Work Sans',sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);padding:6px 12px;margin:6px 0 2px;transition:color var(--t);}
+  .nav-group-title:hover{color:var(--ink);}
+  .nav-group-title span{flex:1;text-align:left;}
+  .nav-chevron{font-size:11px;transition:transform .18s ease;}
+  .nav-group.collapsed .nav-chevron{transform:rotate(-90deg);}
+  .nav-group.collapsed .nav-group-items{display:none;}
   .nav-group:first-child .nav-group-title{margin-top:2px;}
 
   /* ---- Topbar persistente (v3.4) ---- */
@@ -101,6 +107,12 @@
   .kpi-card .kpi-value{font-family:'Fraunces',serif;font-size:26px;margin-top:4px;letter-spacing:-.01em;}
   .kpi-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .kpi-icon{color:var(--gold);font-size:17px;opacity:.85;}
+  /* Selo colorido do ícone de KPI (v3.8) — uma cor suave por card, discreta. */
+  .kpi-icon-badge{width:34px;height:34px;border-radius:var(--r-md);display:inline-flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+  .kpi-icon-badge.azul{background:#E7EEF7;color:#355F9E;}
+  .kpi-icon-badge.roxo{background:#ECE6F6;color:#6A4CA0;}
+  .kpi-icon-badge.verde{background:var(--ok-soft);color:#3E5636;}
+  .kpi-icon-badge.rosa{background:#F6E1DD;color:#A63D30;}
   .kpi-foot{margin-top:8px;}
   .kpi-trend{display:inline-flex;align-items:baseline;gap:4px;font-size:12px;font-weight:600;}
   .kpi-trend.up{color:var(--ok);}
@@ -123,6 +135,12 @@
 
   .panel{background:var(--paper-raised);border:1px solid var(--rule-soft);border-radius:var(--r-md);box-shadow:var(--shadow-sm);overflow:hidden;}
   .panel h2{font-family:'Fraunces',serif;font-weight:500;font-size:16px;margin:0;padding:14px 18px;border-bottom:1px solid var(--rule);}
+  /* Cabeçalho de painel com ação à direita ("Ver todos"), v3.8 */
+  .panel-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--rule);}
+  .panel-head h2{border-bottom:none;flex:1;display:flex;align-items:center;gap:8px;}
+  .panel-head h2 .bi{color:var(--gold);font-size:15px;}
+  .panel-link{font-size:12.5px;font-weight:500;color:var(--gold);text-decoration:none;white-space:nowrap;padding:0 18px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;background:none;border:none;font-family:'Work Sans',sans-serif;}
+  .panel-link:hover{color:#6B5316;text-decoration:underline;}
 
   /* ---- Tables ---- */
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
@@ -167,6 +185,11 @@
   .detalhe-bloco{padding:16px 0;border-bottom:1px solid var(--rule-soft);}
   .detalhe-bloco:last-child{border-bottom:none;}
   .detalhe-bloco h3{font-family:'Fraunces',serif;font-weight:500;font-size:15px;color:var(--gold);margin:0 0 12px;}
+  /* Cabeçalho de bloco com ação à direita (ex.: "Editar informações" no Resumo) */
+  .detalhe-bloco-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
+  .detalhe-bloco-head h3{margin:0;}
+  /* Resumo (v3.10): os dois blocos viram cards lado a lado */
+  #aba-resumo .detalhe-bloco{height:100%;border:1px solid var(--rule-soft);border-radius:var(--r-md);padding:16px 18px;box-shadow:var(--shadow-sm);}
   .detalhe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 20px;}
   .detalhe-campo{display:flex;flex-direction:column;gap:2px;}
   .detalhe-campo .dc-label{font-size:11.5px;color:var(--ink-soft);}
@@ -205,6 +228,31 @@
   .form-stack{display:flex;flex-direction:column;gap:16px;} /* formulário empilhado */
   /* variante neutra do pill (ex.: serviço só de edição no Freelance) */
   .status-pill.info{background:var(--rule-soft);color:var(--ink-soft);}
+  /* status "Lead" (azul suave) — Clientes/Dashboard (v3.8) */
+  .status-pill.lead{background:#E7EEF7;color:#355F9E;}
+
+  /* ---- Ações em linha, paginação e edição inline (Clientes/Eventos — v3.9) ----
+     .panel-list libera o overflow para o menu ⋮ (dropdown do Bootstrap) não ser
+     cortado pelo .panel{overflow:hidden}. */
+  .panel-list{overflow:visible;}
+  .row-actions{display:flex;gap:4px;align-items:center;justify-content:flex-end;}
+  .btn-icon{width:30px;height:30px;border-radius:var(--r-sm);border:1px solid transparent;background:none;color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:background var(--t),color var(--t),border-color var(--t);}
+  .btn-icon:hover{background:var(--rule-soft);color:var(--ink);}
+  .btn-icon.ok{color:var(--ok);}
+  .btn-icon.ok:hover{background:var(--ok-soft);}
+  .btn-icon.danger{color:var(--error);}
+  .inline-input{width:100%;font-size:13.5px;padding:7px 9px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--paper-raised);color:var(--ink);font-family:'Work Sans',sans-serif;}
+  .inline-input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft);}
+  .row-edit td{vertical-align:middle;}
+  .pager{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;padding:16px 0 4px;}
+  .pager-btn{min-width:34px;height:34px;padding:0 8px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--paper-raised);color:var(--ink);font-size:13px;font-family:'Work Sans',sans-serif;cursor:pointer;transition:background var(--t),color var(--t),border-color var(--t);}
+  .pager-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold);}
+  .pager-btn.active{background:var(--gold);border-color:var(--gold);color:#fff;font-weight:500;}
+  .pager-btn:disabled{opacity:.4;cursor:default;}
+  /* Número de telefone + atalho de WhatsApp (Clientes/Dashboard — v3.12) */
+  .tel-cell{display:inline-flex;align-items:center;gap:7px;}
+  .wa-link{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:var(--r-pill);background:#E7F3EC;color:#1E8A4C;font-size:14px;text-decoration:none;transition:background var(--t),color var(--t);flex-shrink:0;}
+  .wa-link:hover{background:#1E8A4C;color:#fff;}
 
   /* Cartões de template (corpo longo: ficam em cartão, não em tabela) */
   .tpl-card{padding:16px 18px;margin-bottom:16px;}

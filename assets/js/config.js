@@ -64,4 +64,7 @@ const NAV = [
   { group:'💬 Comunicação', items:[
     { id:'templates', label:'Templates', ready:true },
   ]},
+  { group:'🔗 Ferramentas', items:[
+    { id:'geradorLink', label:'Gerador de link', ready:true, href:'gerador-de-link.html' },
+  ]},
 ];
