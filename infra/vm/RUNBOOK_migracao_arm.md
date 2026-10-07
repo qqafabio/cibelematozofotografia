@@ -48,9 +48,13 @@ ssh-keygen -y -f ~/crm-key.key
 ## Passo 1 — Criar a instância ARM (Console da Oracle) — AÇÃO DO USUÁRIO
 
 1. **Compute → Instances → Create instance.**
-2. **Image and shape:** Shape → **Ampere** → `VM.Standard.A1.Flex` →
-   **2 OCPU / 12 GB** (bem dentro do Always Free). Image: **Oracle Linux 9**
-   (aarch64).
+2. **Image and shape:** Shape → **Ampere** → `VM.Standard.A1.Flex`. A linha da
+   forma mostra o **default 1 OCPU / 6 GB** (os "(80 máx)/(512 máx)" são o teto
+   de hardware, não o limite free). Após **Selecionar forma**, nos campos
+   **Número de OCPUs** e **Quantidade de memória** deixe **1 OCPU / 6 GB** — já
+   é **6× a RAM atual** e sobra pro PocketBase (~10 MB). Opcional: 2 OCPU / 12 GB
+   (também Always Free, até 4 OCPU/24 GB no total da conta). Image: **Oracle
+   Linux 9** (aarch64).
 3. **Networking:** mesma **VCN/subnet** do host atual (pra herdar as Security
    Lists 22/80/443). Atribuir um IP público efêmero por ora (vamos trocar pelo
    reservado no corte).
