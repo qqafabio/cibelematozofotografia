@@ -48,6 +48,7 @@ const PB_SCHEMA = {
       ['ID Calendar', 'id_calendar', 'text'],
       ['Coletivo', 'coletivo', 'text'],
       ['Organizador', 'organizador', 'text'],
+      ['Data de cadastro', 'data_cadastro', 'text'],
     ],
   },
 

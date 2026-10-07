@@ -43,6 +43,7 @@ const CLIENTES_DEF = {
     ['Instagram', 'instagram', 'text'],
     ['Canal de origem', 'canal', 'text'],
     ['Observações', 'observacoes', 'text'],
+    ['Primeiro contato', 'data_cadastro', 'text'],
   ],
 };
 

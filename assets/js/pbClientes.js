@@ -24,6 +24,7 @@ function pbRecordToCliente(rec){
     'Canal de origem': rec.canal || '',
     'Observações': rec.observacoes || '',
     'Qtd. eventos': contarEventosDoCliente(rec.id_cliente),
+    'Data de cadastro': rec.data_cadastro || '',
     __pbId: rec.id,                           // id nativo do PB (p/ update/delete)
   };
 }
