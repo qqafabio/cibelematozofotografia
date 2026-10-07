@@ -534,6 +534,42 @@ migration.
 
 ---
 
+### 2.17 Eventos — lista com busca/filtro + tela de detalhe com abas (v3.5 — Fase 2)
+
+Conclui o que ficou prometido na Fase 1: a tela de **Eventos** ganha um visual mais "SaaS" e, ao clicar numa
+linha, abre uma **tela de detalhe do evento com abas** em vez de ir direto ao formulário de edição. Vale só para
+**eventos individuais** (coletivos já têm tela própria). **Sem mudança de backend** — todos os dados das abas já
+estão nos arrays globais carregados.
+
+- **Lista com busca + filtro de status:** uma *toolbar* acima da tabela com **campo de busca** (casa em
+  *Cliente / Responsável* e *Tipo de evento*) e um **select de status** (alimentado por `listas['Status evento']`).
+  Os critérios ficam em `eventosBusca`/`eventosFiltroStatus` (em `state.js`), então sobrevivem ao redesenho da
+  tabela e ao voltar do detalhe. Ordenação por data (desc) e o layout em cartões no mobile foram preservados.
+- **Tela de detalhe (`renderDetalheEvento`):** página inteira no `#mainArea` (mesmo molde do detalhe de evento
+  coletivo), com **cabeçalho** (← Voltar, nome do cliente + *pill* de status, fatos: data, horário, tipo,
+  local/cidade, valor) e ações **Editar** / **Emitir NFS-e** / **Excluir**. Abaixo, **abas Bootstrap**
+  (`nav-tabs`) tematizadas na paleta da marca:
+  - **Resumo:** dados do evento (pacote, valores, desconto) + mini-resumo financeiro (previsto/recebido/saldo) +
+    situação da produção (entrega/edição) + observações.
+  - **Financeiro:** a conta do evento — tabela das parcelas (tipo, vencimento, previsto, pago, status) com totais
+    e botão **Abrir conta** (reaproveita `abrirFormConta`); *empty-state* quando não há conta.
+  - **Produção:** etapas (backup, seleção, edição, álbum, aprovação, entrega) e dados de entrega/links em grid
+    *read-only*, com botão **Abrir produção** (`abrirFormProducao`); *empty-state* quando não há registro.
+- **Roteamento:** nova view `eventoDetalhe` + `eventoDetalheId` (em `state.js`). O `renderMain()` ganhou o branch
+  correspondente, e a sidebar/bottom-nav tratam `eventoDetalhe` como pertencente à seção **Eventos**. Assim,
+  re-renders após salvar a edição **permanecem no detalhe** atualizado; ao excluir, o detalhe detecta a ausência
+  do evento e volta sozinho para a lista.
+- **Visual:** `nav-tabs` com sublinhado **dourado** (sem o azul padrão do Bootstrap), cabeçalho de detalhe, grids
+  de campos e *pill* **"vencida"** (vermelho) — que também melhora a leitura de parcelas vencidas no Financeiro.
+  Ajustes mobile: toolbar e cabeçalho empilhados, abas com rolagem horizontal.
+
+Arquivos: `assets/js/modules/eventos.js` (busca/filtro, clique→detalhe, `renderDetalheEvento` + abas),
+`assets/css/crm.css` (`.list-toolbar`, tema `nav-tabs`, `.detalhe-*`, `.status-pill.vencida`, mobile),
+`assets/js/router.js` (branch `eventoDetalhe` + destaque da seção), `assets/js/state.js` (novas globais),
+`crm.html` (bump `?v=3.5.0`).
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.
