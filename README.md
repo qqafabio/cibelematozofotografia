@@ -813,6 +813,22 @@ Validação: `node --check assets/js/modules/eventos.js`.
 
 ---
 
+### 2.26 Sidebar — hierarquia dos itens dentro dos grupos (v3.14)
+
+Após testes de UX, os itens do menu não pareciam pertencer ao seu grupo: embora ficassem logo abaixo do
+título, eram **maiores (14px), mais escuros e começavam na mesma margem** do título — ou seja, o "filho"
+competia com o "pai" e parecia um título solto. Ajuste puramente visual (CSS), mantendo o accordion:
+
+- **Trilho + recuo:** o container `.nav-group-items` ganhou `margin-left`/`padding-left` + uma **guia vertical**
+  (`border-left`) que liga visualmente os itens ao grupo.
+- **Peso da hierarquia corrigido:** os itens ficaram menores (**13px**) e em cinza (`--ink-soft`), escurecendo
+  no hover/ativo — assim o título do grupo volta a ser o elemento dominante. O item ativo mantém a pílula escura.
+
+Arquivos: `assets/css/crm.css` (`.nav-item`, `.nav-group-items`), `crm.html` (bump `?v=3.13.0 → 3.14.0`).
+Sem mudança de JS/markup — a estrutura `.nav-group-items > .nav-item` já existia.
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.
