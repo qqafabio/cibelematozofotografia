@@ -38,7 +38,7 @@ function renderFreelance(main){
         <div class="field tight"><label>Até</label><input id="freelanceAte" placeholder="DD/MM/AAAA"></div>
       </div>
     </div>
-    <div class="panel"><div id="tabelaFreelance"></div></div>
+    <div class="panel panel-list"><div id="tabelaFreelance"></div></div>
   `;
   document.getElementById('novoFreelanceBtn').addEventListener('click', () => abrirFormFreelance(null));
   document.getElementById('freelanceDe').addEventListener('input', e => { e.target.value = maskData(e.target.value); atualizarRecebidoFiltro(); });
@@ -73,24 +73,39 @@ function desenharTabelaFreelance(){
   const seta = freelanceOrdemData === 'desc' ? '↓' : '↑';
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th id="thDataFreelance" class="th-sort">Data ${seta}</th><th>Nome do evento</th><th>Fotografia</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th></tr></thead>
+      <thead><tr><th id="thDataFreelance" class="th-sort">Data ${seta}</th><th>Nome do evento</th><th>Fotografia</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th><th>Ações</th></tr></thead>
       <tbody>${ordenados.map(ev => `
-        <tr class="clickable" data-id="${esc(ev['ID Evento'])}">
+        <tr data-id="${esc(ev['ID Evento'])}">
           <td data-label="Data">${esc(ev['Data'])}</td><td data-label="Nome do evento">${esc(ev['Nome do evento'])}</td>
           <td data-label="Fotografia">${badgeServico(ev['Serviço'])}</td>
           <td data-label="Total">${formatBRL(ev['Total'])}</td>
           <td data-label="Trabalho"><span class="status-pill ${ev['Status do trabalho']==='Concluído'?'confirmado':''}">${esc(ev['Status do trabalho'])}</span></td>
           <td data-label="Pagamento"><span class="status-pill ${ev.statusPagamento==='Pago'?'confirmado':''}">${esc(ev.statusPagamento)}</span></td>
           <td data-label="Pendente">${formatBRL(ev.pendente)}</td>
+          <td data-label="Ações"><div class="row-actions">
+            <button class="btn-icon" data-view="${esc(ev['ID Evento'])}" title="Abrir freelance"><i class="bi bi-eye"></i></button>
+            <div class="dropdown d-inline-block">
+              <button class="btn-icon" data-bs-toggle="dropdown" aria-expanded="false" title="Mais"><i class="bi bi-three-dots-vertical"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><button class="dropdown-item text-danger" data-del="${esc(ev['ID Evento'])}"><i class="bi bi-trash"></i> Excluir</button></li>
+              </ul>
+            </div>
+          </div></td>
         </tr>`).join('')}</tbody>
     </table>`;
   document.getElementById('thDataFreelance').addEventListener('click', () => {
     freelanceOrdemData = freelanceOrdemData === 'desc' ? 'asc' : 'desc';
     desenharTabelaFreelance();
   });
-  el.querySelectorAll('tr.clickable').forEach(row => {
-    row.addEventListener('click', () => abrirFormFreelance(freelanceEventos.find(e => String(e['ID Evento']) === row.dataset.id)));
-  });
+  el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () =>
+    abrirFormFreelance(freelanceEventos.find(e => String(e['ID Evento']) === b.dataset.view))));
+  el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    const ev = freelanceEventos.find(e => String(e['ID Evento']) === b.dataset.del);
+    excluirComConfirmacao(
+      `Excluir o freelance "${ev ? ev['Nome do evento'] : ''}"? Isso remove o evento e seus pagamentos. Não pode ser desfeito.`,
+      'excluirFreelanceEvento', { idEvento: b.dataset.del }, null, null
+    );
+  }));
 }
 function abrirFormFreelance(ev){
   const editando = !!ev;

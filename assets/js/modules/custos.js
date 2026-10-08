@@ -6,6 +6,7 @@
    ============================================================ */
 
 /* ============ CUSTOS ============ */
+let custoEditandoId = null;
 function agruparReceitaCusto(){
   const porEvento = {};
   eventos.forEach(e => {
@@ -31,17 +32,21 @@ function renderCustos(main){
     <div class="panel spaced">
       <h2>Receita × custo por evento</h2>
       ${porEvento.length ? `<table class="responsive-table">
-        <thead><tr><th>Cliente</th><th>Receita</th><th>Custos</th><th>Margem</th><th>Margem %</th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Receita</th><th>Custos</th><th>Margem</th><th>Margem %</th><th>Ações</th></tr></thead>
         <tbody>${porEvento.map(g => `
           <tr>
             <td data-label="Cliente">${esc(g.cliente)}</td><td data-label="Receita">${formatBRL(g.receita)}</td><td data-label="Custos">${formatBRL(g.custo)}</td>
             <td data-label="Margem">${formatBRL(g.margem)}</td>
             <td data-label="Margem %"><span class="status-pill ${g.margem>=0?'confirmado':'vencida'}">${g.margemPct.toFixed(0)}%</span></td>
+            <td data-label="Ações"><div class="row-actions">
+              <button class="btn-icon" data-addcusto="${esc(g.idEvento)}" title="Lançar custo neste evento"><i class="bi bi-plus-lg"></i></button>
+            </div></td>
           </tr>`).join('')}</tbody></table>` : `<div class="empty-state">Nenhum evento com receita ou custo lançado ainda.</div>`}
     </div>
-    <div class="panel"><div id="tabelaCustos"></div></div>
+    <div class="panel panel-list"><div id="tabelaCustos"></div></div>
   `;
   document.getElementById('novoCustoBtn').addEventListener('click', () => abrirFormCusto(null));
+  main.querySelectorAll('[data-addcusto]').forEach(b => b.addEventListener('click', () => abrirFormCusto(null, b.dataset.addcusto)));
   desenharTabelaCustos();
 }
 function desenharTabelaCustos(){
@@ -50,21 +55,98 @@ function desenharTabelaCustos(){
   const ordenados = [...custos].sort((a,b) => Number(b['ID Custo']) - Number(a['ID Custo']));
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th>Evento</th><th>Categoria</th><th>Fornecedor</th><th>Valor</th><th>Pago?</th></tr></thead>
-      <tbody>${ordenados.map(c => `
-        <tr class="clickable" data-id="${esc(c['ID Custo'])}">
-          <td data-label="Evento">${esc(c['Cliente'])}</td><td data-label="Categoria">${esc(c['Categoria'])}</td><td data-label="Fornecedor">${esc(c['Fornecedor'])}</td>
-          <td data-label="Valor">${formatBRL(c['Valor'])}</td>
-          <td data-label="Pago?"><span class="status-pill ${String(c['Pago?']).toLowerCase()==='sim'?'confirmado':''}">${esc(c['Pago?'])}</span></td>
-        </tr>`).join('')}</tbody>
+      <thead><tr><th>Evento</th><th>Categoria</th><th>Fornecedor</th><th>Valor</th><th>Pago?</th><th>Ações</th></tr></thead>
+      <tbody>${ordenados.map(c => linhaCusto(c)).join('')}</tbody>
     </table>`;
-  el.querySelectorAll('tr.clickable').forEach(row => {
-    row.addEventListener('click', () => abrirFormCusto(custos.find(c => String(c['ID Custo']) === row.dataset.id)));
-  });
+  wireTabelaCustos(el);
 }
-function abrirFormCusto(custo){
+
+/* Linha: modo normal (olho/lápis/⋮) ou edição rápida (Fornecedor/Valor/Pago?). */
+function linhaCusto(c){
+  const id = c['ID Custo'];
+  if (String(id) === String(custoEditandoId)){
+    const pago = String(c['Pago?']);
+    return `<tr data-id="${esc(id)}" class="row-edit">
+      <td data-label="Evento">${esc(c['Cliente'])}</td>
+      <td data-label="Categoria">${esc(c['Categoria'])}</td>
+      <td data-label="Fornecedor"><input class="inline-input" id="edit_forn_${esc(id)}" value="${esc(c['Fornecedor'])}"></td>
+      <td data-label="Valor"><input class="inline-input" type="number" step="0.01" id="edit_valor_${esc(id)}" value="${esc(c['Valor'])}"></td>
+      <td data-label="Pago?"><select class="inline-input" id="edit_pago_${esc(id)}"><option ${pago==='Sim'?'selected':''}>Sim</option><option ${pago!=='Sim'?'selected':''}>Não</option></select></td>
+      <td data-label="Ações"><div class="row-actions">
+        <button class="btn-icon ok" data-save="${esc(id)}" title="Salvar"><i class="bi bi-check-lg"></i></button>
+        <button class="btn-icon" data-cancel="1" title="Cancelar"><i class="bi bi-x-lg"></i></button>
+      </div></td>
+    </tr>`;
+  }
+  return `<tr data-id="${esc(id)}">
+    <td data-label="Evento">${esc(c['Cliente'])}</td><td data-label="Categoria">${esc(c['Categoria'])}</td><td data-label="Fornecedor">${esc(c['Fornecedor'])}</td>
+    <td data-label="Valor">${formatBRL(c['Valor'])}</td>
+    <td data-label="Pago?"><span class="status-pill ${String(c['Pago?']).toLowerCase()==='sim'?'confirmado':''}">${esc(c['Pago?'])}</span></td>
+    <td data-label="Ações"><div class="row-actions">
+      <button class="btn-icon" data-view="${esc(id)}" title="Abrir custo"><i class="bi bi-eye"></i></button>
+      <button class="btn-icon" data-edit="${esc(id)}" title="Edição rápida"><i class="bi bi-pencil"></i></button>
+      <div class="dropdown d-inline-block">
+        <button class="btn-icon" data-bs-toggle="dropdown" aria-expanded="false" title="Mais"><i class="bi bi-three-dots-vertical"></i></button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><button class="dropdown-item text-danger" data-del="${esc(id)}"><i class="bi bi-trash"></i> Excluir</button></li>
+        </ul>
+      </div>
+    </div></td>
+  </tr>`;
+}
+
+function wireTabelaCustos(el){
+  el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () =>
+    abrirFormCusto(custos.find(c => String(c['ID Custo']) === b.dataset.view))));
+  el.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {
+    custoEditandoId = b.dataset.edit; desenharTabelaCustos();
+  }));
+  el.querySelectorAll('[data-cancel]').forEach(b => b.addEventListener('click', () => {
+    custoEditandoId = null; desenharTabelaCustos();
+  }));
+  el.querySelectorAll('[data-save]').forEach(b => b.addEventListener('click', () => salvarEdicaoInlineCusto(b.dataset.save)));
+  el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    const c = custos.find(x => String(x['ID Custo']) === b.dataset.del);
+    excluirComConfirmacao(
+      `Excluir o custo "${c ? (c['Descrição'] || c['Categoria'] || '') : ''}"? Isso não pode ser desfeito.`,
+      'excluirCusto', { idCusto: b.dataset.del }, null, null
+    );
+  }));
+}
+
+/* Edição rápida: só Fornecedor/Valor/Pago?. Reenvia os demais campos a partir do
+   registro atual (atualizarCusto grava o custo inteiro) — padrão de salvarEdicaoInlineCliente. */
+async function salvarEdicaoInlineCusto(id){
+  const custo = custos.find(c => String(c['ID Custo']) === String(id));
+  if (!custo) return;
+  const fornecedor = document.getElementById('edit_forn_' + id).value.trim();
+  const valor = Number(document.getElementById('edit_valor_' + id).value || 0);
+  const pago = document.getElementById('edit_pago_' + id).value;
+  const btn = document.querySelector(`[data-save="${id}"]`);
+  if (btn){ btn.disabled = true; btn.innerHTML = '…'; }
+  try{
+    await apiCall('atualizarCusto', {
+      idCusto: id,
+      idEvento: custo['ID Evento'] || '',
+      data: custo['Data'] || '',
+      categoria: custo['Categoria'] || '',
+      fornecedor,
+      descricao: custo['Descrição'] || '',
+      valor,
+      pago,
+      formaPagamento: custo['Forma pagamento'] || '',
+      observacoes: custo['Observações'] || '',
+    });
+    custoEditandoId = null; loaded = false; await renderMain(); showToast('Custo atualizado.');
+  } catch(err){
+    showToast('❌ ' + err.message);
+    if (btn){ btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i>'; }
+  }
+}
+function abrirFormCusto(custo, idEventoPadrao){
   const editando = !!custo;
-  const opcoesEventos = eventos.map(e => `<option value="${esc(e['ID Evento'])}" ${editando&&String(custo['ID Evento'])===String(e['ID Evento'])?'selected':''}>${esc(e['Cliente / Responsável'])} — ${esc(e['Data do evento'])}</option>`).join('');
+  const idEvSelecionado = editando ? custo['ID Evento'] : (idEventoPadrao || '');
+  const opcoesEventos = eventos.map(e => `<option value="${esc(e['ID Evento'])}" ${String(idEvSelecionado)===String(e['ID Evento'])?'selected':''}>${esc(e['Cliente / Responsável'])} — ${esc(e['Data do evento'])}</option>`).join('');
   document.getElementById('overlayRoot').innerHTML = `
     <div class="form-overlay" id="overlay">
       <div class="form-panel">

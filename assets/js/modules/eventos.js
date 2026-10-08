@@ -98,7 +98,7 @@ function desenharTabelaEventos(){
     <table class="responsive-table">
       <thead><tr><th>Data</th><th>Cliente</th><th>Evento</th><th>Pacote</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
       <tbody>${pagina.map(e => `
-        <tr class="clickable" data-id="${esc(e['ID Evento'])}">
+        <tr data-id="${esc(e['ID Evento'])}">
           <td data-label="Data">${esc(e['Data do evento'])}</td><td data-label="Cliente">${esc(e['Cliente / Responsável'])}</td><td data-label="Evento">${esc(e['Tipo de evento'])}</td>
           <td data-label="Pacote">${esc(e['Pacote'])}</td><td data-label="Valor">${formatBRL(e['Valor final'])}</td>
           <td data-label="Status"><span class="status-pill ${String(e.Status).toLowerCase()==='confirmado'?'confirmado':''}">${esc(e.Status)}</span></td>
@@ -115,11 +115,7 @@ function desenharTabelaEventos(){
     </table>
     ${htmlPaginacao(eventosPagina, totalPaginas)}`;
 
-  el.querySelectorAll('tr.clickable').forEach(row => {
-    row.addEventListener('click', () => abrirDetalheEvento(row.dataset.id));
-  });
-  // Ações não devem disparar o clique da linha.
-  el.querySelectorAll('.row-actions').forEach(a => a.addEventListener('click', ev => ev.stopPropagation()));
+  // Abertura só pelo ícone do olho (padrão Clientes): a linha não é mais clicável.
   el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => abrirDetalheEvento(b.dataset.view)));
   el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
     const evItem = eventos.find(x => String(x['ID Evento']) === b.dataset.del);

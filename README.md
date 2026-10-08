@@ -829,6 +829,47 @@ Sem mudança de JS/markup — a estrutura `.nav-group-items > .nav-item` já exi
 
 ---
 
+### 2.27 Padronização da linha das listas + coluna "Ações" nos 6 menus (v3.15)
+
+Duas situações de UX, sem tocar no back-end:
+
+**1. Linha "apagando" os ícones (padronizar por Clientes).** Em Eventos a linha inteira era clicável e, no hover,
+ganhava fundo bege (`--gold-soft`) que ficava quase da cor dos ícones cinza (olho/⋮), deixando-os lavados. Em
+Clientes isso não acontecia porque a linha **não** é clicável — abre-se pelo ícone do olho. Padronizamos por
+Clientes: **nenhuma linha muda de cor no hover nem abre ao ser clicada**; a abertura passa a ser **sempre pelo
+ícone do olho**. Removidas as regras órfãs `tr.clickable` do CSS.
+
+**2. Coluna "Ações" nos 6 menus.** CRM · Orçamentos, Produção, Financeiro, Custos, Pacotes e Freelance ganharam a
+coluna **Ações** (mesmo padrão de Clientes/Eventos), com ícones por linha:
+
+| Menu | 👁 olho (abrir) | ✏️ lápis (edição rápida) | ⋮ Mais |
+|---|:---:|:---:|---|
+| CRM · Orçamentos | ✔ | ✔ Etapa / Valor / Próximo contato | Excluir |
+| Custos | ✔ | ✔ Fornecedor / Valor / Pago? | Excluir |
+| Produção | ✔ | — | — (sem exclusão: a produção nasce/morre com o evento) |
+| Financeiro | ✔ | — | Excluir conta |
+| Pacotes | ✔ | — | Excluir |
+| Freelance | ✔ | — | Excluir |
+
+- **Edição rápida (lápis)** só em **Orçamentos** e **Custos**: edita os campos direto na linha e **reenvia o
+  registro inteiro** ao salvar (lendo os demais campos do objeto em memória), para o back-end não sobrescrever
+  nada com vazio — mesmo padrão de `salvarEdicaoInlineCliente`.
+- O ⋮ reaproveita a exclusão existente de cada módulo (ex.: Financeiro usa `excluirContaComConfirmacao`, que trata
+  parcelas/força; Pacotes usa `deletarPacote`). Os painéis dessas listas ganharam a classe `panel-list` para o
+  dropdown do ⋮ não ser cortado.
+
+Arquivos: `assets/js/modules/eventos.js`, `leads.js`, `custos.js`, `producao.js`, `financeiro.js`, `pacotes.js`,
+`freelance.js`; `assets/css/crm.css` (remoção de `tr.clickable`); `crm.html` (bump `?v=3.14.0 → 3.15.0`).
+Nenhum CSS novo foi necessário — `.row-actions`/`.btn-icon`/`.inline-input`/`.panel-list` já existiam da v3.9.
+
+**Ajuste (v3.15.1) — lançar custo direto do resumo.** Na tela Custos, a tabela **"Receita × custo por evento"**
+é um agregado por evento (não recebe os ícones de custo individual). Como o único caminho para dar um custo a um
+evento era o "+ Novo custo" (reselecionando o evento na mão), cada linha do resumo ganhou um botão **"+ Custo"**
+(ícone `＋`) que abre o formulário *Novo custo* **já com aquele evento pré-selecionado**. Para isso, `abrirFormCusto`
+passou a aceitar um 2º parâmetro `idEventoPadrao`. `crm.html` (bump `?v=3.15.0 → 3.15.1`).
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.

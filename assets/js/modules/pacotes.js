@@ -13,7 +13,7 @@ function renderPacotes(main){
       <button class="btn-primary" id="novoPacoteBtn">+ Novo pacote</button>
     </div>
     <div class="search-box"><input type="text" id="buscaPacote" placeholder="Buscar por nome…"></div>
-    <div class="panel"><div id="tabelaPacotes"></div></div>
+    <div class="panel panel-list"><div id="tabelaPacotes"></div></div>
   `;
   document.getElementById('novoPacoteBtn').addEventListener('click', () => abrirFormPacote(null));
   document.getElementById('buscaPacote').addEventListener('input', e => desenharTabelaPacotes(e.target.value));
@@ -26,22 +26,34 @@ function desenharTabelaPacotes(filtro){
   if (!lista.length){ el.innerHTML = `<div class="empty-state">Nenhum pacote encontrado.</div>`; return; }
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th>Nome</th><th>Descrição</th><th>Valor pacote</th><th>Fotos incluídas</th><th>Valor foto extra</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Descrição</th><th>Valor pacote</th><th>Fotos incluídas</th><th>Valor foto extra</th><th>Ações</th></tr></thead>
       <tbody>${lista.map(p => `
-        <tr class="clickable" data-id="${esc(p['ID'])}">
+        <tr data-id="${esc(p['ID'])}">
           <td data-label="Nome">${esc(p['Nome'])}</td>
           <td data-label="Descrição">${esc(p['Descrição'])}</td>
           <td data-label="Valor pacote">${formatBRL(p['Valor pacote'])}</td>
           <td data-label="Fotos incluídas">${esc(p['Qtd fotos incluídas'])}</td>
           <td data-label="Valor foto extra">${formatBRL(p['Valor foto extra'])}</td>
+          <td data-label="Ações"><div class="row-actions">
+            <button class="btn-icon" data-view="${esc(p['ID'])}" title="Abrir pacote"><i class="bi bi-eye"></i></button>
+            <div class="dropdown d-inline-block">
+              <button class="btn-icon" data-bs-toggle="dropdown" aria-expanded="false" title="Mais"><i class="bi bi-three-dots-vertical"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><button class="dropdown-item text-danger" data-del="${esc(p['ID'])}"><i class="bi bi-trash"></i> Excluir</button></li>
+              </ul>
+            </div>
+          </div></td>
         </tr>`).join('')}</tbody>
     </table>`;
-  el.querySelectorAll('tr.clickable').forEach(row => {
-    row.addEventListener('click', () => {
-      const pacote = pacotes.find(p => String(p['ID']) === row.dataset.id);
-      abrirFormPacote(pacote);
-    });
-  });
+  el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () =>
+    abrirFormPacote(pacotes.find(p => String(p['ID']) === b.dataset.view))));
+  el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    const p = pacotes.find(x => String(x['ID']) === b.dataset.del);
+    excluirComConfirmacao(
+      `Excluir o pacote "${p ? p['Nome'] : ''}"? Isso não pode ser desfeito.`,
+      'deletarPacote', { id: b.dataset.del }, null, null
+    );
+  }));
 }
 function abrirFormPacote(pacote){
   const editando = !!pacote;

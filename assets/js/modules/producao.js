@@ -19,18 +19,20 @@ function desenharTabelaProducao(){
   if (!producao.length){ el.innerHTML = `<div class="empty-state">Nenhum evento com produção em aberto ainda.</div>`; return; }
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th>Cliente</th><th>Tipo</th><th>Data evento</th><th>Edição</th><th>Entrega</th><th>NFS-e</th></tr></thead>
+      <thead><tr><th>Cliente</th><th>Tipo</th><th>Data evento</th><th>Edição</th><th>Entrega</th><th>NFS-e</th><th>Ações</th></tr></thead>
       <tbody>${producao.map(p => `
-        <tr class="clickable" data-id="${esc(p['ID Evento'])}">
+        <tr data-id="${esc(p['ID Evento'])}">
           <td data-label="Cliente">${esc(p['Cliente'])}</td><td data-label="Tipo">${esc(p['Tipo de evento'])}</td><td data-label="Data evento">${esc(p['Data evento'])}</td>
           <td data-label="Edição">${esc(p['Edição foto'])}</td>
           <td data-label="Entrega"><span class="status-pill ${String(p['Entrega']).toLowerCase()==='concluído'?'confirmado':''}">${esc(p['Entrega'])}</span></td>
-          <td data-label="NFS-e"><a class="btn-nfse" href="https://www.nfse.gov.br/EmissorNacional/Login?ReturnUrl=%2fEmissorNacional" target="_blank" rel="noopener" onclick="event.stopPropagation()">Emitir NFS-e</a></td>
+          <td data-label="NFS-e"><a class="btn-nfse" href="https://www.nfse.gov.br/EmissorNacional/Login?ReturnUrl=%2fEmissorNacional" target="_blank" rel="noopener">Emitir NFS-e</a></td>
+          <td data-label="Ações"><div class="row-actions">
+            <button class="btn-icon" data-view="${esc(p['ID Evento'])}" title="Abrir produção"><i class="bi bi-eye"></i></button>
+          </div></td>
         </tr>`).join('')}</tbody>
     </table>`;
-  el.querySelectorAll('tr.clickable').forEach(row => {
-    row.addEventListener('click', () => abrirFormProducao(producao.find(p => String(p['ID Evento']) === row.dataset.id)));
-  });
+  el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () =>
+    abrirFormProducao(producao.find(p => String(p['ID Evento']) === b.dataset.view))));
 }
 function abrirFormProducao(p){
   const campoEtapa = (label, campo) => `
