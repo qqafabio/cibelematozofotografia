@@ -868,6 +868,52 @@ evento era o "+ Novo custo" (reselecionando o evento na mão), cada linha do res
 (ícone `＋`) que abre o formulário *Novo custo* **já com aquele evento pré-selecionado**. Para isso, `abrirFormCusto`
 passou a aceitar um 2º parâmetro `idEventoPadrao`. `crm.html` (bump `?v=3.15.0 → 3.15.1`).
 
+### 2.28 PocketBase vira master de ESCRITA (track v3.3 — Fase 0 + Fase 1)
+
+> Esta é a trilha **de back-end** (os commits a marcam como **v3.3**), paralela às seções visuais acima
+> (v3.0–v3.15 são a trilha de **front-end**). Objetivo: **remover o Google Sheets como master de escrita**.
+> Hoje (v3.2) o front **lê** do PocketBase mas ainda **escreve** no Apps Script, que grava o Sheets (master)
+> e espelha no PB. A meta é inverter: **o PocketBase passa a ser autoritativo para escrita** e o Apps Script
+> encolhe para **só a cola da Google Agenda**. Decisão de arquitetura: lógica **híbrida** (CRUD simples no
+> front, estendendo o padrão do `pbClientes.js`; invariantes críticos em `pb_hooks` no servidor) e a **Agenda
+> orquestrada pelo front** (grava no PB e chama um Apps Script enxuto de Calendar). Tudo atrás da flag mestra
+> **`USE_POCKETBASE_ESCRITA`** (em `config.js`, **default `false`**); o rollback é só voltar a flag.
+
+**Fase 0 — ID atômico no servidor (feita e já implantada na VM).** O `proximoId_` do Apps Script calculava
+`max(id)+1` no cliente, sujeito a corrida. Movemos isso para um **hook do PocketBase**: `infra/gen_pb_hooks.cjs`
+lê a fonte única `assets/js/pbSchema.js` e gera `infra/pb_hooks/auto_id.pb.js` — um `onRecordBeforeCreateRequest`
+por coleção que, **se o id de negócio vier vazio**, atribui `max(coluna)+1` dentro do request (o índice único é
+a rede de segurança). Exclui `producao` (id herdado do evento) e `listas` (sem id). **Seguro de ligar adiantado:**
+enquanto a escrita ainda vai pelo Apps Script, o id chega preenchido e o hook não age. Deploy em
+`infra/pb_hooks/README.md`.
+
+**Fase 1 — adapters de CRUD simples no front (esta entrega).** Para cada coleção sem cascata, um adapter
+espelha o padrão do `pbClientes.js`, converte o `dados` camelCase do formulário nas colunas snake_case do PB e
+**reproduz fielmente os campos derivados/defaults do Apps Script** (senão gravaríamos vazio onde o back-end
+calculava). Novos arquivos em `assets/js/`:
+
+| Arquivo | Ações registradas | Regras portadas do back-end |
+|---|---|---|
+| `pbEscrita.js` (base) | — | `PB_ACTIONS`, `hojeBR_` (data BR), `pbLocalizarOuCriarCliente` (dedup WhatsApp→CPF) |
+| `pbLeads.js` | criar/atualizar/excluirLead | `Valor ponderado = estimado × prob. ÷ 100`; `Data entrada`; defaults `Novo lead`/`Normal`; Cliente/WhatsApp/E-mail vêm do **cadastro** do cliente |
+| `pbCustos.js` | criar/atualizar/excluirCusto | `Data` default = hoje; `Pago?` default `Não` |
+| `pbPacotes.js` | criar/atualizar/deletarPacote | `Data criação`/`Data atualização`; `Qtd fotos` preserva `''` |
+| `pbTemplates.js` | criar/atualizar/deletarTemplate | validação dos placeholders; `Padrão='Não'`; bloqueio de editar/excluir padrão |
+| `pbProducao.js` | atualizarProducao | PATCH parcial por `ID Evento` (produção é 1:1 com o evento) |
+| `pbFreelance.js` | criar/atualizar/excluir de Evento e Pagamento | `Total = soma dos 4 valores`; default `Pendente`; excluir evento **cascateia** os pagamentos |
+
+- **`api.js`** passou a rotear por um registro geral **`PB_ACTIONS`**: com `USE_POCKETBASE_ESCRITA=true`, a ação
+  cai no adapter PB; o que ainda não estiver mapeado continua indo ao Apps Script (transição fase a fase). O ramo
+  do POC de clientes (`PB_CLIENT_ACTIONS`) foi mantido e passa a ser englobado pela flag mestra.
+- Os `<script>` dos adapters entram em `crm.html` **depois** de `pbClientes.js` e **antes** de `pbLeitura.js`
+  (`?v=3.15.1 → 3.15.2` nos arquivos tocados). **Inertes enquanto a flag estiver `false`** — zero efeito em produção.
+
+**Pendências conhecidas (próximas fases):** a cascata **lead "Fechado" → cria evento** (em `pbLeads.js`) e a
+sincronização de **entrega na Agenda** (em `pbProducao.js`) estão marcadas como `TODO` e dependem da **Fase 2**
+(Agenda fina) e da **Fase 3** (invariantes de evento em `pb_hooks`: cascata criar-evento→produção→conta,
+cascade-delete com guarda `valorPago>0`, 3-strikes). O **cutover** (Fase 4) liga a flag e aposenta o
+`sincronizarPB.gs`.
+
 ---
 
 ## Sobre os limites gratuitos

@@ -33,6 +33,16 @@ const USE_POCKETBASE_LEITURA = true;               // v3.2 cutover: carregarTudo
    falso positivo. Fallback = CRM "lento" (AS) em vez de "fora do ar". */
 const PB_LEITURA_TIMEOUT_MS = 6000;
 
+/* ============ v3.3 — Escrita total no PocketBase ============
+   Flag MESTRA do cutover de escrita. Com ela TRUE, as mutações do CRM
+   deixam de ir ao Apps Script e passam a gravar DIRETO no PocketBase
+   (adapters pb*.js, roteados por api.js via PB_ACTIONS). O PB vira o
+   master de escrita; o Apps Script encolhe para só a cola de Google
+   Agenda. Mantida FALSE até os adapters + pb_hooks estarem prontos e
+   testados. Rollback = voltar para false (volta tudo ao Apps Script).
+   Quando TRUE, também roteia Clientes pelo PB (engloba o POC v3.1). */
+const USE_POCKETBASE_ESCRITA = false;
+
 /* ============ NAVEGAÇÃO ============ */
 /* Sidebar agrupada por seção. Cada grupo tem um título (com emoji) e seus
    itens; o emoji vive no cabeçalho da seção e os itens ficam com nome puro.

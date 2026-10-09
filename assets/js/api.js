@@ -8,13 +8,23 @@
 /* ============ API ============ */
 function isConfigurado(){ return CRM_API_URL && CRM_API_URL.indexOf('COLE_AQUI') === -1; }
 async function apiCall(action, dados){
-  // POC v3.1: com o flag ligado, mutações de cliente vão para o PocketBase
-  // (mesmo contrato de retorno). O resto segue no Apps Script, inalterado.
-  if (typeof USE_POCKETBASE_CLIENTES !== 'undefined' && USE_POCKETBASE_CLIENTES
+  dados = dados || {};
+  // POC v3.1: com o flag próprio ligado, mutações de cliente vão para o
+  // PocketBase. A flag mestra da v3.3 (USE_POCKETBASE_ESCRITA) também roteia
+  // clientes pelo PB — por isso os dois flags caem no mesmo ramo.
+  const usarPBClientes = typeof USE_POCKETBASE_CLIENTES !== 'undefined' && USE_POCKETBASE_CLIENTES;
+  const usarPBEscrita  = typeof USE_POCKETBASE_ESCRITA  !== 'undefined' && USE_POCKETBASE_ESCRITA;
+  if ((usarPBClientes || usarPBEscrita)
       && typeof PB_CLIENT_ACTIONS !== 'undefined' && PB_CLIENT_ACTIONS[action]){
-    return PB_CLIENT_ACTIONS[action](dados || {});
+    return PB_CLIENT_ACTIONS[action](dados);
   }
-  const res = await fetch(CRM_API_URL, { method:'POST', body: JSON.stringify({ action, dados: dados||{} }) });
+  // v3.3: escrita geral no PocketBase (adapters pb*.js registram em PB_ACTIONS).
+  // Mesmo contrato de retorno do Apps Script; o que não estiver mapeado aqui
+  // continua caindo no Apps Script abaixo (transição fase a fase).
+  if (usarPBEscrita && typeof PB_ACTIONS !== 'undefined' && PB_ACTIONS[action]){
+    return PB_ACTIONS[action](dados);
+  }
+  const res = await fetch(CRM_API_URL, { method:'POST', body: JSON.stringify({ action, dados }) });
   const json = await res.json();
   if (!json.ok) throw new Error(json.error || 'Erro desconhecido');
   return json.dados;
