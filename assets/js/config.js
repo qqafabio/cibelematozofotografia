@@ -41,7 +41,7 @@ const PB_LEITURA_TIMEOUT_MS = 6000;
    Agenda. Mantida FALSE até os adapters + pb_hooks estarem prontos e
    testados. Rollback = voltar para false (volta tudo ao Apps Script).
    Quando TRUE, também roteia Clientes pelo PB (engloba o POC v3.1). */
-const USE_POCKETBASE_ESCRITA = false;
+const USE_POCKETBASE_ESCRITA = true;               // v3.3 cutover (2026-10-09): PB é master de escrita; rollback = voltar para false
 
 /* ============ NAVEGAÇÃO ============ */
 /* Sidebar agrupada por seção. Cada grupo tem um título (com emoji) e seus

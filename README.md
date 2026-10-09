@@ -868,7 +868,7 @@ evento era o "+ Novo custo" (reselecionando o evento na mão), cada linha do res
 (ícone `＋`) que abre o formulário *Novo custo* **já com aquele evento pré-selecionado**. Para isso, `abrirFormCusto`
 passou a aceitar um 2º parâmetro `idEventoPadrao`. `crm.html` (bump `?v=3.15.0 → 3.15.1`).
 
-### 2.28 PocketBase vira master de ESCRITA (track v3.3 — Fases 0 + 1 + 2 + 3)
+### 2.28 PocketBase vira master de ESCRITA (track v3.3 — Fases 0 + 1 + 2 + 3 + 4)
 
 > Esta é a trilha **de back-end** (os commits a marcam como **v3.3**), paralela às seções visuais acima
 > (v3.0–v3.15 são a trilha de **front-end**). Objetivo: **remover o Google Sheets como master de escrita**.
@@ -990,8 +990,18 @@ na VM **até a Fase 4**). `pbCobranca.js?v=3.15.5` entra após `pbLeads.js`. **I
   relê do PB com as chaves rotuladas (evita mismatch de shape snake×rótulo). `pbEventos.js?v=3.15.6`; novos
   `pbFinanceiro.js?v=3.15.6` + `pbColetivo.js?v=3.15.6` (ordem: Financeiro antes do Coletivo). **Inerte** sob a flag.
 
-**Falta (cutover — Fase 4):** ligar `USE_POCKETBASE_ESCRITA=true`, **implantar o `delete_guard.pb.js`** + **aplicar a
-migração `add_bloqueio_cobranca`** na VM, aposentar o `sincronizarPB.gs` e fazer backup fresco do `pb_data`.
+**Fase 4 — cutover (front ligado nesta entrega; passos da VM no runbook).** A flag mestra
+`USE_POCKETBASE_ESCRITA` passou a **`true`** (`config.js?v=3.15.7`): o PocketBase vira o **master de escrita** e
+o Apps Script encolhe para **só a cola da Google Agenda**. O `api.js` já roteia **Clientes e todo o resto** pelo
+PB sob a flag mestra (`USE_POCKETBASE_CLIENTES` fica `false`, redundante). **Rollback = voltar a flag para
+`false`** + bump `?v=`. Os passos de servidor ficam no runbook versionado **`infra/vm/cutover_fase4.md`**:
+(1) backup fresco do `pb_data`; (2) `scp` da migração `1793000201_add_bloqueio_cobranca.js` → `pb_migrations/`;
+(3) remover a chamada `sincronizarPBPorAcao_` do `backend.txt` e implantar o Apps Script fino (aposenta o
+`sincronizarPB.gs`); (4) `scp` do `delete_guard.pb.js` → `pb_hooks/` + `systemctl restart pocketbase`;
+(5) ligar a flag (esta entrega); (6) smoke-test; (7) backup pós-cutover. **Por que é seguro:** o espelho
+(`sincronizarPBPorAcao_`) não tem gatilho por tempo — só roda dentro do `doPost` — e `PB_SYNC_ACOES` **não** mapeia
+nenhuma ação de Agenda; como toda ação de escrita do front tem contraparte em `PB_ACTIONS`, nada mais "cai" para o
+Apps Script e o espelho destrutivo deixa de ser acionado.
 
 ---
 
