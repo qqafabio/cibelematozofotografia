@@ -25,9 +25,13 @@ async function pbAtualizarProducao(dados){
     if (dados[k] !== undefined) patch[MAPA_PRODUCAO[k]] = dados[k];
   }
   const upd = await PB.collection('producao').update(rec.id, patch);
-  // TODO Fase 2 (Agenda): quando o estado resultante tiver 'Data entrega', o
-  // backend (818-846) sincroniza o compromisso de ENTREGA na Google Agenda e
-  // grava 'ID Calendar Entrega'. Isso vira orquestração no front (pbAgenda.js).
+  // Agenda (v3.3): quando o estado resultante tem 'Data entrega', o backend
+  // (818-846) sincroniza o compromisso de ENTREGA na Google Agenda e grava
+  // 'ID Calendar Entrega'. Agora é orquestrado no front (pbAgenda.js), fail-soft:
+  // se a Agenda falhar, a produção já está salva. `upd` traz o estado completo.
+  if (upd.data_entrega && typeof sincronizarAgendaEntrega === 'function'){
+    await sincronizarAgendaEntrega(upd);
+  }
   return upd;
 }
 

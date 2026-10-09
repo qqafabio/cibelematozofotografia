@@ -868,7 +868,7 @@ evento era o "+ Novo custo" (reselecionando o evento na mão), cada linha do res
 (ícone `＋`) que abre o formulário *Novo custo* **já com aquele evento pré-selecionado**. Para isso, `abrirFormCusto`
 passou a aceitar um 2º parâmetro `idEventoPadrao`. `crm.html` (bump `?v=3.15.0 → 3.15.1`).
 
-### 2.28 PocketBase vira master de ESCRITA (track v3.3 — Fase 0 + Fase 1)
+### 2.28 PocketBase vira master de ESCRITA (track v3.3 — Fases 0 + 1 + 2)
 
 > Esta é a trilha **de back-end** (os commits a marcam como **v3.3**), paralela às seções visuais acima
 > (v3.0–v3.15 são a trilha de **front-end**). Objetivo: **remover o Google Sheets como master de escrita**.
@@ -908,11 +908,37 @@ calculava). Novos arquivos em `assets/js/`:
 - Os `<script>` dos adapters entram em `crm.html` **depois** de `pbClientes.js` e **antes** de `pbLeitura.js`
   (`?v=3.15.1 → 3.15.2` nos arquivos tocados). **Inertes enquanto a flag estiver `false`** — zero efeito em produção.
 
-**Pendências conhecidas (próximas fases):** a cascata **lead "Fechado" → cria evento** (em `pbLeads.js`) e a
-sincronização de **entrega na Agenda** (em `pbProducao.js`) estão marcadas como `TODO` e dependem da **Fase 2**
-(Agenda fina) e da **Fase 3** (invariantes de evento em `pb_hooks`: cascata criar-evento→produção→conta,
-cascade-delete com guarda `valorPago>0`, 3-strikes). O **cutover** (Fase 4) liga a flag e aposenta o
-`sincronizarPB.gs`.
+**Fase 2 — Apps Script fino de Agenda + orquestração no front (esta entrega).** O Apps Script ganhou três ações
+**públicas e enxutas** que expõem **só a Google Agenda**, reusando as funções internas de Calendar que já existiam:
+
+| Ação (doPost) | O que faz | Reusa |
+|---|---|---|
+| `agendaSincronizarEvento` | cria/atualiza o compromisso do **evento** e devolve o `idCalendar` | `sincronizarEventoNaAgenda_` (datas/título/descrição continuam no GAS → mesma timezone) |
+| `agendaSincronizarEntrega` | cria/atualiza o compromisso de **entrega** com o status de pagamento na descrição | `sincronizarEntregaNaAgenda_` (agora aceita o `statusTexto` já pronto) |
+| `agendaExcluir` | remove um compromisso pelo `idCalendar` (tolerante a id vazio) | `excluirEventoDaAgenda_` |
+
+A diferença-chave: **o que sai do Apps Script é a leitura do Sheets**. `sincronizarEntregaNaAgenda_` lia o Financeiro
+(`calcularStatusFinanceiro_`) para montar a descrição; agora o **front calcula o texto de pagamento a partir do PB** e
+manda pronto (`statusTexto`). A função ganhou um 2º argumento opcional — sem ele, mantém o comportamento antigo (lê do
+Sheets), então **nada quebra** no fluxo atual.
+
+No front, o novo **`assets/js/pbAgenda.js`** orquestra isso (não entra em `PB_ACTIONS` — é utilitário de outros adapters):
+- `sincronizarAgendaEvento(recEvento)` e `sincronizarAgendaEntrega(recProducao)` chamam o GAS fino e **gravam de volta**
+  `id_calendar` / `id_calendar_entrega` no record do PB. **Fail-soft**: se a Agenda falhar, a escrita no PB **não** cai
+  (espelha o `try/catch` que o back-end já fazia em `atualizarEvento`/`atualizarProducao`).
+- `excluirAgenda(idCalendar)` para remover o compromisso antes de um delete.
+- `statusEntregaTexto_` replica `calcularStatusFinanceiro_` + `formatarMoeda_` a partir das globais (que na v3.2 já vêm
+  do PB), sem tocar no Sheets.
+
+Com isso, **a sincronização de entrega na Agenda** (o `TODO` da Fase 1 em `pbProducao.js`) passou a ser feita de verdade:
+ao salvar a produção com `Data entrega`, o front chama `sincronizarAgendaEntrega` e guarda o `id_calendar_entrega`.
+`pbAgenda.js` (`?v=3.15.3`) entra em `crm.html` logo após `pbEscrita.js`; `pbProducao.js` subiu para `?v=3.15.3`. Tudo
+ainda **inerte** enquanto `USE_POCKETBASE_ESCRITA=false`.
+
+**Pendências conhecidas (próximas fases):** a cascata **lead "Fechado" → cria evento** (em `pbLeads.js`) e os
+**invariantes de evento** dependem da **Fase 3** em `pb_hooks`: cascata criar-evento→produção→conta, `atualizarEvento`→
+conta ao confirmar, cascade-delete com guarda `valorPago>0` (disparando `excluirAgenda` antes do delete) e 3-strikes de
+cobrança. O **cutover** (Fase 4) liga a flag mestra e aposenta o `sincronizarPB.gs`.
 
 ---
 
