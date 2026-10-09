@@ -1,5 +1,8 @@
 # Fase 4 — Cutover: PocketBase vira master de ESCRITA
 
+> ✅ **STATUS: CONCLUÍDO em 09/10/2026** — cutover executado na VM, smoke-test OK.
+> Documento mantido como registro do procedimento e base para o rollback.
+
 > **Objetivo:** inverter o master de escrita. Hoje (v3.2/v3.3) o front **lê** do
 > PocketBase mas **escreve** no Apps Script → Google Sheets (master) → espelho no PB.
 > Depois do cutover, o front **escreve direto no PocketBase** e o Apps Script encolhe
