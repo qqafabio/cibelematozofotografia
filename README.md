@@ -962,11 +962,20 @@ quase não existe; e hooks exigem `scp`+restart na VM de produção para cada aj
   hook quebraria esse espelho. Fica guardado, pronto para subir quando o espelho sair de cena.
 - `pbEventos.js?v=3.15.4` entra após `pbAgenda.js`; `pbLeads.js` subiu para `?v=3.15.4`. Tudo **inerte** sob a flag.
 
-**Falta na Fase 3 (próximas sub-fases):** **3c** — cobrança/3-strikes (`registrarEnvioManual`/`registrarTentativaCobranca`
-+ bloquear/desbloquear cliente); **3d** — Financeiro completo (`salvarConta` da modal, `excluirContaFinanceiro`,
+**Sub-fase 3c — cobrança/3-strikes (feita).** Novo **`assets/js/pbCobranca.js`** porta as cinco funções do Apps Script
+(backend.txt 1415-1487 / 1959-2016) como ações do `PB_ACTIONS`: `registrarEnvioManual` (a que o front chama de fato, via
+`mensagens.js → marcarEnvio`), `registrarTentativaCobranca`, `bloquearClienteCobranca`, `desbloquearClienteCobranca` e
+`obterHistoricoCobranca`. O log de cobrança acumula em `financeiro.observacoes_cobranca` (separado por `---`) e o contador
+em `financeiro.tentativas_cobranca`; ao atingir **3 envios** o cliente é **auto-bloqueado** (a parcela no PB já carrega
+`id_cliente`; se faltar, resolve via o evento — como o backend). O auto-bloqueio é **fail-soft** (não derruba o registro).
+Como a coleção `clientes` não tinha as colunas de bloqueio, foi criada a migração **`infra/pb_migrations/1793000201_add_bloqueio_cobranca.js`**
+(adiciona `bloqueado_cobranca`/`motivo_bloqueio`/`data_bloqueio`, aditiva e nullable — não afeta o espelho; só precisa estar
+na VM **até a Fase 4**). `pbCobranca.js?v=3.15.5` entra após `pbLeads.js`. **Inerte** sob a flag.
+
+**Falta na Fase 3 (próxima sub-fase):** **3d** — Financeiro completo (`salvarConta` da modal, `excluirContaFinanceiro`,
 pagamentos) e **evento coletivo** (`criarEventoColetivo`/`importarParticipantes`/`atualizarParticipante` + reaplicação de
-valores). Depois vem o **cutover** (Fase 4): ligar `USE_POCKETBASE_ESCRITA=true`, **implantar o `delete_guard.pb.js`** e
-aposentar o `sincronizarPB.gs`.
+valores). Depois vem o **cutover** (Fase 4): ligar `USE_POCKETBASE_ESCRITA=true`, **implantar o `delete_guard.pb.js`** +
+**aplicar a migração `add_bloqueio_cobranca`** na VM e aposentar o `sincronizarPB.gs`.
 
 ---
 
