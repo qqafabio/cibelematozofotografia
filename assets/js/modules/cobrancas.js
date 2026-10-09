@@ -10,13 +10,16 @@ async function exportarRelatorioCobracas(){
   if (!filtros) return;
 
   try {
-    const result = await apiCall('relatorioCobrancas', {
-      filtroCliente: filtros.cliente || '',
-      filtroValorMinimo: filtros.valorMin || 0,
-      filtroDiasAtraso: filtros.diasMin || 0
-    });
+    // v3.5: relatório calculado localmente (mesma fonte do dashboard), sem Apps Script.
+    // Os filtros que antes iam ao servidor são aplicados aqui sobre o snapshot em memória.
+    let contas = derivarRelatorioCobrancasLocal_();
 
-    let contas = (result.dados || []);
+    if (filtros.cliente) {
+      const alvo = String(filtros.cliente).toLowerCase();
+      contas = contas.filter(c => String(c.cliente || '').toLowerCase().includes(alvo));
+    }
+    if (filtros.valorMin) contas = contas.filter(c => c.saldo >= Number(filtros.valorMin));
+    if (filtros.diasMin)  contas = contas.filter(c => c.diasEmAtraso >= Number(filtros.diasMin));
 
     if (filtros.incluirTodas === false) {
       contas = contas.filter(c => ['CRÍTICA','ALTA','MÉDIA'].includes(c.prioridade));
@@ -104,31 +107,95 @@ async function abrirFiltrosExportacao(){
     window.exportModalResolve = resolve;
   });
 }
+/* ============ DERIVAÇÃO LOCAL (snapshot PocketBase em memória) ============
+   v3.5: Análise e Cobranças deixaram de chamar o Apps Script. Tudo é calculado a
+   partir do global `contasEmAtraso` — populado por carregarTudo() →
+   derivarContasEmAtrasoPB_ (pbLeitura.js), que já traz as parcelas vencidas com
+   `diasEmAtraso` e ordenadas. Mais rápido (zero rede) e consistente com o
+   PocketBase, que é o master de escrita pós-cutover (o Sheets virou espelho). */
+function prioridadePorDias_(dias){
+  if (dias > 30) return 'CRÍTICA';
+  if (dias >= 15) return 'ALTA';
+  if (dias >= 7)  return 'MÉDIA';
+  return 'BAIXA';
+}
+
+// Lista por conta no mesmo shape que o Apps Script `relatorioCobrancas` entregava
+// (campos consumidos pelo dashboard e pelo CSV). Ordenada da mais urgente p/ menos.
+function derivarRelatorioCobrancasLocal_(){
+  const contas = Array.isArray(contasEmAtraso) ? contasEmAtraso : [];
+  return contas.map(c => {
+    const previsto = Number(c['Valor previsto'] || 0);
+    const pago = Number(c['Valor pago'] || 0);
+    const dias = Number(c.diasEmAtraso || 0);
+    const tentativas = Number(c['Tentativas Cobranca'] || 0);
+    return {
+      idParcela: c['ID Parcela'],
+      cliente: c['Cliente'] || '—',
+      valor: previsto,
+      saldo: previsto - pago,
+      diasEmAtraso: dias,
+      tentativas: tentativas,
+      prioridade: prioridadePorDias_(dias),
+      // O bloqueio automático dispara em 3 tentativas (pbCobranca.js). Esse flag não
+      // é exposto no clientes[] em memória, então usamos tentativas>=3 como proxy.
+      statusCobranca: tentativas >= 3 ? 'Cliente bloqueado' : 'Em aberto',
+      vencimento: c['Vencimento'] || '',
+    };
+  }).sort((a, b) => b.diasEmAtraso - a.diasEmAtraso);
+}
+
+// Agregados no mesmo shape que o Apps Script `resumoCobrancas` entregava.
+function derivarResumoCobrancasLocal_(contas){
+  const lista = Array.isArray(contas) ? contas : [];
+  const n = lista.length;
+  const totalEmAtraso = lista.reduce((s, c) => s + (Number(c.saldo) || 0), 0);
+  const somaDias = lista.reduce((s, c) => s + (Number(c.diasEmAtraso) || 0), 0);
+  const distribuicaoTentativas = { '0_tentativas': 0, '1_tentativa': 0, '2_tentativas': 0, '3_tentativas_ou_bloqueado': 0 };
+  const urgencia = { critica: 0, alta: 0, media: 0, baixa: 0 };
+  for (const c of lista){
+    const t = Number(c.tentativas) || 0;
+    if (t <= 0) distribuicaoTentativas['0_tentativas']++;
+    else if (t === 1) distribuicaoTentativas['1_tentativa']++;
+    else if (t === 2) distribuicaoTentativas['2_tentativas']++;
+    else distribuicaoTentativas['3_tentativas_ou_bloqueado']++;
+    if (c.prioridade === 'CRÍTICA') urgencia.critica++;
+    else if (c.prioridade === 'ALTA') urgencia.alta++;
+    else if (c.prioridade === 'MÉDIA') urgencia.media++;
+    else urgencia.baixa++;
+  }
+  return {
+    resumo: {
+      totalEmAtraso: totalEmAtraso,
+      quantidadeContas: n,
+      diasMedioAtraso: n ? Math.round(somaDias / n) : 0,
+      valorMedioAtraso: n ? totalEmAtraso / n : 0,
+    },
+    distribuicaoTentativas,
+    urgencia,
+  };
+}
+
 /* ============ CONTAS EM ATRASO / COBRANÇAS ============ */
 
 async function renderContasEmAtraso(main) {
-  try {
-    const result = await apiCall('listarContasEmAtrasoComFiltros', { limite: 100 });
-    contasEmAtraso = result.dados || [];
-    const { paginacao } = result;
+  // v3.5: usa o snapshot do PocketBase já em memória (sem round-trip ao Apps Script).
+  // contasEmAtraso já vem com diasEmAtraso e ordenado por derivarContasEmAtrasoPB_.
+  const contas = Array.isArray(contasEmAtraso) ? contasEmAtraso : [];
+  const totalAtraso = contas.reduce((s, c) => s + (Number(c['Valor previsto'] || 0) - Number(c['Valor pago'] || 0)), 0);
 
-    const totalAtraso = contasEmAtraso.reduce((s, c) => s + (Number(c['Valor previsto'] || 0) - Number(c['Valor pago'] || 0)), 0);
+  main.innerHTML = `
+    <div class="view-header">
+      <div><h1>📧 Cobranças</h1><p>${contas.length} conta${contas.length === 1 ? '' : 's'} em atraso</p></div>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Total em atraso</div><div class="kpi-value">${formatBRL(totalAtraso)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Contas vencidas</div><div class="kpi-value">${contas.length}</div></div>
+    </div>
+    <div class="panel" id="tabelaAtraso"></div>
+  `;
 
-    main.innerHTML = `
-      <div class="view-header">
-        <div><h1>📧 Cobranças</h1><p>${contasEmAtraso.length} conta${contasEmAtraso.length === 1 ? '' : 's'} em atraso</p></div>
-      </div>
-      <div class="kpi-row">
-        <div class="kpi-card"><div class="kpi-label">Total em atraso</div><div class="kpi-value">${formatBRL(totalAtraso)}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Contas vencidas</div><div class="kpi-value">${contasEmAtraso.length}</div></div>
-      </div>
-      <div class="panel" id="tabelaAtraso"></div>
-    `;
-
-    desenharTabelaAtraso();
-  } catch (err) {
-    main.innerHTML = `<div class="view-header"><h1>Cobranças</h1></div><p style="color:var(--error);">Erro ao carregar contas: ${err.message}</p>`;
-  }
+  desenharTabelaAtraso();
 }
 
 function desenharTabelaAtraso() {
@@ -173,11 +240,10 @@ function desenharTabelaAtraso() {
 
 async function renderDashboardCobrancas(main) {
   try {
-    const resumo = await apiCall('resumoCobrancas');
-    const relatorio = await apiCall('relatorioCobrancas', { limite: 1000 });
-
-    const { resumo: metricas, distribuicaoTentativas, urgencia } = resumo;
-    const contas = (relatorio.dados || []).sort((a, b) => b.diasEmAtraso - a.diasEmAtraso);
+    // v3.5: calcula tudo a partir do snapshot do PocketBase já em memória, sem as 2
+    // chamadas em cascata ao Apps Script. Instantâneo e consistente com o master de escrita.
+    const contas = derivarRelatorioCobrancasLocal_();
+    const { resumo: metricas, distribuicaoTentativas, urgencia } = derivarResumoCobrancasLocal_(contas);
     const top10 = contas.slice(0, 10);
 
     // Armazena em variável global para acesso via onclick

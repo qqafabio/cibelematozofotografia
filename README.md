@@ -1027,6 +1027,31 @@ NProgress e migrar o `showToast` para toast do SweetAlert2. Assets tocados em `?
 
 ---
 
+### 2.30 Análise e Cobranças instantâneas — cálculo local do snapshot PocketBase (v3.5)
+
+Continuação da v3.4. Lá o spinner **mascarava** a espera das telas **Análise** (`dashboardCobrancas`) e
+**Cobranças** (`contasEmAtraso`); aqui a espera foi **eliminada**. Revisando, a lentidão dessas duas telas **não
+era render síncrono — era rede**: elas disparavam fetches ao **Apps Script / Google Sheets** (`renderContasEmAtraso`
+→ `listarContasEmAtrasoComFiltros`; `renderDashboardCobrancas` → `resumoCobrancas` **e** `relatorioCobrancas` em
+**cascata**). Pior: pós-cutover (`USE_POCKETBASE_ESCRITA=true`) o Sheets virou **espelho possivelmente defasado**,
+então os números podiam vir **velhos**.
+
+Como o `carregarTudo()` (`pbLeitura.js`) **já traz todas as parcelas do PocketBase e já deriva `contasEmAtraso`**
+(vencidas, com `diasEmAtraso`, ordenadas) — e o `renderMain` garante esse load antes de qualquer view — as duas
+telas passaram a **calcular tudo localmente**, com **zero rede**:
+- **Cobranças** usa direto o global `contasEmAtraso`.
+- **Análise** usa dois derivadores novos em `cobrancas.js` — **`derivarRelatorioCobrancasLocal_()`** (lista por
+  conta: saldo, `prioridade` por faixa de dias, tentativas, status) e **`derivarResumoCobrancasLocal_()`**
+  (KPIs, distribuição de tentativas, urgência) — reproduzindo o mesmo contrato que o Apps Script devolvia.
+- **Exportar CSV** também passou a usar o derivador local (filtros cliente/valor/dias aplicados em memória).
+
+Resultado: abertura **instantânea** e números **consistentes com o master de escrita** (PocketBase). As faixas de
+urgência seguem as já exibidas (>30 crítica, 15–30 alta, 7–15 média, <7 baixa); bloqueio usa `tentativas ≥ 3` como
+proxy (o flag não é exposto no `clientes[]` em memória). **Sem** mexer em `apiCall`/roteamento nem remover as
+actions do Apps Script (ficam como legado/rollback). Asset tocado: `modules/cobrancas.js?v=3.15.9`; `node --check` OK.
+
+---
+
 ## Sobre os limites gratuitos
 
 Contas Gmail pessoais (@gmail.com) têm um limite de referência de **100 e-mails enviados por dia** pelo Apps Script; contas Google Workspace têm um limite bem maior. O Apps Script também limita **execuções simultâneas por script** — por isso o CRM carrega todas as listas da tela inicial numa única chamada (`carregarTudo`) em vez de várias chamadas em paralelo, evitando erros intermitentes de "JSON inválido" por concorrência. GitHub Pages é gratuito para repositórios públicos, sem limite prático para esse volume de uso. Para o volume de uma fotógrafa de eventos, tudo isso é mais do que suficiente.
