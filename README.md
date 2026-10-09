@@ -940,7 +940,7 @@ ainda **inerte** enquanto `USE_POCKETBASE_ESCRITA=false`.
 conta ao confirmar, cascade-delete com guarda `valorPago>0` (disparando `excluirAgenda` antes do delete) e 3-strikes de
 cobrança. O **cutover** (Fase 4) liga a flag mestra e aposenta o `sincronizarPB.gs`.
 
-**Fase 3 — núcleo de Eventos + cascata do lead (em andamento; sub-fases 3a + 3b feitas).** Decisão (2026-10-09, revista
+**Fase 3 — núcleo de Eventos + cascata do lead + cobrança + Financeiro/coletivo (COMPLETA: 3a + 3b + 3c + 3d).** Decisão (2026-10-09, revista
 com a superfície completa à vista): **front-first** — a lógica pesada roda em adapters no front (valido com `node --check`,
 deploy só de front), e **só a guarda de exclusão** vira `pb_hook` (rede server-side contra perda acidental de dinheiro).
 Motivo: é um CRM de **usuária única** (só o navegador escreve), então o ganho de hook (cliente adversário/concorrência)
@@ -972,10 +972,26 @@ Como a coleção `clientes` não tinha as colunas de bloqueio, foi criada a migr
 (adiciona `bloqueado_cobranca`/`motivo_bloqueio`/`data_bloqueio`, aditiva e nullable — não afeta o espelho; só precisa estar
 na VM **até a Fase 4**). `pbCobranca.js?v=3.15.5` entra após `pbLeads.js`. **Inerte** sob a flag.
 
-**Falta na Fase 3 (próxima sub-fase):** **3d** — Financeiro completo (`salvarConta` da modal, `excluirContaFinanceiro`,
-pagamentos) e **evento coletivo** (`criarEventoColetivo`/`importarParticipantes`/`atualizarParticipante` + reaplicação de
-valores). Depois vem o **cutover** (Fase 4): ligar `USE_POCKETBASE_ESCRITA=true`, **implantar o `delete_guard.pb.js`** +
-**aplicar a migração `add_bloqueio_cobranca`** na VM e aposentar o `sincronizarPB.gs`.
+**Sub-fase 3d — Financeiro completo + evento coletivo (feita; fecha a Fase 3).** Dois adapters novos:
+- **`assets/js/pbFinanceiro.js`** — `salvarConta` (plano de cobrança inteiro: Entrada fora da contagem + parcelas
+  renumeradas 1..N; atualiza por `id_parcela` existente ou cria nova — o hook da Fase 0 atribui o `id_parcela`;
+  reconcilia a linha de `Desconto` e sincroniza o status na Agenda de entrega, fail-soft) e `excluirContaFinanceiro`
+  (conta do evento inteiro ou, com `idCliente`, só a de um participante; guarda `valorPago>0 && !forcar`). O helper
+  compartilhado `reconciliarDescontoConta_` cria/atualiza/remove a linha dedicada `Desconto`. backend.txt 721-840 / 1266-1289.
+- **`assets/js/pbColetivo.js`** — `criarEventoColetivo` (responsável = organizador, `coletivo='Sim'`, **sem** conta
+  pendente; produção + Agenda únicas, reusa `pbCriarProducao_`), `importarParticipantes` (dedup por nome no evento,
+  cria a linha em `participantes` e lança a conta do pacote por participante via `salvarConta`) e `atualizarParticipante`
+  (status/observações/fotos extras/desconto; `Não quis` cancela as contas em aberto). Helpers `valorFotoExtraDoEvento_`
+  (coluna do evento → fallback no cadastro de Pacotes), `recalcularFotosExtrasParticipante_` e `reaplicarPacoteParticipante_`
+  (preservam o `Valor pago`). backend.txt 1514-1753.
+- **`pbEventos.js`** ganhou a reaplicação de valores do coletivo no `atualizarEvento` (quando muda Valor pacote/foto
+  extra num evento `coletivo='Sim'`, propaga aos participantes — backend 384-396), resolvendo o TODO da 3a.
+- `atualizarParticipante` retorna minimalista (`{id, atualizado:true}`) de propósito: o front cai no `carregarTudo()` e
+  relê do PB com as chaves rotuladas (evita mismatch de shape snake×rótulo). `pbEventos.js?v=3.15.6`; novos
+  `pbFinanceiro.js?v=3.15.6` + `pbColetivo.js?v=3.15.6` (ordem: Financeiro antes do Coletivo). **Inerte** sob a flag.
+
+**Falta (cutover — Fase 4):** ligar `USE_POCKETBASE_ESCRITA=true`, **implantar o `delete_guard.pb.js`** + **aplicar a
+migração `add_bloqueio_cobranca`** na VM, aposentar o `sincronizarPB.gs` e fazer backup fresco do `pb_data`.
 
 ---
 

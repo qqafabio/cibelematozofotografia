@@ -137,10 +137,27 @@ async function pbAtualizarEvento(dados){
     catch (e){ console.error('atualizarEvento: conta pendente falhou (segue): ' + e); }
   }
 
-  // TODO Fase 3d (coletivo): se o evento é Coletivo e mudou Valor pacote/foto
-  // extra, o backend (384-396) reaplica os valores aos participantes
-  // (reaplicarPacoteParticipante_/recalcularFotosExtrasParticipante_). Depende
-  // de portar participantes + salvarConta completo — fica para a sub-fase 3d.
+  // Evento coletivo: se mudou Valor pacote/foto extra, reaplica aos participantes
+  // já importados (backend 384-396). Preserva o Valor pago. Fail-soft.
+  if (String(atual.coletivo) === 'Sim'){
+    const mudouPacote = patch.valor_pacote !== undefined &&
+      Number(patch.valor_pacote) !== Number(atual.valor_pacote || 0);
+    const mudouFotoExtra = patch.valor_foto_extra !== undefined &&
+      Number(patch.valor_foto_extra) !== Number(atual.valor_foto_extra || 0);
+    if (mudouPacote || mudouFotoExtra){
+      try {
+        const parts = await PB.collection('participantes').getFullList({ filter: 'id_evento=' + Number(dados.idEvento) });
+        for (const p of parts){
+          if (mudouPacote && typeof reaplicarPacoteParticipante_ === 'function'){
+            await reaplicarPacoteParticipante_(atualizado, p.id_cliente, p.nome_participante);
+          }
+          if (mudouFotoExtra && typeof recalcularFotosExtrasParticipante_ === 'function'){
+            await recalcularFotosExtrasParticipante_(atualizado, p.id_cliente, p.nome_participante, p.qtd_fotos_extras);
+          }
+        }
+      } catch (e){ console.error('atualizarEvento: reaplicação de valores do coletivo falhou (segue): ' + e); }
+    }
+  }
 
   return { idEvento: dados.idEvento, atualizado: true };
 }
