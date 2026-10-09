@@ -252,8 +252,69 @@ function showToast(msg){
   setTimeout(() => { root.innerHTML=''; }, 2600);
 }
 function fecharOverlay(){ document.getElementById('overlayRoot').innerHTML = ''; }
+
+/* ============ Mensagens do sistema (SweetAlert2) ============
+   Wrapper fino sobre o SweetAlert2 (carregado por CDN antes deste arquivo).
+   Desacopla os call-sites da lib e é responsivo/mobile por padrão. Se a lib
+   não tiver carregado (CDN fora do ar), cai no confirm() nativo — nunca trava.
+   buttonsStyling:false reusa as classes .btn do Bootstrap já na página. */
+async function confirmarAcao(opts){
+  const o = opts || {};
+  if (typeof Swal === 'undefined') return window.confirm(o.texto || o.titulo || 'Confirmar?');
+  const r = await Swal.fire({
+    title: o.titulo || 'Confirmar?',
+    text: o.texto || '',
+    icon: o.icone || (o.perigo === false ? 'question' : 'warning'),
+    showCancelButton: true,
+    confirmButtonText: o.confirmar || 'Excluir',
+    cancelButtonText: o.cancelar || 'Cancelar',
+    reverseButtons: true,
+    buttonsStyling: false,
+    customClass: {
+      confirmButton: (o.perigo === false ? 'btn btn-primary' : 'btn btn-danger') + ' swal-btn',
+      cancelButton: 'btn btn-light swal-btn',
+    },
+  });
+  return !!r.isConfirmed;
+}
+
+/* ============ Loading ============ */
+/* Cede ao menos um frame PINTADO antes de um render síncrono pesado (ApexCharts,
+   tabelões). Duplo rAF garante que o browser desenhou o spinner no meio. */
+function proximoFrame(){ return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); }
+
+/* Markup do spinner por view (usa o .spinner-border do Bootstrap já carregado). */
+function viewLoadingHTML(txt){
+  return `<div class="view-loading"><span class="spinner-border" role="status" aria-hidden="true"></span><span>${esc(txt || 'Carregando…')}</span></div>`;
+}
+
+/* Overlay global de "processando" para ações de escrita. Só aparece se a ação
+   passar de ~150 ms (evita flash em operações rápidas). Reentrante (contador),
+   então chamadas aninhadas não escondem cedo demais. */
+let __appBusyCount = 0, __appBusyTimer = null;
+function mostrarAppBusy(){
+  __appBusyCount++;
+  if (__appBusyTimer || document.getElementById('appBusy')) return;
+  __appBusyTimer = setTimeout(() => {
+    __appBusyTimer = null;
+    if (__appBusyCount <= 0) return;
+    const el = document.createElement('div');
+    el.id = 'appBusy';
+    el.className = 'app-busy';
+    el.innerHTML = `<span class="spinner-border" role="status" aria-label="Carregando"></span>`;
+    document.body.appendChild(el);
+  }, 150);
+}
+function esconderAppBusy(){
+  __appBusyCount = Math.max(0, __appBusyCount - 1);
+  if (__appBusyCount > 0) return;
+  if (__appBusyTimer){ clearTimeout(__appBusyTimer); __appBusyTimer = null; }
+  const el = document.getElementById('appBusy');
+  if (el) el.remove();
+}
+
 async function excluirComConfirmacao(mensagem, action, dados, btnId, erroId){
-  if (!confirm(mensagem)) return;
+  if (!await confirmarAcao({ titulo: 'Confirmar exclusão?', texto: mensagem })) return;
   const btn = document.getElementById(btnId);
   if (btn){ btn.disabled = true; btn.textContent = 'Excluindo…'; }
   try{

@@ -33,7 +33,7 @@ function linkMapsEvento(ev){
 
 async function excluirEventoComConfirmacao(evento){
   const mensagem = `Excluir o evento de "${evento['Cliente / Responsável']}" em ${evento['Data do evento'] || '(sem data)'}? Isso remove também a produção, o compromisso na Agenda, os custos e as parcelas do Financeiro. Não pode ser desfeito.`;
-  if (!confirm(mensagem)) return;
+  if (!await confirmarAcao({ titulo: 'Excluir evento?', texto: mensagem })) return;
   const btn = document.getElementById('excluirEvento');
   if (btn){ btn.disabled = true; btn.textContent = 'Excluindo…'; }
   try{
@@ -41,7 +41,7 @@ async function excluirEventoComConfirmacao(evento){
     loaded = false; fecharOverlay(); await renderMain(); showToast('Excluído.');
   } catch(err){
     const bloqueadoPorPagamento = /recebido/.test(err.message);
-    if (bloqueadoPorPagamento && confirm(err.message + '\n\nSe for um evento de teste, você pode excluir mesmo assim — isso apaga também o valor recebido do Financeiro, sem estorno real. Confirma a exclusão forçada?')){
+    if (bloqueadoPorPagamento && await confirmarAcao({ titulo: 'Exclusão forçada?', texto: err.message + '\n\nSe for um evento de teste, você pode excluir mesmo assim — isso apaga também o valor recebido do Financeiro, sem estorno real. Confirma a exclusão forçada?', confirmar: 'Excluir assim mesmo' })){
       try{
         await apiCall('excluirEvento', { idEvento: evento['ID Evento'], forcar: true });
         loaded = false; fecharOverlay(); await renderMain(); showToast('Excluído.');

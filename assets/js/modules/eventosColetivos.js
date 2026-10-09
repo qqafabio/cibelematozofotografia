@@ -363,7 +363,7 @@ async function salvarParticipante(idEvento, idParticipante, campos){
 async function excluirEventoColetivoComConfirmacao(evento){
   const n = participantesDoEvento(evento['ID Evento']).length;
   const mensagem = `Excluir o evento coletivo "${evento['Tipo de evento']||'—'} · ${evento['Organizador']||evento['Cliente / Responsável']||''}"? Isso remove os ${n} participante${n===1?'':'s'} do evento, a produção, o compromisso na Agenda, os custos e as parcelas do Financeiro. Os clientes cadastrados continuam na base. Não pode ser desfeito.`;
-  if (!confirm(mensagem)) return;
+  if (!await confirmarAcao({ titulo: 'Excluir evento coletivo?', texto: mensagem })) return;
   const btn = document.getElementById('excluirColetivo');
   if (btn){ btn.disabled = true; btn.textContent = 'Excluindo…'; }
   try{
@@ -371,7 +371,7 @@ async function excluirEventoColetivoComConfirmacao(evento){
     loaded = false; await renderMain(); showToast('Evento coletivo excluído.');
   } catch(err){
     const bloqueadoPorPagamento = /recebido/.test(err.message);
-    if (bloqueadoPorPagamento && confirm(err.message + '\n\nSe for um evento de teste, você pode excluir mesmo assim — isso apaga também o valor recebido do Financeiro, sem estorno real. Confirma a exclusão forçada?')){
+    if (bloqueadoPorPagamento && await confirmarAcao({ titulo: 'Exclusão forçada?', texto: err.message + '\n\nSe for um evento de teste, você pode excluir mesmo assim — isso apaga também o valor recebido do Financeiro, sem estorno real. Confirma a exclusão forçada?', confirmar: 'Excluir assim mesmo' })){
       try{
         await apiCall('excluirEvento', { idEvento: evento['ID Evento'], forcar: true });
         loaded = false; await renderMain(); showToast('Evento coletivo excluído.');

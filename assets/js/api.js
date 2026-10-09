@@ -9,6 +9,17 @@
 function isConfigurado(){ return CRM_API_URL && CRM_API_URL.indexOf('COLE_AQUI') === -1; }
 async function apiCall(action, dados){
   dados = dados || {};
+  // Overlay global de "processando" (só aparece se passar de ~150 ms). Cobre
+  // tanto o caminho PocketBase quanto o fetch ao Apps Script. Some no finally.
+  if (typeof mostrarAppBusy === 'function') mostrarAppBusy();
+  try {
+    return await apiCallInterno_(action, dados);
+  } finally {
+    if (typeof esconderAppBusy === 'function') esconderAppBusy();
+  }
+}
+async function apiCallInterno_(action, dados){
+  dados = dados || {};
   // POC v3.1: com o flag próprio ligado, mutações de cliente vão para o
   // PocketBase. A flag mestra da v3.3 (USE_POCKETBASE_ESCRITA) também roteia
   // clientes pelo PB — por isso os dois flags caem no mesmo ramo.

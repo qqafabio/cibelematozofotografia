@@ -95,9 +95,14 @@ async function renderMain(){
     return;
   }
   if (!loaded){
-    main.innerHTML = `<div class="loading-note">Carregando dados…</div>`;
+    main.innerHTML = viewLoadingHTML('Carregando dados…');
     try { await carregarTudo(); } catch(err){ main.innerHTML = `<div class="form-err">Não foi possível carregar os dados: ${esc(err.message)}</div>`; return; }
   }
+  // Spinner por view: pinta ANTES do render síncrono pesado (ApexCharts/tabelões
+  // em Análise/Cobranças "congelavam" a tela sem feedback). O duplo rAF garante
+  // que o browser desenhou o spinner antes de entrar no render que bloqueia.
+  main.innerHTML = viewLoadingHTML('Carregando…');
+  await proximoFrame();
   if (currentView === 'dashboard') renderDashboard(main);
   else if (currentView === 'clientes') renderClientes(main);
   else if (currentView === 'eventos') renderEventos(main);

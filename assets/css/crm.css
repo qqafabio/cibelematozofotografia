@@ -217,6 +217,20 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:var(--r-pill);font-size:13px;z-index:30;box-shadow:var(--shadow-lg);}
   .loading-note{color:var(--ink-soft);font-size:13px;padding:20px 0;}
 
+  /* ---- Loading (v3.4) ---- */
+  /* Spinner por view: some enquanto o render síncrono pesado (ApexCharts/tabelões) monta. */
+  .view-loading{display:flex;align-items:center;justify-content:center;gap:12px;min-height:240px;color:var(--ink-soft);font-size:13.5px;}
+  .view-loading .spinner-border{width:1.6rem;height:1.6rem;border-width:.18em;color:var(--gold);}
+  /* Overlay global de "processando" nas ações de escrita (acima dos modais do SweetAlert2). */
+  .app-busy{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(34,31,28,.28);backdrop-filter:blur(1px);z-index:2000;}
+  .app-busy .spinner-border{width:2.4rem;height:2.4rem;border-width:.2em;color:var(--paper);}
+
+  /* ---- SweetAlert2 — alinhar aos tokens do tema (v3.4) ---- */
+  .swal2-popup{font-family:'Work Sans',sans-serif;border-radius:var(--r-lg);box-shadow:var(--shadow-lg);background:var(--paper-raised);color:var(--ink);}
+  .swal2-title{font-family:'Fraunces',serif;font-weight:500;color:var(--ink);}
+  .swal2-html-container{color:var(--ink-soft);font-size:14px;}
+  .swal2-actions .swal-btn{min-width:104px;}
+
   /* ---- Utilitários de refino (v3.6) ----
      Classes que absorvem estilos inline recorrentes das telas antigas
      (Templates/Freelance/Custos), para manter a identidade sem repetir style="". */

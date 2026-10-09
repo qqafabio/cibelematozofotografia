@@ -147,7 +147,7 @@ async function confirmarDeletarTemplate(indice) {
     return;
   }
 
-  if (confirm(`Tem certeza que deseja deletar o template "${tpl['Nome']}"?`)) {
+  if (await confirmarAcao({ titulo: 'Deletar template?', texto: `Tem certeza que deseja deletar o template "${tpl['Nome']}"?`, confirmar: 'Deletar' })) {
     try {
       await apiCall('deletarTemplate', { id: tpl['ID'] });
       showToast('✅ Template deletado');

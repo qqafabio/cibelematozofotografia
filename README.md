@@ -1003,6 +1003,28 @@ reimplantado → o `sincronizarPB.gs` está **aposentado**; (4) `delete_guard.pb
 coletivo, 3-strikes) **passou**; (7) backup pós-cutover. **O Google Sheets deixou de ser master** e fica como
 arquivo morto/read-only (rede de segurança por alguns dias). **Objetivo da v3.3 atingido.**
 
+### 2.29 Mensagens do sistema (SweetAlert2) + Loading por view e nas escritas (v3.4)
+
+Duas melhorias de UX. **(1) Confirmações/alertas:** as confirmações de exclusão usavam o `confirm()` **nativo**
+do navegador (sem identidade, com o cabeçalho "127.0.0.1:5500 says"). Agora usam **SweetAlert2** (via CDN
+`sweetalert2@11/.../sweetalert2.all.min.js`, carregado antes do `ui.js`), responsivo/mobile por padrão. Um wrapper
+fino **`confirmarAcao({ titulo, texto, confirmar, perigo })`** em `ui.js` desacopla os call-sites da lib (retorna
+`boolean`; `buttonsStyling:false` reusa as classes `.btn` do Bootstrap já carregado) e cai no `confirm()` nativo
+se a CDN falhar. Migrados os **8** pontos de `confirm()`: `ui.js` (`excluirComConfirmacao`) + `eventos.js`,
+`eventosColetivos.js`, `financeiro.js`, `templates.js` (inclui os diálogos de **exclusão forçada** quando há valor
+recebido). O `showToast` foi mantido. Tema alinhado aos tokens do `crm.css` (`.swal2-popup/title`, Fraunces no
+título).
+
+**(2) Loading:** a lentidão ao abrir **Análise** (`dashboardCobrancas`) e **Cobranças** (`contasEmAtraso`) era
+**render síncrono** (ApexCharts + tabelões), não rede — a tela "congelava" sem feedback. Agora `renderMain`
+(`router.js`) injeta um **spinner por view** (`.spinner-border` do Bootstrap, via `viewLoadingHTML`) e **cede um
+frame pintado** (`proximoFrame`, duplo `requestAnimationFrame`) **antes** do render pesado, então o spinner
+aparece de fato. Para as **ações de escrita**, `apiCall` (`api.js`) passou a envolver as chamadas com um
+**overlay global** `mostrarAppBusy()`/`esconderAppBusy()` (reentrante, com atraso de ~150 ms para não "piscar" em
+operações rápidas). CSS novo em `crm.css`: `.view-loading` e `.app-busy`. **Fora de escopo** (combinado): barra
+NProgress e migrar o `showToast` para toast do SweetAlert2. Assets tocados em `?v=3.15.8` (`crm.css`, `api.js`,
+`ui.js`, `router.js`, `modules/{eventos,eventosColetivos,financeiro,templates}.js`); `node --check` OK em todos.
+
 ---
 
 ## Sobre os limites gratuitos
