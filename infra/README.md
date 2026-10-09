@@ -58,6 +58,22 @@ node infra/gen_gas_sync.cjs
 Passo a passo de instalação (colar o `.gs`, Script Properties, gatilho no
 `doPost`, seed com `sincronizarPBTudo`) em **`infra/apps_script/README.md`**.
 
+## `gen_pb_hooks.cjs` — hooks server-side (v3.3)
+
+Lê a **mesma** fonte única `assets/js/pbSchema.js` e gera
+`infra/pb_hooks/auto_id.pb.js`: um hook `onRecordBeforeCreateRequest` por
+coleção com id de negócio sequencial, que atribui `max(id)+1` **no servidor**
+(fim da corrida do `proximoId_`/cliente). Faz parte da **v3.3**, quando o
+PocketBase vira master de escrita. Deploy e detalhes em
+**`infra/pb_hooks/README.md`**.
+
+```bash
+node infra/gen_pb_hooks.cjs
+```
+
+> Seguro de aplicar adiantado: enquanto `USE_POCKETBASE_ESCRITA` estiver
+> `false`, as escritas ainda chegam com id preenchido e o hook não age.
+
 ## `vm/backup_pbdata.sh` — backup diário do pb_data
 
 Instalado na VM em `/opt/pocketbase/backup_pbdata.sh` e disparado pelo cron
