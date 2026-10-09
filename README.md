@@ -868,7 +868,7 @@ evento era o "+ Novo custo" (reselecionando o evento na mão), cada linha do res
 (ícone `＋`) que abre o formulário *Novo custo* **já com aquele evento pré-selecionado**. Para isso, `abrirFormCusto`
 passou a aceitar um 2º parâmetro `idEventoPadrao`. `crm.html` (bump `?v=3.15.0 → 3.15.1`).
 
-### 2.28 PocketBase vira master de ESCRITA (track v3.3 — Fases 0 + 1 + 2)
+### 2.28 PocketBase vira master de ESCRITA (track v3.3 — Fases 0 + 1 + 2 + 3)
 
 > Esta é a trilha **de back-end** (os commits a marcam como **v3.3**), paralela às seções visuais acima
 > (v3.0–v3.15 são a trilha de **front-end**). Objetivo: **remover o Google Sheets como master de escrita**.
@@ -939,6 +939,34 @@ ainda **inerte** enquanto `USE_POCKETBASE_ESCRITA=false`.
 **invariantes de evento** dependem da **Fase 3** em `pb_hooks`: cascata criar-evento→produção→conta, `atualizarEvento`→
 conta ao confirmar, cascade-delete com guarda `valorPago>0` (disparando `excluirAgenda` antes do delete) e 3-strikes de
 cobrança. O **cutover** (Fase 4) liga a flag mestra e aposenta o `sincronizarPB.gs`.
+
+**Fase 3 — núcleo de Eventos + cascata do lead (em andamento; sub-fases 3a + 3b feitas).** Decisão (2026-10-09, revista
+com a superfície completa à vista): **front-first** — a lógica pesada roda em adapters no front (valido com `node --check`,
+deploy só de front), e **só a guarda de exclusão** vira `pb_hook` (rede server-side contra perda acidental de dinheiro).
+Motivo: é um CRM de **usuária única** (só o navegador escreve), então o ganho de hook (cliente adversário/concorrência)
+quase não existe; e hooks exigem `scp`+restart na VM de produção para cada ajuste, sem como testar localmente.
+
+- **`assets/js/pbEventos.js`** (novo) — `criarEvento`/`atualizarEvento`/`excluirEvento`/`excluirProducao`:
+  - **criar**: resolve o cliente, grava o evento (sem `id_evento` → hook da Fase 0) e roda a **cascata sequencial** —
+    cria a **produção** (11 etapas em "Não iniciado") sempre, e, se o status for `Confirmado`, a **conta pendente**
+    "Saldo do evento" no Financeiro. A Agenda é orquestrada por `pbAgenda.js` (grava `id_calendar` de volta), fail-soft.
+  - **atualizar**: PATCH parcial, sincroniza a Agenda e, quando o status passa a `Confirmado` (não era), gera a conta
+    pendente. *(A reaplicação de valores aos participantes de evento coletivo fica para a sub-fase 3d.)*
+  - **excluir**: guarda `valorPago>0 && !forcar` (mesma mensagem do back-end), remove os compromissos da Agenda
+    (evento e entrega) e **cascateia** produção, financeiro, custos e participantes antes de apagar o evento.
+- **`pbLeads.js`** — resolvido o TODO da Fase 1: quando um lead passa a **"Fechado"** (e não era), cria o evento
+  correspondente com status "Aguardando aprovação" (espelha o back-end), fail-soft.
+- **`infra/pb_hooks/delete_guard.pb.js`** (novo, **versionado mas NÃO implantado**) — `onRecordBeforeDeleteRequest` em
+  `financeiro` que bloqueia excluir uma parcela com `valor_pago>0` sem `?forcar=1`. **Só vai para a VM no cutover
+  (Fase 4):** enquanto o Sheets for master, o espelho `sincronizarPB.gs` **deleta** registros no PB ao reconciliar, e o
+  hook quebraria esse espelho. Fica guardado, pronto para subir quando o espelho sair de cena.
+- `pbEventos.js?v=3.15.4` entra após `pbAgenda.js`; `pbLeads.js` subiu para `?v=3.15.4`. Tudo **inerte** sob a flag.
+
+**Falta na Fase 3 (próximas sub-fases):** **3c** — cobrança/3-strikes (`registrarEnvioManual`/`registrarTentativaCobranca`
++ bloquear/desbloquear cliente); **3d** — Financeiro completo (`salvarConta` da modal, `excluirContaFinanceiro`,
+pagamentos) e **evento coletivo** (`criarEventoColetivo`/`importarParticipantes`/`atualizarParticipante` + reaplicação de
+valores). Depois vem o **cutover** (Fase 4): ligar `USE_POCKETBASE_ESCRITA=true`, **implantar o `delete_guard.pb.js`** e
+aposentar o `sincronizarPB.gs`.
 
 ---
 

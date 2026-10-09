@@ -67,10 +67,29 @@ async function pbAtualizarLead(dados){
     patch.valor_ponderado = ve * pr / 100;
   }
   const upd = await PB.collection('leads').update(rec.id, patch);
-  // TODO Fase 3: se dados.etapa==='Fechado' e a etapa anterior != 'Fechado',
-  // o backend (566-586) chama criarEvento(...) com status 'Aguardando aprovação'.
-  // Essa cascata depende do adapter/hook de Eventos (ainda não portado) — será
-  // feita na Fase 3 junto com a cascata evento→produção→conta.
+  // Cascata (Fase 3): lead virou "Fechado" agora (não já estava) → cria o
+  // evento correspondente com status "Aguardando aprovação" (backend 614-634).
+  // Fail-soft: se a criação do evento falhar, a atualização do lead não cai.
+  if (dados.etapa === 'Fechado' && rec.etapa_comercial !== 'Fechado'
+      && typeof pbCriarEvento === 'function'){
+    try {
+      const estimadoFechar = dados.valorEstimado !== undefined ? Number(dados.valorEstimado) : Number(rec.valor_estimado || 0);
+      const descontoFechar = dados.desconto !== undefined ? Number(dados.desconto) : Number(rec.desconto || 0);
+      await pbCriarEvento({
+        idCliente: rec.id_cliente,
+        status: 'Aguardando aprovação',
+        dataEvento: dados.dataDesejada !== undefined ? dados.dataDesejada : rec.data_desejada,
+        tipoEvento: dados.tipoEvento !== undefined ? dados.tipoEvento : rec.tipo_evento,
+        pacote: dados.pacote !== undefined ? dados.pacote : rec.pacote,
+        valorPacote: estimadoFechar,
+        desconto: descontoFechar,
+        valorFinal: estimadoFechar - descontoFechar,
+        observacoes: `Criado automaticamente a partir do lead #${rec.id_lead}.`,
+      });
+    } catch (e){
+      console.error('atualizarLead: criação do evento (lead Fechado) falhou (segue): ' + e);
+    }
+  }
   return upd;
 }
 
