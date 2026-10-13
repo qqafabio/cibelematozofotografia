@@ -13,7 +13,7 @@ const CRM_API_URL = 'https://script.google.com/macros/s/AKfycbyFy5w3fdEQ6t4lwVPM
    vir/gravar no PocketBase; todo o resto do CRM continua no Apps Script.
    Rollback é só voltar para false (nenhum outro arquivo depende do PB).
    Durante o POC, clientes só devem ser criados por aqui — NÃO criar cliente
-   pela planilha em paralelo (o "próximo ID" divergiria). Ver README. */
+   pela planilha em paralelo (o "próximo ID" divergiria). Ver RELEASE_NOTES (2.13). */
 const USE_POCKETBASE_CLIENTES = false;             // v3.2 cutover: escrita de cliente volta ao Apps Script (leitura vem do PB abaixo)
 const PB_URL = 'https://cibelecrm.duckdns.org';    // VM Oracle (PocketBase 0.22.55, auto-TLS)
 const PB_EMAIL = 'app@cibelecrm.duckdns.org';      // usuário de app neutro (a senha é pedida no 1º acesso)
