@@ -129,7 +129,7 @@ function abrirFormConta(conta){
         <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">Para reverter um pagamento já recebido, não zere o valor — mude o Status da entrada para algo diferente de "Pago".</p>
         <div class="row2">
           <div class="field"><label>Forma pagamento</label><select id="f_entradaForma">${opcoesSelect(listas['Forma pagamento'], entradaExistente ? entradaExistente['Forma pagamento'] : '')}</select></div>
-          <div class="field"><label>Data pagamento</label><input id="f_entradaDataPagamento" class="p-mask-data" placeholder="DD/MM/AAAA" value="${esc(entradaExistente ? entradaExistente['Data pagamento'] : '')}"></div>
+          <div class="field"><label>Data pagamento</label><input id="f_entradaDataPagamento" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(entradaExistente ? entradaExistente['Data pagamento'] : '')}"></div>
         </div>
  
         <hr style="border:none;border-top:1px solid var(--rule);margin:20px 0;">
@@ -157,9 +157,6 @@ function abrirFormConta(conta){
   document.getElementById('f_totalParcelas').addEventListener('input', () => renderLinhasParcelas(parcelasRestantes));
   document.getElementById('f_entradaValor').addEventListener('input', atualizarSaldoEventoInfo);
   document.getElementById('f_descontoValor').addEventListener('input', atualizarSaldoEventoInfo);
-  document.querySelectorAll('#overlayRoot .p-mask-data').forEach(inp => {
-    if (!inp.closest('.linha-parcela')) inp.addEventListener('input', () => { inp.value = maskData(inp.value); });
-  });
   if (!editando) document.getElementById('f_idEvento').addEventListener('change', atualizarSaldoEventoInfo);
   renderLinhasParcelas(parcelasRestantes);
 }
@@ -210,7 +207,7 @@ function renderLinhasParcelas(parcelasExistentes){
       <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;">Parcela ${i+1} de ${total}${ant.idParcela?' · já lançada':''}</p>
       <div class="row2">
         <div class="field"><label>Tipo cobrança</label><select class="p-tipo">${opcoesSelect(listas['Tipo cobrança'], ant.tipo||'')}</select></div>
-        <div class="field"><label>Vencimento</label><input class="p-venc p-mask-data" placeholder="DD/MM/AAAA" value="${esc(ant.venc||'')}"></div>
+        <div class="field"><label>Vencimento</label><input class="p-venc" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(ant.venc||'')}"></div>
       </div>
       <div class="row2">
         <div class="field"><label>Valor</label><input class="p-valor" type="number" step="0.01" value="${esc(ant.valor||'')}"></div>
@@ -218,12 +215,11 @@ function renderLinhasParcelas(parcelasExistentes){
       </div>
       <div class="row2">
         <div class="field"><label>Forma pagamento</label><select class="p-forma">${opcoesSelect(listas['Forma pagamento'], ant.forma||'')}</select></div>
-        <div class="field"><label>Data pagamento</label><input class="p-dataPagamento p-mask-data" placeholder="DD/MM/AAAA" value="${esc(ant.dataPagamento||'')}"></div>
+        <div class="field"><label>Data pagamento</label><input class="p-dataPagamento" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(ant.dataPagamento||'')}"></div>
       </div>
       <div class="field"><label>Valor pago</label><input class="p-valorPago" type="number" step="0.01" value="${esc(ant.valorPago||'')}"></div>
     </div>`;
   }).join('');
-  wrap.querySelectorAll('.p-mask-data').forEach(inp => inp.addEventListener('input', () => { inp.value = maskData(inp.value); }));
   wrap.querySelectorAll('.p-valor').forEach(inp => inp.addEventListener('input', atualizarSaldoEventoInfo));
   atualizarSaldoEventoInfo();
 }

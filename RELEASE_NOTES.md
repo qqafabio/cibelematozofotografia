@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.16 | 2026-10-13 | Seletor de data e hora (flatpickr) em todo o CRM — sem mudança de dados | [2.31](#231-seletor-de-data-e-hora-com-flatpickr-v316) |
 | v3.5 (PB) | 2026-10-09 | Análise e Cobranças instantâneas — cálculo local do snapshot PocketBase | [2.30](#230-análise-e-cobranças-instantâneas--cálculo-local-do-snapshot-pocketbase-v35) |
 | v3.4 (PB) | 2026-10-09 | Mensagens do sistema (SweetAlert2) + loading por view e nas escritas | [2.29](#229-mensagens-do-sistema-sweetalert2--loading-por-view-e-nas-escritas-v34) |
 | v3.3 (PB) | 2026-10-09 | PocketBase vira master de **escrita** (Fases 0–4, cutover) — ⚠️ migrations/hooks + reimplantar Apps Script | [2.28](#228-pocketbase-vira-master-de-escrita-track-v33--fases-0--1--2--3--4) |
@@ -986,4 +987,38 @@ Resultado: abertura **instantânea** e números **consistentes com o master de e
 urgência seguem as já exibidas (>30 crítica, 15–30 alta, 7–15 média, <7 baixa); bloqueio usa `tentativas ≥ 3` como
 proxy (o flag não é exposto no `clientes[]` em memória). **Sem** mexer em `apiCall`/roteamento nem remover as
 actions do Apps Script (ficam como legado/rollback). Asset tocado: `modules/cobrancas.js?v=3.15.9`; `node --check` OK.
+
+---
+
+### 2.31 Seletor de data e hora com flatpickr (v3.16)
+
+Todos os campos de data e hora do CRM, que eram texto puro com máscara, ganharam um seletor visual
+(**flatpickr 4.6.13**, via CDN, com o locale pt-BR). O **Contrato Digital (`index.html`) não foi alterado**.
+
+**Contrato de dados inalterado.** O `.value` continua sendo o mesmo texto de antes (`DD/MM/AAAA` e `HH:MM`),
+então `apiCall`, os adapters `pb*.js`, o Apps Script, o `parseDataBR` e o Dashboard não mudaram. **Não exige
+reimplantar o Apps Script nem aplicar migrations.**
+
+**Como funciona.** Basta marcar o campo com `data-picker="date"` ou `data-picker="time"`. Um `MutationObserver`
+(em `ui.js`) inicia o seletor quando o campo entra no DOM e o destrói quando sai — isso cobre formulários em
+overlay, as linhas dinâmicas de parcelas do Financeiro e a edição inline de Leads, sem chamadas por tela.
+- **Data:** formato `d/m/Y`, calendário em português.
+- **Hora:** 24h, com passo de **5 minutos** nas setas do seletor (digitar um minuto fora do passo, como `09:32`, continua permitido).
+- **Digitação:** `allowInput` ligado e a máscara (`maskData`/`maskHora`) mantida para quem prefere digitar.
+- **Mobile:** `disableMobile: true`, para o seletor do flatpickr valer também no celular e o texto continuar no mesmo formato.
+- **Idioma:** o `pt.js` do flatpickr traduz dias e meses (`flatpickr.l10ns.pt`), mas deixa em inglês os títulos e aria-labels (semana, ano, mês, hora, minuto). O `ui.js` complementa o locale com `PICKER_LOCALE_EXTRA` (em português). Cuidado: a propriedade é `l10ns` (com "s"), não `l10n`.
+- **Atribuição por código:** usar `definirValorPicker(id, valor)` (em vez de `.value = ...`) para manter o estado interno do flatpickr em sincronia — usado no formulário de pagamentos do Freelance.
+
+**Campos migrados (14 de data + 5 de hora):**
+- Eventos e Eventos coletivos: data do evento, hora início e hora fim.
+- Leads: data desejada, próximo contato (formulário e edição inline).
+- Custos: data.
+- Produção: data e hora de entrega.
+- Financeiro: data de pagamento da entrada e, em cada parcela, vencimento e data de pagamento.
+- Freelance: data do evento, data do pagamento e o filtro De/Até.
+
+**Arquivos tocados** (`?v=3.16.0`, e `ui.js` em `?v=3.16.1`): `crm.html` (CDN do flatpickr), `assets/css/crm.css` (tema da marca no bloco
+"flatpickr"), `assets/js/ui.js` e `modules/{eventos,eventosColetivos,leads,custos,producao,financeiro,freelance}.js`.
+`node --check` OK; comportamento validado em jsdom (inicialização/destruição, formato do valor, máscara, 24h/5 min,
+linhas dinâmicas sem vazamento de calendários).
 

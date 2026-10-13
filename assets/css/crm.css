@@ -351,3 +351,21 @@
     table.responsive-table td:last-child{border-bottom:none;}
     table.responsive-table td::before{content:attr(data-label);font-size:11.5px;color:var(--ink-soft);font-weight:500;text-align:left;}
   }
+
+  /* ---- flatpickr (v3.16): tema da marca (creme/dourado) ---- */
+  .flatpickr-calendar{font-family:'Work Sans',sans-serif;background:var(--paper-raised);border:1px solid var(--rule);border-radius:var(--r-md);box-shadow:var(--shadow-lg);}
+  .flatpickr-calendar:before,.flatpickr-calendar:after{display:none;}
+  .flatpickr-months .flatpickr-month,.flatpickr-current-month .flatpickr-monthDropdown-months,.flatpickr-current-month input.cur-year{color:var(--ink);fill:var(--ink);font-family:'Fraunces',serif;font-weight:500;}
+  .flatpickr-months .flatpickr-prev-month,.flatpickr-months .flatpickr-next-month{color:var(--ink-soft);fill:var(--ink-soft);}
+  .flatpickr-months .flatpickr-prev-month:hover svg,.flatpickr-months .flatpickr-next-month:hover svg{fill:var(--gold);}
+  span.flatpickr-weekday{color:var(--ink-soft);font-weight:500;}
+  .flatpickr-day{color:var(--ink);border-radius:var(--r-sm);}
+  .flatpickr-day:hover,.flatpickr-day.prevMonthDay:hover,.flatpickr-day.nextMonthDay:hover{background:var(--gold-soft);border-color:var(--gold-soft);}
+  .flatpickr-day.today{border-color:var(--gold);}
+  .flatpickr-day.today:hover{background:var(--gold-soft);border-color:var(--gold);color:var(--ink);}
+  .flatpickr-day.selected,.flatpickr-day.selected:hover{background:var(--gold);border-color:var(--gold);color:#fff;}
+  .flatpickr-day.prevMonthDay,.flatpickr-day.nextMonthDay{color:var(--ink-soft);opacity:.55;}
+  .flatpickr-time{border-top:1px solid var(--rule);}
+  .flatpickr-time input,.flatpickr-time .flatpickr-time-separator{color:var(--ink);font-family:'Work Sans',sans-serif;}
+  .flatpickr-time input:hover,.flatpickr-time input:focus,.numInputWrapper:hover{background:var(--gold-soft);}
+  .numInputWrapper span:hover{background:rgba(168,121,30,.15);}

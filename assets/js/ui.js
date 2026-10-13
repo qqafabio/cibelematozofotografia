@@ -236,6 +236,55 @@ function aplicarMascara(id, fn){
   if (!input) return;
   input.addEventListener('input', () => { input.value = fn(input.value); });
 }
+
+/* Seletores de data/hora (flatpickr). Basta marcar o campo com
+   data-picker="date" (DD/MM/AAAA) ou data-picker="time" (HH:MM, 24h, passo de 5 min):
+   um MutationObserver inicia o seletor quando o input entra no DOM e o destrói
+   quando sai (formulários, linhas dinâmicas de parcelas, edição inline etc.).
+   O .value continua no mesmo texto de antes, então o contrato de dados não muda.
+   A máscara segue ativa para quem prefere digitar. */
+const PICKER_CFG = {
+  date: { dateFormat: 'd/m/Y', allowInput: true, disableMobile: true },
+  time: { enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true, minuteIncrement: 5, allowInput: true, disableMobile: true },
+};
+/* O pt.js do flatpickr traduz dias e meses (flatpickr.l10ns.pt), mas deixa em inglês os
+   títulos/aria-labels do seletor — complementados aqui. */
+const PICKER_LOCALE_EXTRA = {
+  firstDayOfWeek: 0,
+  weekAbbreviation: 'Sem',
+  scrollTitle: 'Role para aumentar ou diminuir',
+  toggleTitle: 'Clique para alternar',
+  yearAriaLabel: 'Ano',
+  monthAriaLabel: 'Mês',
+  hourAriaLabel: 'Hora',
+  minuteAriaLabel: 'Minuto',
+  ordinal: () => 'º',
+};
+function iniciarPicker(inp){
+  const tipo = inp.dataset.picker;
+  if (inp._flatpickr || !PICKER_CFG[tipo] || typeof flatpickr === 'undefined') return;
+  const mask = tipo === 'time' ? maskHora : maskData;
+  inp.addEventListener('input', () => { inp.value = mask(inp.value); });
+  const locale = Object.assign({}, flatpickr.l10ns && flatpickr.l10ns.pt, PICKER_LOCALE_EXTRA);
+  flatpickr(inp, Object.assign({ locale }, PICKER_CFG[tipo]));
+}
+/* Atribuição programática: mantém o estado interno do flatpickr em sincronia com o .value. */
+function definirValorPicker(id, valor){
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el._flatpickr) el._flatpickr.setDate(valor || null, false);
+  else el.value = valor || '';
+}
+function pickersDe(no){
+  if (no.nodeType !== 1) return [];
+  const lista = Array.from(no.querySelectorAll('[data-picker]'));
+  if (no.matches('[data-picker]')) lista.push(no);
+  return lista;
+}
+new MutationObserver(muts => muts.forEach(m => {
+  m.addedNodes.forEach(no => pickersDe(no).forEach(iniciarPicker));
+  m.removedNodes.forEach(no => pickersDe(no).forEach(inp => { if (inp._flatpickr) inp._flatpickr.destroy(); }));
+})).observe(document.body, { childList: true, subtree: true });
 function opcoesSelect(lista, valorAtual){
   const itens = (lista || []).slice();
   if (valorAtual && !itens.includes(valorAtual)) itens.push(valorAtual);

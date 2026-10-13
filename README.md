@@ -12,7 +12,7 @@ Duas ferramentas independentes da Cibele Matozo Fotografia, hospedadas de graça
 ## Tecnologias
 
 - **Front-end:** HTML + CSS + JavaScript puro (sem framework e sem build), servido pelo GitHub Pages.
-  Bibliotecas por CDN: Bootstrap 5.3 + Bootstrap Icons, ApexCharts (gráficos), SweetAlert2 (confirmações) e PocketBase JS SDK.
+  Bibliotecas por CDN: Bootstrap 5.3 + Bootstrap Icons, ApexCharts (gráficos), SweetAlert2 (confirmações), flatpickr (datas e horas) e PocketBase JS SDK.
 - **Contrato Digital:** Google Apps Script + Google Sheets + Google Drive (PDF) + Gmail.
 - **CRM — dados:** PocketBase 0.22 (VM Oracle, `cibelecrm.duckdns.org`) como master de leitura e escrita; Google Sheets mantido como espelho/legado.
 - **CRM — Google Agenda:** Apps Script enxuto (`agendaSincronizarEvento`, `agendaSincronizarEntrega`, `agendaExcluir`).

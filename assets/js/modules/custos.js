@@ -154,7 +154,7 @@ function abrirFormCusto(custo, idEventoPadrao){
         <div class="form-err" id="custoErr" style="display:none;"></div>
         <div class="field"><label>Evento</label><select id="f_idEvento">${eventos.length?opcoesEventos:'<option value="">Cadastre um evento primeiro</option>'}</select></div>
         <div class="row2">
-          <div class="field"><label>Data</label><input id="f_data" placeholder="DD/MM/AAAA" value="${esc(editando?custo['Data']:'')}"></div>
+          <div class="field"><label>Data</label><input id="f_data" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(editando?custo['Data']:'')}"></div>
           <div class="field"><label>Categoria</label><select id="f_categoria">${opcoesSelect(listas['Tipo custo'], editando?custo['Categoria']:'')}</select></div>
         </div>
         <div class="row2">
@@ -182,7 +182,6 @@ function abrirFormCusto(custo, idEventoPadrao){
       'excluirCusto', { idCusto: custo['ID Custo'] }, 'excluirCusto', 'custoErr'
     ));
   }
-  aplicarMascara('f_data', maskData);
 }
 async function salvarCusto(idCusto){
   const idEvento = document.getElementById('f_idEvento').value;

@@ -142,12 +142,12 @@ function abrirFormEvento(evento){
           <div class="field"><label>Status</label>
             <select id="f_status">${opcoesSelect(listas['Status evento'], editando?evento.Status:'')}</select>
           </div>
-          <div class="field"><label>Data do evento</label><input id="f_data" placeholder="DD/MM/AAAA" value="${esc(editando?evento['Data do evento']:'')}"></div>
+          <div class="field"><label>Data do evento</label><input id="f_data" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(editando?evento['Data do evento']:'')}"></div>
           <div class="field"><label>Tipo de evento</label><select id="f_tipo">${opcoesSelect(listas['Tipo de evento'], editando?evento['Tipo de evento']:'')}</select></div>
         </div>
         <div class="row2">
-          <div class="field"><label>Hora início</label><input id="f_horaIni" placeholder="HH:MM" value="${esc(editando?evento['Hora início']:'')}"></div>
-          <div class="field"><label>Hora fim</label><input id="f_horaFim" placeholder="HH:MM" value="${esc(editando?evento['Hora fim']:'')}"></div>
+          <div class="field"><label>Hora início</label><input id="f_horaIni" data-picker="time" placeholder="HH:MM" value="${esc(editando?evento['Hora início']:'')}"></div>
+          <div class="field"><label>Hora fim</label><input id="f_horaFim" data-picker="time" placeholder="HH:MM" value="${esc(editando?evento['Hora fim']:'')}"></div>
         </div>
         <div class="row2">
           <div class="field"><label>Local</label><input id="f_local" value="${esc(editando?evento['Local']:'')}"></div>
@@ -172,9 +172,6 @@ function abrirFormEvento(evento){
   if (editando){
     document.getElementById('excluirEvento').addEventListener('click', () => excluirEventoComConfirmacao(evento));
   }
-  aplicarMascara('f_data', maskData);
-  aplicarMascara('f_horaIni', maskHora);
-  aplicarMascara('f_horaFim', maskHora);
   vincularAutoValorPacote('f_pacote', 'f_valorPacote');
   // Valor final = Valor pacote − Desconto, recalculado ao vivo (campo segue editável).
   const recalcularValorFinal = () => {

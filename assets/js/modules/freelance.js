@@ -34,8 +34,8 @@ function renderFreelance(main){
     </div>
     <div class="panel spaced" style="padding:16px 18px;">
       <div class="row2">
-        <div class="field tight"><label>De</label><input id="freelanceDe" placeholder="DD/MM/AAAA"></div>
-        <div class="field tight"><label>Até</label><input id="freelanceAte" placeholder="DD/MM/AAAA"></div>
+        <div class="field tight"><label>De</label><input id="freelanceDe" data-picker="date" placeholder="DD/MM/AAAA"></div>
+        <div class="field tight"><label>Até</label><input id="freelanceAte" data-picker="date" placeholder="DD/MM/AAAA"></div>
       </div>
     </div>
     <div class="panel panel-list"><div id="tabelaFreelance"></div></div>
@@ -116,7 +116,7 @@ function abrirFormFreelance(ev){
         <h2>${editando ? 'Editar freelance' : 'Novo freelance'}</h2>
         <div class="form-err" id="freelanceErr" style="display:none;"></div>
         <div class="row2">
-          <div class="field"><label>Data</label><input id="f_data" class="p-mask-data" placeholder="DD/MM/AAAA" value="${esc(editando?ev['Data']:'')}"></div>
+          <div class="field"><label>Data</label><input id="f_data" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(editando?ev['Data']:'')}"></div>
           <div class="field"><label>Nome do evento</label><input id="f_nomeEvento" value="${esc(editando?ev['Nome do evento']:'')}"></div>
         </div>
         <div class="row2">
@@ -147,7 +147,7 @@ function abrirFormFreelance(ev){
         <div id="pagamentosFreelanceLista"></div>
         <input type="hidden" id="f_pagamentoEditando" value="">
         <div class="row2" style="margin-top:10px;">
-          <div class="field"><label>Data do pagamento</label><input id="f_novoPagData" class="p-mask-data" placeholder="DD/MM/AAAA"></div>
+          <div class="field"><label>Data do pagamento</label><input id="f_novoPagData" data-picker="date" placeholder="DD/MM/AAAA"></div>
           <div class="field"><label>Valor</label><input id="f_novoPagValor" type="number" step="0.01"></div>
         </div>
         <div class="btn-row">
@@ -165,7 +165,6 @@ function abrirFormFreelance(ev){
     </div>`;
   document.getElementById('cancelarFreelance').addEventListener('click', fecharOverlay);
   document.getElementById('salvarFreelanceBtn').addEventListener('click', () => salvarFreelanceEvento(editando ? ev['ID Evento'] : null));
-  document.querySelectorAll('#overlayRoot .p-mask-data').forEach(inp => inp.addEventListener('input', () => { inp.value = maskData(inp.value); }));
   if (editando){
     desenharPagamentosFreelance(ev);
     document.getElementById('addPagamentoBtn').addEventListener('click', () => salvarPagamentoFreelance(ev['ID Evento']));
@@ -184,7 +183,7 @@ function abrirFormFreelance(ev){
   }
 }
 function limparFormPagamento(){
-  document.getElementById('f_novoPagData').value = '';
+  definirValorPicker('f_novoPagData', '');
   document.getElementById('f_novoPagValor').value = '';
   document.getElementById('f_pagamentoEditando').value = '';
   document.getElementById('addPagamentoBtn').textContent = '+ Registrar pagamento';
@@ -201,7 +200,7 @@ function desenharPagamentosFreelance(ev){
   wrap.querySelectorAll('tr.clickable').forEach(row => {
     row.addEventListener('click', () => {
       const pag = ev.pagamentos.find(p => String(p['ID Pagamento']) === row.dataset.idPagamento);
-      document.getElementById('f_novoPagData').value = pag['Data do pagamento'];
+      definirValorPicker('f_novoPagData', pag['Data do pagamento']);
       document.getElementById('f_novoPagValor').value = pag['Valor pago'];
       document.getElementById('f_pagamentoEditando').value = pag['ID Pagamento'];
       document.getElementById('addPagamentoBtn').textContent = 'Salvar edição do pagamento';

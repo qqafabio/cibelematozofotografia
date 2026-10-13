@@ -63,10 +63,10 @@ function abrirFormProducao(p){
         </div>
         <div class="row2">
           <div class="field"><label>Link das fotos/vídeos</label><input id="f_linkFotos" value="${esc(p['Link das fotos'])}"></div>
-          <div class="field"><label>Data de entrega</label><input id="f_dataEntrega" placeholder="DD/MM/AAAA" value="${esc(p['Data entrega'])}"></div>
+          <div class="field"><label>Data de entrega</label><input id="f_dataEntrega" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(p['Data entrega'])}"></div>
         </div>
         <div class="row2">
-          <div class="field"><label>Hora de entrega</label><input id="f_horaEntrega" placeholder="HH:MM" value="${esc(p['Hora entrega'])}"></div>
+          <div class="field"><label>Hora de entrega</label><input id="f_horaEntrega" data-picker="time" placeholder="HH:MM" value="${esc(p['Hora entrega'])}"></div>
           <div class="field"><label>Local de entrega</label><input id="f_localEntrega" placeholder="Ex.: online, estúdio, endereço..." value="${esc(p['Local de entrega'])}"></div>
         </div>
         <p class="section-note" style="font-size:12px;color:var(--ink-soft);margin:-6px 0 14px;">Ao preencher data, hora ou local de entrega, um compromisso é criado (ou atualizado) automaticamente na Agenda, já com o status financeiro do evento.</p>
@@ -79,8 +79,6 @@ function abrirFormProducao(p){
     </div>`;
   document.getElementById('cancelarProducao').addEventListener('click', fecharOverlay);
   document.getElementById('salvarProducao').addEventListener('click', () => salvarProducao(p['ID Evento']));
-  aplicarMascara('f_dataEntrega', maskData);
-  aplicarMascara('f_horaEntrega', maskHora);
 }
 function mapaCampoProducaoLabel_(campo){
   const mapa = { captacao:'Captação', backup:'Backup', selecao:'Seleção', edicaoFoto:'Edição foto',

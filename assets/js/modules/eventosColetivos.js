@@ -96,12 +96,12 @@ function abrirFormEventoColetivo(evento){
         </div>
         <div class="row3">
           <div class="field"><label>Status</label><select id="f_status">${opcoesSelect(listas['Status evento'], editando?evento['Status']:'')}</select></div>
-          <div class="field"><label>Data do evento</label><input id="f_data" placeholder="DD/MM/AAAA" value="${esc(editando?evento['Data do evento']:'')}"></div>
+          <div class="field"><label>Data do evento</label><input id="f_data" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(editando?evento['Data do evento']:'')}"></div>
           <div class="field"><label>Local</label><input id="f_local" value="${esc(editando?evento['Local']:'')}"></div>
         </div>
         <div class="row3">
-          <div class="field"><label>Hora início</label><input id="f_horaIni" placeholder="HH:MM" value="${esc(editando?evento['Hora início']:'')}"></div>
-          <div class="field"><label>Hora fim</label><input id="f_horaFim" placeholder="HH:MM" value="${esc(editando?evento['Hora fim']:'')}"></div>
+          <div class="field"><label>Hora início</label><input id="f_horaIni" data-picker="time" placeholder="HH:MM" value="${esc(editando?evento['Hora início']:'')}"></div>
+          <div class="field"><label>Hora fim</label><input id="f_horaFim" data-picker="time" placeholder="HH:MM" value="${esc(editando?evento['Hora fim']:'')}"></div>
           <div class="field"><label>Cidade</label><input id="f_cidade" value="${esc(editando?evento['Cidade']:'')}"></div>
         </div>
         <div class="row2">
@@ -121,9 +121,6 @@ function abrirFormEventoColetivo(evento){
     </div>`;
   document.getElementById('cancelarColetivo').addEventListener('click', fecharOverlay);
   document.getElementById('salvarColetivo').addEventListener('click', () => salvarEventoColetivo(editando ? evento['ID Evento'] : null));
-  aplicarMascara('f_data', maskData);
-  aplicarMascara('f_horaIni', maskHora);
-  aplicarMascara('f_horaFim', maskHora);
   vincularAutoValorPacote('f_pacote', 'f_valorPacote', { inputFotoExtraId: 'f_valorFotoExtra' });
 }
 async function salvarEventoColetivo(idEvento){

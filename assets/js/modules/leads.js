@@ -39,7 +39,7 @@ function linhaLead(l){
       <td data-label="Tipo">${esc(l['Tipo de evento'])}</td>
       <td data-label="Etapa"><select class="inline-input" id="edit_etapa_${esc(id)}">${opcoesSelect(listas['Etapa comercial'], l['Etapa comercial'])}</select></td>
       <td data-label="Valor estimado"><input class="inline-input" type="number" step="0.01" id="edit_valor_${esc(id)}" value="${esc(l['Valor estimado'])}"></td>
-      <td data-label="Próximo contato"><input class="inline-input" id="edit_prox_${esc(id)}" value="${esc(l['Próximo contato'])}"></td>
+      <td data-label="Próximo contato"><input class="inline-input" id="edit_prox_${esc(id)}" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(l['Próximo contato'])}"></td>
       <td data-label="Ações"><div class="row-actions">
         <button class="btn-icon ok" data-save="${esc(id)}" title="Salvar"><i class="bi bi-check-lg"></i></button>
         <button class="btn-icon" data-cancel="1" title="Cancelar"><i class="bi bi-x-lg"></i></button>
@@ -70,7 +70,6 @@ function wireTabelaLeads(el){
   el.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {
     leadEditandoId = b.dataset.edit;
     desenharTabelaLeads();
-    aplicarMascara('edit_prox_' + leadEditandoId, maskData);
   }));
   el.querySelectorAll('[data-cancel]').forEach(b => b.addEventListener('click', () => {
     leadEditandoId = null; desenharTabelaLeads();
@@ -132,7 +131,7 @@ function abrirFormLead(lead){
         `}
         <div class="row2">
           <div class="field"><label>Tipo de evento</label><select id="f_tipo">${opcoesSelect(listas['Tipo de evento'], editando?lead['Tipo de evento']:'')}</select></div>
-          <div class="field"><label>Data desejada</label><input id="f_dataDesejada" placeholder="DD/MM/AAAA" value="${esc(editando?lead['Data desejada']:'')}"></div>
+          <div class="field"><label>Data desejada</label><input id="f_dataDesejada" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(editando?lead['Data desejada']:'')}"></div>
         </div>
         <div class="row2">
           <div class="field"><label>Serviço de interesse</label><select id="f_servico">${opcoesSelect(listas['Serviço'], editando?lead['Serviço de interesse']:'')}</select></div>
@@ -147,7 +146,7 @@ function abrirFormLead(lead){
           <div class="field"><label>Desconto (R$)</label><input id="f_desconto" type="number" step="0.01" min="0" value="${esc(editando?lead['Desconto']:'')}"></div>
         </div>
         <p id="valorComDesconto" style="font-size:12.5px;color:var(--ink-soft);margin:-8px 0 14px;"></p>
-        <div class="field"><label>Próximo contato</label><input id="f_proximoContato" placeholder="DD/MM/AAAA" value="${esc(editando?lead['Próximo contato']:'')}"></div>
+        <div class="field"><label>Próximo contato</label><input id="f_proximoContato" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(editando?lead['Próximo contato']:'')}"></div>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?lead['Observações']:'')}</textarea></div>
         <div class="form-actions">
           ${editando ? `<button class="btn-danger" id="excluirLead" type="button">Excluir</button>` : ''}
@@ -165,8 +164,6 @@ function abrirFormLead(lead){
     ));
   }
   aplicarMascara('f_whatsapp', maskWhatsapp);
-  aplicarMascara('f_dataDesejada', maskData);
-  aplicarMascara('f_proximoContato', maskData);
   vincularAutoValorPacote('f_pacote', 'f_valorEstimado', { somenteSeVazio: true });
   // Mostra "Valor com desconto" = Valor estimado − Desconto, atualizado ao vivo.
   const atualizarValorComDesconto = () => {
