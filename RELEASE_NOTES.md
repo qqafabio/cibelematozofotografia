@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.17 | 2026-10-15 | Contrato Digital — qualificação da CONTRATADA com CNPJ (MEI), nome empresarial e endereço comercial | [2.32](#232-contrato-digital--qualificação-da-contratada-com-cnpj-mei-v317) |
 | v3.16 | 2026-10-13 | Seletor de data e hora (flatpickr) em todo o CRM — sem mudança de dados | [2.31](#231-seletor-de-data-e-hora-com-flatpickr-v316) |
 | v3.5 (PB) | 2026-10-09 | Análise e Cobranças instantâneas — cálculo local do snapshot PocketBase | [2.30](#230-análise-e-cobranças-instantâneas--cálculo-local-do-snapshot-pocketbase-v35) |
 | v3.4 (PB) | 2026-10-09 | Mensagens do sistema (SweetAlert2) + loading por view e nas escritas | [2.29](#229-mensagens-do-sistema-sweetalert2--loading-por-view-e-nas-escritas-v34) |
@@ -1022,3 +1023,14 @@ overlay, as linhas dinâmicas de parcelas do Financeiro e a edição inline de L
 `node --check` OK; comportamento validado em jsdom (inicialização/destruição, formato do valor, máscara, 24h/5 min,
 linhas dinâmicas sem vazamento de calendários).
 
+
+### 2.32 Contrato Digital — qualificação da CONTRATADA com CNPJ (MEI) (v3.17)
+
+Com a abertura do MEI, a cláusula **"QUALIFICAÇÃO DAS PARTES"** do contrato gerado pelo `index.html`
+(`buildClauses()`) passou a qualificar a CONTRATADA como pessoa jurídica:
+- **CNPJ** 69.546.199/0001-54, na condição de **microempreendedora individual (MEI)**.
+- **Nome empresarial** "69.546.199 Cibele Matozo de Lara" e **nome fantasia** Cibele Matozo Fotografia (antes só o nome fantasia aparecia).
+- **Endereço comercial** completo, com complemento "casa 5" e CEP 81870-070 (antes: "residente e domiciliada", sem complemento nem CEP).
+- CPF, e-mail e WhatsApp mantidos; a qualificação do CONTRATANTE não mudou.
+
+Só texto do contrato: **não exige reimplantar o Apps Script nem aplicar migrations**. Arquivo tocado: `index.html`. `node --check` OK.
