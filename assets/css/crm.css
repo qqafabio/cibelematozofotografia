@@ -391,7 +391,9 @@
   .lf-bar{position:sticky;bottom:0;z-index:15;background:var(--paper);border-top:1px solid var(--rule);padding:12px 0;margin-top:8px;display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap;}
   .lf-bar .lf-bar-info{margin-right:auto;font-size:12.5px;color:var(--ink-soft);}
   .lf-hist{width:100%;font-size:13.5px;}
-  .lf-hist td{padding:8px 6px;border-top:1px solid var(--rule-soft);vertical-align:middle;}
+  .lf-hist-row{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--rule-soft);}
+  .lf-hist-info{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;min-width:0;}
+  .lf-hist-acoes{display:flex;gap:6px;flex-wrap:wrap;}
   .status-pill.alerta{background:#FBE9C9;color:#8A5A0B;}
   @media (max-width:768px){
     .lf-bar{bottom:60px;}

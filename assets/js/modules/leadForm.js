@@ -253,12 +253,12 @@ function lfDesenharHistorico_(){
   if (!el) return;
   const hist = orcamentosDoLead_(leadFormId);
   if (!hist.length){ el.innerHTML = `<p class="text-muted" style="font-size:13px;">Nenhum orçamento gerado ainda.</p>`; return; }
-  el.innerHTML = `<table class="lf-hist"><tbody>${hist.map(o => `<tr>
-    <td><strong>v${o['Versão']}</strong></td><td>${esc(o['Data geração'])}</td><td>${formatBRL(o['Valor total'])}</td>
-    <td style="text-align:right;white-space:nowrap;">
+  el.innerHTML = `<div class="lf-hist">${hist.map(o => `<div class="lf-hist-row">
+    <div class="lf-hist-info"><strong>v${o['Versão']}</strong><span>${esc(o['Data geração'])}</span><span>${formatBRL(o['Valor total'])}</span></div>
+    <div class="lf-hist-acoes">
       <button class="btn-ghost" type="button" data-orc-pdf="${o['ID Orçamento']}"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
       <button class="btn-ghost" type="button" data-orc-wa="${o['ID Orçamento']}"><i class="bi bi-whatsapp"></i> WhatsApp</button>
-    </td></tr>`).join('')}</tbody></table>`;
+    </div></div>`).join('')}</div>`;
   el.querySelectorAll('[data-orc-pdf]').forEach(b => b.addEventListener('click', () => orcAcaoHistorico_(b.dataset.orcPdf, false)));
   el.querySelectorAll('[data-orc-wa]').forEach(b => b.addEventListener('click', () => orcAcaoHistorico_(b.dataset.orcWa, true)));
 }
@@ -266,23 +266,33 @@ function orcamentosDoLead_(idLead){
   return (orcamentos || []).filter(o => String(o['ID Lead']) === String(idLead))
     .sort((a, b) => Number(b['Versão']) - Number(a['Versão']));
 }
-function orcAcaoHistorico_(idOrc, whatsapp){
+async function orcAcaoHistorico_(idOrc, whatsapp){
   const o = orcamentos.find(x => String(x['ID Orçamento']) === String(idOrc));
   if (!o) return;
   try {
     const snap = JSON.parse(o['Snapshot']);
-    orcBaixarPdf_(snap);
-    if (whatsapp) orcAbrirWhatsApp_(snap);
-  } catch (err){ showToast('❌ ' + err.message); }
+    if (whatsapp) await orcEnviarWhatsApp_(snap);
+    else orcBaixarPdf_(snap);
+  } catch (err){
+    if (err && err.name === 'AbortError') return;
+    showToast('❌ ' + err.message);
+  }
 }
-// Abre a conversa com a mensagem pronta; o PDF recém-baixado é anexado à mão.
-function orcAbrirWhatsApp_(snap){
+function orcMensagemWhatsApp_(snap){
+  const primeiro = String(snap.cliente.nome || '').split(' ')[0];
+  return `Olá, ${primeiro}! Segue o orçamento${snap.tipoEvento ? ' do seu evento (' + snap.tipoEvento + ')' : ''}, no valor total de ${formatBRL(snap.totais.total)}. Qualquer dúvida estou à disposição! — Cibele Matozo Fotografia`;
+}
+async function orcEnviarWhatsApp_(snap){
+  const msg = orcMensagemWhatsApp_(snap);
+  const file = orcArquivoPdf_(snap);
+  if (navigator.canShare && navigator.canShare({ files: [file] })){
+    await navigator.share({ files: [file], text: msg });
+    return;
+  }
+  orcBaixarPdf_(snap);
   let tel = String((snap.cliente && snap.cliente.whatsapp) || '').replace(/\D/g, '');
   if (!tel){ showToast('Cliente sem WhatsApp cadastrado. O PDF foi baixado.'); return; }
   if (tel.length <= 11) tel = '55' + tel;
-  const primeiro = String(snap.cliente.nome || '').split(' ')[0];
-  const msg = `Olá, ${primeiro}! Segue o orçamento${snap.tipoEvento ? ' do seu evento (' + snap.tipoEvento + ')' : ''}, no valor total de ${formatBRL(snap.totais.total)}. `
-    + `Qualquer dúvida estou à disposição! — Cibele Matozo Fotografia`;
   window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
   showToast('PDF baixado — anexe-o na conversa do WhatsApp.');
 }

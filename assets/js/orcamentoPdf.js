@@ -203,3 +203,6 @@ function orcNomeArquivo_(snap){
 function orcBaixarPdf_(snap){
   orcGerarPdf_(snap).save(orcNomeArquivo_(snap));
 }
+function orcArquivoPdf_(snap){
+  return new File([orcGerarPdf_(snap).output('blob')], orcNomeArquivo_(snap), { type: 'application/pdf' });
+}

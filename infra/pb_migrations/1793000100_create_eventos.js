@@ -10,7 +10,7 @@ migrate((db) => {
   updateRule: "@request.auth.id != ''",
   deleteRule: "@request.auth.id != ''",
   schema: [
-    new SchemaField({ name: "id_evento", type: "number", required: true, options: { noDecimal: true } }),
+    new SchemaField({ name: "id_evento", type: "number", required: false, options: { noDecimal: true } }),
     new SchemaField({ name: "status", type: "text", required: false }),
     new SchemaField({ name: "cliente_responsavel", type: "text", required: false }),
     new SchemaField({ name: "whatsapp", type: "text", required: false }),

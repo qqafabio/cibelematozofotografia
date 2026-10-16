@@ -35,7 +35,7 @@ function fieldSrc(pb, tipo){
 function migrationSrc(collection, idPb, fields){
   const linhas = [];
   if (idPb){
-    linhas.push(`    new SchemaField({ name: "${idPb}", type: "number", required: true, options: { noDecimal: true } }),`);
+    linhas.push(`    new SchemaField({ name: "${idPb}", type: "number", required: false, options: { noDecimal: true } }),`); // id preenchido pelo hook (após a validação)
   }
   for (const [, pb, tipo] of fields) linhas.push(fieldSrc(pb, tipo));
 
