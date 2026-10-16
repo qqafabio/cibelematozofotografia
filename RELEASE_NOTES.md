@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.18.1 | 2026-10-16 | Correção: checkboxes de tipos de evento (Pacotes/Produtos) e itens inclusos editáveis por lead no orçamento — sem mudança de dados | [2.33](#233-orçamento-em-pdf-produtos-formulário-de-lead-e-agenda-do-próximo-contato-v318) |
 | v3.18 | 2026-10-16 | Orçamento em PDF por lead (versionado), cadastro de Produtos, formulário de lead em tela cheia e lembrete de "Próximo contato" na Agenda — ⚠️ migrations + reimplantar Apps Script | [2.33](#233-orçamento-em-pdf-produtos-formulário-de-lead-e-agenda-do-próximo-contato-v318) |
 | v3.17 | 2026-10-15 | Contrato Digital — qualificação da CONTRATADA com CNPJ (MEI), nome empresarial e endereço comercial | [2.32](#232-contrato-digital--qualificação-da-contratada-com-cnpj-mei-v317) |
 | v3.16 | 2026-10-13 | Seletor de data e hora (flatpickr) em todo o CRM — sem mudança de dados | [2.31](#231-seletor-de-data-e-hora-com-flatpickr-v316) |
@@ -1054,3 +1055,5 @@ Só texto do contrato: **não exige reimplantar o Apps Script nem aplicar migrat
 2. Colar a função `agendaSincronizarLead` e o `case 'agendaSincronizarLead'` do `doPost` no `Código.gs` e **reimplantar como nova versão**.
 
 Arquivos: `pbSchema.js`, `pbProdutos.js`, `pbOrcamentos.js`, `pbLeads.js`, `pbPacotes.js`, `pbAgenda.js`, `pbLeitura.js`, `orcamentoRegras.js`, `orcamentoPdf.js`, `modules/{leadForm,produtos,leads,pacotes}.js`, `router.js`, `state.js`, `config.js`, `api.js`, `crm.css`, `crm.html`, geradores em `infra/`. `node --check` OK.
+
+**v3.18.1 (correções).** (1) A grade "Disponível para os eventos" (Pacotes e Produtos) aparecia desformatada porque os checkboxes herdavam o estilo de campo de texto; agora é uma grade de checkboxes (`crm.css`). (2) O formulário do lead ganhou o campo **"Itens inclusos neste orçamento"** abaixo do Pacote: é preenchido com os itens do pacote ao selecioná-lo e pode ser editado só para aquele lead, sem passar pelo cadastro de pacotes. Fica em `orc_dados.itens`, entra no hash (alterar gera nova versão) e alimenta o PDF; sem texto próprio, vale o do pacote. Não exige migration nem reimplantar o Apps Script. Arquivos: `orcamentoRegras.js`, `modules/leadForm.js`, `crm.css`, `crm.html`.

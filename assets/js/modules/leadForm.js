@@ -72,6 +72,8 @@ function renderLeadForm(main){
         <div class="col-md-3 field"><label>Valor do pacote (R$)</label><input id="f_valorPacote" type="number" step="0.01" min="0" value="${cfg.valorPacote == null ? '' : esc(cfg.valorPacote)}"></div>
         <div class="col-md-3 field"><label>Desconto (R$)</label><input id="f_desconto" type="number" step="0.01" min="0" value="${v('Desconto')}"></div>
       </div>
+      <div class="field mt-3"><label>Itens inclusos neste orçamento <small class="text-muted">(um por linha · aparecem no PDF · só deste lead, não altera o pacote)</small></label>
+        <textarea id="f_itens" rows="6" placeholder="Selecione um pacote para preencher, ou escreva os itens"></textarea></div>
       <div id="lfDinamico"></div>
       <div class="lf-resumo" id="lfResumo"></div>
     </div>
@@ -110,6 +112,7 @@ function renderLeadForm(main){
   const sTipo = document.getElementById('f_tipo');
   const sPacote = document.getElementById('f_pacote');
   sPacote.innerHTML = lfOpcoesPacotes_(sTipo.value, editando ? lead['Pacote'] : '');
+  document.getElementById('f_itens').value = cfg.itens != null ? cfg.itens : orcItensDoPacote_(sPacote.value);
   lfDesenharDinamico_();
 
   sTipo.addEventListener('change', () => {
@@ -124,9 +127,10 @@ function renderLeadForm(main){
   sPacote.addEventListener('change', () => {
     const pac = pacotes.find(p => String(p['Nome']) === sPacote.value);
     if (pac) document.getElementById('f_valorPacote').value = Number(pac['Valor pacote'] || 0);
+    document.getElementById('f_itens').value = pac ? String(pac['Itens inclusos'] || '') : '';
     lfAtualizarResumo_();
   });
-  ['f_valorPacote', 'f_desconto', 'f_dataDesejada', 'f_instituicao', 'f_nome'].forEach(id => {
+  ['f_valorPacote', 'f_itens', 'f_desconto', 'f_dataDesejada', 'f_instituicao', 'f_nome'].forEach(id => {
     const el = document.getElementById(id);
     if (el){ el.addEventListener('input', lfAtualizarResumo_); el.addEventListener('change', lfAtualizarResumo_); }
   });
@@ -196,6 +200,7 @@ function lfLer_(){
   const lead = lfEst.lead;
   const vp = g('f_valorPacote');
   lfEst.cfg.valorPacote = vp === '' ? null : Number(vp);
+  lfEst.cfg.itens = document.getElementById('f_itens').value;
   return {
     nome: lead ? lead['Cliente'] : g('f_nome'),
     whatsapp: lead ? lead['WhatsApp'] : g('f_whatsapp'),

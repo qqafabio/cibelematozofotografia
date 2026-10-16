@@ -24,7 +24,7 @@ function orcRegrasDoTipo_(tipo){
 
 /* ---- Configuração do orçamento guardada em leads.orc_dados (JSON) ---- */
 function orcConfigVazia_(){
-  return { valorPacote: null, extras: { becaCapelo: false, canudo: false, ensaioPre: false }, produtos: [] };
+  return { valorPacote: null, itens: null, extras: { becaCapelo: false, canudo: false, ensaioPre: false }, produtos: [] };
 }
 function orcParseDados_(json){
   const base = orcConfigVazia_();
@@ -32,6 +32,7 @@ function orcParseDados_(json){
   try {
     const o = JSON.parse(json);
     if (o.valorPacote != null && o.valorPacote !== '') base.valorPacote = Number(o.valorPacote);
+    if (typeof o.itens === 'string') base.itens = o.itens;
     Object.assign(base.extras, o.extras || {});
     base.produtos = Array.isArray(o.produtos) ? o.produtos.map(p => ({
       id: Number(p.id), nome: String(p.nome || ''), valor: Number(p.valor || 0),
@@ -43,9 +44,20 @@ function orcParseDados_(json){
 function orcSerializarDados_(cfg){
   return JSON.stringify({
     valorPacote: cfg.valorPacote == null ? null : Number(cfg.valorPacote),
+    itens: cfg.itens == null ? null : String(cfg.itens),
     extras: { becaCapelo: !!cfg.extras.becaCapelo, canudo: !!cfg.extras.canudo, ensaioPre: !!cfg.extras.ensaioPre },
     produtos: cfg.produtos.map(p => ({ id: p.id, nome: p.nome, valor: p.valor, cobranca: p.cobranca, qtd: p.qtd })),
   });
+}
+
+/* Itens inclusos do orçamento: texto próprio do lead (cfg.itens) ou, se nunca editado, o do pacote. */
+function orcItensDoPacote_(nomePacote){
+  const pac = (typeof pacotes !== 'undefined' ? pacotes : []).find(p => String(p['Nome']) === String(nomePacote));
+  return pac ? String(pac['Itens inclusos'] || '') : '';
+}
+function orcItensEfetivos_(cfg, nomePacote){
+  const txt = cfg.itens != null ? cfg.itens : orcItensDoPacote_(nomePacote);
+  return String(txt).split('\n').map(s => s.trim()).filter(Boolean);
 }
 
 /* ---- Totais ---- */
@@ -80,7 +92,7 @@ function orcHash_(e){
   return orcCyrb53_(JSON.stringify([
     String(e.cliente || '').trim(), String(e.tipoEvento || '').trim(), String(e.dataDesejada || '').trim(),
     String(e.instituicao || '').trim(), String(e.pacote || '').trim(),
-    Number(e.desconto || 0), Number(cfg.valorPacote || 0),
+    Number(e.desconto || 0), Number(cfg.valorPacote || 0), orcItensEfetivos_(cfg, e.pacote),
     regras.becaCanudo && !!cfg.extras.becaCapelo, regras.becaCanudo && !!cfg.extras.canudo,
     regras.ensaioPre && !!cfg.extras.ensaioPre,
     cfg.produtos.map(p => [p.id, p.qtd, p.valor, p.cobranca]).sort((a, b) => a[0] - b[0]),
@@ -114,7 +126,7 @@ function orcMontarSnapshot_(c){
   const cfg = c.cfg;
   const regras = orcRegrasDoTipo_(c.tipoEvento);
   const pac = (typeof pacotes !== 'undefined' ? pacotes : []).find(p => String(p['Nome']) === String(c.pacote));
-  const itens = pac ? String(pac['Itens inclusos'] || '').split('\n').map(s => s.trim()).filter(Boolean) : [];
+  const itens = orcItensEfetivos_(cfg, c.pacote);
   const extras = [];
   if (regras.becaCanudo && cfg.extras.becaCapelo) extras.push('Aluguel de 01 beca completa com capelo');
   if (regras.becaCanudo && cfg.extras.canudo) extras.push('01 canudo de formatura');

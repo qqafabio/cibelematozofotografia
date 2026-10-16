@@ -399,3 +399,8 @@
     .lf-prod .lf-prod-sub{width:auto;margin-left:auto;}
     .lf-card{padding:14px 14px 4px;}
   }
+
+/* v3.18 — checkboxes dentro de .field não herdam o estilo de campo de texto */
+.field .form-check-input{width:1.1em;height:1.1em;padding:0;flex:0 0 auto;margin:0;}
+.tipos-evento-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 14px;margin-bottom:8px;}
+.tipos-evento-grid label{display:inline-flex !important;align-items:center;gap:6px;margin:0 !important;cursor:pointer;font-size:13.5px;color:var(--ink);}
