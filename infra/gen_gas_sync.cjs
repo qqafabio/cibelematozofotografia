@@ -82,7 +82,10 @@ function defDe(chave, s){
 
 function defsSrc(){
   const defs = [CLIENTES_DEF];
-  for (const chave of Object.keys(PB_SCHEMA)) defs.push(defDe(chave, PB_SCHEMA[chave]));
+  for (const chave of Object.keys(PB_SCHEMA)){
+    if (PB_SCHEMA[chave].somentePB) continue; // coleções só do PocketBase (sem aba no Sheets)
+    defs.push(defDe(chave, PB_SCHEMA[chave]));
+  }
   const linhas = defs.map(d => {
     const campos = d.campos.map(c => `[${JSON.stringify(c[0])}, ${JSON.stringify(c[1])}, ${JSON.stringify(c[2])}]`).join(', ');
     return `  { chave: ${JSON.stringify(d.chave)}, colecao: ${JSON.stringify(d.colecao)}, aba: ${JSON.stringify(d.aba)}, freelance: ${d.freelance}, idLabel: ${JSON.stringify(d.idLabel)}, idPb: ${JSON.stringify(d.idPb)},\n    campos: [${campos}] }`;
@@ -295,6 +298,6 @@ function main(){
   console.log('Gerado infra/apps_script/sincronizarPB.gs (' + PB_SYNC_DEFS_count() + ' entidades).');
 }
 
-function PB_SYNC_DEFS_count(){ return Object.keys(PB_SCHEMA).length + 1; }
+function PB_SYNC_DEFS_count(){ return Object.keys(PB_SCHEMA).filter(k => !PB_SCHEMA[k].somentePB).length + 1; }
 
 main();

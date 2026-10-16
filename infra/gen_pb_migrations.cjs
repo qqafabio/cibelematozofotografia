@@ -76,10 +76,11 @@ function main(){
   for (const key of Object.keys(PB_SCHEMA)){
     const s = PB_SCHEMA[key];
     const src = migrationSrc(s.collection, s.id.pb, s.fields);
-    const nome = `${ts}_create_${s.collection}.js`;
+    // Coleções criadas depois (v3.18+) trazem timestamp fixo para não renumerar as já aplicadas.
+    const nome = `${s.migrationTs || ts}_create_${s.collection}.js`;
     fs.writeFileSync(path.join(OUT_DIR, nome), src);
     gerados.push(nome);
-    ts++;
+    if (!s.migrationTs) ts++;
   }
   // Listas (sem id de negócio).
   {

@@ -19,6 +19,9 @@ function pacoteCamposToPb_(dados){
     valor_pacote: Number(dados.valorPacote || 0),
     qtd_fotos_incluidas: qtdFotos_(dados.qtdFotos),
     valor_foto_extra: Number(dados.valorFotoExtra || 0),
+    itens_inclusos: dados.itensInclusos ? String(dados.itensInclusos).trim() : '',
+    prazo_entrega: dados.prazoEntrega ? String(dados.prazoEntrega).trim() : '',
+    tipos_evento: dados.tiposEvento ? String(dados.tiposEvento) : '',
   };
 }
 

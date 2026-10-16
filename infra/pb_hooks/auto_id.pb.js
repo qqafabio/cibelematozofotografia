@@ -79,6 +79,22 @@ onRecordBeforeCreateRequest((e) => {
 
 onRecordBeforeCreateRequest((e) => {
   // id já informado explicitamente (ex.: cascata que herda o id do pai) -> respeita.
+  if (e.record.get("id_produto")) return;
+  const row = new DynamicModel({ maxid: 0 });
+  $app.dao().db().newQuery("SELECT COALESCE(MAX(id_produto), 0) AS maxid FROM produtos").one(row);
+  e.record.set("id_produto", row.maxid + 1);
+}, "produtos");
+
+onRecordBeforeCreateRequest((e) => {
+  // id já informado explicitamente (ex.: cascata que herda o id do pai) -> respeita.
+  if (e.record.get("id_orcamento")) return;
+  const row = new DynamicModel({ maxid: 0 });
+  $app.dao().db().newQuery("SELECT COALESCE(MAX(id_orcamento), 0) AS maxid FROM orcamentos").one(row);
+  e.record.set("id_orcamento", row.maxid + 1);
+}, "orcamentos");
+
+onRecordBeforeCreateRequest((e) => {
+  // id já informado explicitamente (ex.: cascata que herda o id do pai) -> respeita.
   if (e.record.get("id_cliente")) return;
   const row = new DynamicModel({ maxid: 0 });
   $app.dao().db().newQuery("SELECT COALESCE(MAX(id_cliente), 0) AS maxid FROM clientes").one(row);

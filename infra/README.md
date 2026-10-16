@@ -23,11 +23,13 @@ em `pb_migrations/`. Assim o esquema do PB **não diverge** do que o front lê.
 node infra/gen_pb_migrations.cjs
 ```
 
-Gera as 11 coleções (padrão PocketBase 0.22.x `Dao`/`Collection`/`SchemaField`):
+Gera as coleções (padrão PocketBase 0.22.x `Dao`/`Collection`/`SchemaField`):
 `eventos`, `pacotes`, `leads`, `financeiro`, `producao`, `custos`,
 `participantes`, `templates`, `freelance_eventos`, `freelance_pagamentos`,
-`listas`. Cada entidade de negócio tem um `id_<entidade>` numérico com índice
+`listas`, `produtos` e `orcamentos` (estas duas só existem no PocketBase, sem aba no Sheets). Cada entidade de negócio tem um `id_<entidade>` numérico com índice
 **único** e as 5 regras de acesso `@request.auth.id != ''`.
+
+> As migrations `1793000302`/`1793000303` (campos novos de `pacotes` e `leads`) são escritas à mão e idempotentes, para quem já tem as coleções criadas.
 
 > `clientes` **não** é gerado aqui — já existe na VM desde a v3.1.
 

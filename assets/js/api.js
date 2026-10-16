@@ -113,6 +113,8 @@ function aplicarListas_(r){
   freelanceEventos = r.freelanceEventos; templates = r.templates || [];
   contasEmAtraso = r.contasEmAtraso || [];
   pacotes = r.pacotes || [];
+  produtos = r.produtos || [];
+  orcamentos = r.orcamentos || [];
   participantes = r.participantes || [];
 }
  

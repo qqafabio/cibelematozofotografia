@@ -30,6 +30,11 @@ migrate((db) => {
     new SchemaField({ name: "motivo_perdido", type: "text", required: false }),
     new SchemaField({ name: "observacoes", type: "text", required: false }),
     new SchemaField({ name: "id_cliente", type: "number", required: false, options: { noDecimal: true } }),
+    new SchemaField({ name: "instituicao", type: "text", required: false }),
+    new SchemaField({ name: "orc_versao", type: "number", required: false, options: { noDecimal: false } }),
+    new SchemaField({ name: "orc_hash", type: "text", required: false }),
+    new SchemaField({ name: "orc_dados", type: "text", required: false }),
+    new SchemaField({ name: "id_calendar", type: "text", required: false }),
   ],
   indexes: [
     "CREATE UNIQUE INDEX `idx_leads_id_lead` ON `leads` (`id_lead`)"

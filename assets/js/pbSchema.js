@@ -62,6 +62,9 @@ const PB_SCHEMA = {
       ['Valor pacote', 'valor_pacote', 'number'],
       ['Qtd fotos incluídas', 'qtd_fotos_incluidas', 'text'],
       ['Valor foto extra', 'valor_foto_extra', 'number'],
+      ['Itens inclusos', 'itens_inclusos', 'text'],   // v3.18: 1 item por linha → bullets do orçamento
+      ['Prazo entrega', 'prazo_entrega', 'text'],     // v3.18
+      ['Tipos de evento', 'tipos_evento', 'text'],    // v3.18: "A;B" — vazio = todos
       ['Data criação', 'data_criacao', 'text'],
       ['Data atualização', 'data_atualizacao', 'text'],
     ],
@@ -91,6 +94,11 @@ const PB_SCHEMA = {
       ['Motivo perdido', 'motivo_perdido', 'text'],
       ['Observações', 'observacoes', 'text'],
       ['ID Cliente', 'id_cliente', 'fk'],
+      ['Instituição', 'instituicao', 'text'],          // v3.18
+      ['Orçamento versão', 'orc_versao', 'number'],    // v3.18
+      ['Orçamento hash', 'orc_hash', 'text'],          // v3.18
+      ['Orçamento dados', 'orc_dados', 'text'],        // v3.18: JSON da configuração atual
+      ['ID Calendar', 'id_calendar', 'text'],          // v3.18: lembrete do próximo contato
     ],
   },
 
@@ -231,6 +239,42 @@ const PB_SCHEMA = {
       ['Data do pagamento', 'data_do_pagamento', 'text'],
       ['Valor pago', 'valor_pago', 'number'],
       ['Observações', 'observacoes', 'text'],
+    ],
+  },
+
+  /* Produtos (v3.18) — catálogo de itens vendáveis no orçamento (quadro, álbum...).
+     Só PocketBase (não há aba no Sheets). 'migrationTs' fixa o timestamp da migration
+     para não renumerar as já aplicadas. */
+  produtos: {
+    collection: 'produtos',
+    migrationTs: 1793000300,
+    somentePB: true,
+    id: { label: 'ID', pb: 'id_produto' },
+    fields: [
+      ['Nome', 'nome', 'text'],
+      ['Descrição', 'descricao', 'text'],
+      ['Valor', 'valor', 'number'],
+      ['Tipo de cobrança', 'tipo_cobranca', 'text'],   // 'unitario' | 'fixo'
+      ['Tipos de evento', 'tipos_evento', 'text'],     // "A;B" — vazio = todos
+      ['Ativo', 'ativo', 'text'],                      // 'Sim' | 'Não'
+      ['Data criação', 'data_criacao', 'text'],
+      ['Data atualização', 'data_atualizacao', 'text'],
+    ],
+  },
+
+  /* Orçamentos (v3.18) — histórico imutável: 1 linha por versão gerada de um lead. */
+  orcamentos: {
+    collection: 'orcamentos',
+    migrationTs: 1793000301,
+    somentePB: true,
+    id: { label: 'ID Orçamento', pb: 'id_orcamento' },
+    fields: [
+      ['ID Lead', 'id_lead', 'fk'],
+      ['Versão', 'versao', 'number'],
+      ['Data geração', 'data_geracao', 'text'],
+      ['Valor total', 'valor_total', 'number'],
+      ['Hash', 'hash', 'text'],
+      ['Snapshot', 'snapshot', 'text'],                // JSON completo enviado ao PDF
     ],
   },
 };

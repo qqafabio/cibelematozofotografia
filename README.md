@@ -41,7 +41,7 @@ backend.txt              cópia local (não versionada) do Código.gs do CRM
 
 ## Módulos do CRM
 
-Lead → Cliente → Evento (individual ou coletivo, com sincronização na Google Agenda) → Orçamento → Financeiro (entrada + parcelas) → Cobranças → Produção → Custos, além do menu de **Freelance** (serviços prestados a outra empresa de foto e vídeo), **Pacotes**, **Templates** de mensagem e **Dashboard**.
+Lead → Cliente → Evento (individual ou coletivo, com sincronização na Google Agenda) → Orçamento → Financeiro (entrada + parcelas) → Cobranças → Produção → Custos, além do menu de **Freelance** (serviços prestados a outra empresa de foto e vídeo), **Pacotes**, **Produtos**, **Orçamentos em PDF** (por lead, versionados), **Templates** de mensagem e **Dashboard**.
 
 Regras de exclusão que protegem o rastro financeiro:
 - **Cliente:** só pode ser excluído se não houver evento vinculado.

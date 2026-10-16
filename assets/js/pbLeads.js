@@ -30,6 +30,10 @@ function leadCriarToPb_(dados, cli){
     prioridade: dados.prioridade || 'Normal',          // default do backend
     observacoes: dados.observacoes || '',
     id_cliente: cli.idCliente,
+    instituicao: dados.instituicao || '',
+    orc_dados: dados.orcDados || '',
+    orc_versao: Number(dados.orcVersao || 0),
+    orc_hash: dados.orcHash || '',
     // 'Motivo perdido' não é gravado na criação (fica '' por padrão da coleção).
   };
 }
@@ -40,12 +44,22 @@ const MAPA_LEAD = {
   pacote: 'pacote', origem: 'origem', etapa: 'etapa_comercial', valorEstimado: 'valor_estimado',
   desconto: 'desconto', probabilidade: 'probabilidade', proximoContato: 'proximo_contato',
   prioridade: 'prioridade', motivoPerdido: 'motivo_perdido', observacoes: 'observacoes',
+  instituicao: 'instituicao', orcDados: 'orc_dados', orcVersao: 'orc_versao', orcHash: 'orc_hash',
 };
+
+const CAMPOS_AGENDA_LEAD = ['proximo_contato', 'tipo_evento', 'data_desejada', 'instituicao', 'pacote',
+  'valor_estimado', 'desconto', 'etapa_comercial', 'observacoes', 'cliente', 'whatsapp', 'email'];
+function leadAgendaMudou_(antes, depois){
+  if (!antes.id_calendar && depois.proximo_contato) return true;
+  return CAMPOS_AGENDA_LEAD.some(k => String(antes[k] == null ? '' : antes[k]) !== String(depois[k] == null ? '' : depois[k]));
+}
 
 async function pbCriarLead(dados){
   await pbAuthGarantir();
   const cli = await pbLocalizarOuCriarCliente(dados.nome, dados.whatsapp, dados.cpf, dados.email);
-  return PB.collection('leads').create(leadCriarToPb_(dados, cli)); // sem id_lead → hook atribui
+  const criado = await PB.collection('leads').create(leadCriarToPb_(dados, cli)); // sem id_lead → hook atribui
+  if (typeof sincronizarAgendaLead === 'function') await sincronizarAgendaLead(criado);
+  return criado;
 }
 
 async function pbAtualizarLead(dados){
@@ -59,6 +73,7 @@ async function pbAtualizarLead(dados){
   if (patch.valor_estimado !== undefined) patch.valor_estimado = Number(patch.valor_estimado || 0);
   if (patch.desconto !== undefined) patch.desconto = Number(patch.desconto || 0);
   if (patch.probabilidade !== undefined) patch.probabilidade = Number(patch.probabilidade || 0);
+  if (patch.orc_versao !== undefined) patch.orc_versao = Number(patch.orc_versao || 0);
   // Recalcula 'Valor ponderado' se veio valorEstimado OU probabilidade (backend 559-563),
   // usando o valor atual do record para a variável que não veio.
   if (dados.valorEstimado !== undefined || dados.probabilidade !== undefined){
@@ -67,6 +82,9 @@ async function pbAtualizarLead(dados){
     patch.valor_ponderado = ve * pr / 100;
   }
   const upd = await PB.collection('leads').update(rec.id, patch);
+  // Lembrete do próximo contato na Agenda: só mexe quando algo que aparece nele mudou
+  // (ou quando ainda não existe e há data) — evita uma ida ao Apps Script a cada salvar.
+  if (typeof sincronizarAgendaLead === 'function' && leadAgendaMudou_(rec, upd)) await sincronizarAgendaLead(upd);
   // Cascata (Fase 3): lead virou "Fechado" agora (não já estava) → cria o
   // evento correspondente com status "Aguardando aprovação" (backend 614-634).
   // Fail-soft: se a criação do evento falhar, a atualização do lead não cai.
@@ -96,7 +114,13 @@ async function pbAtualizarLead(dados){
 async function pbExcluirLead(dados){
   await pbAuthGarantir();
   const rec = await pbAchar_('leads', 'id_lead', dados.idLead);
+  if (typeof excluirAgenda === 'function') await excluirAgenda(rec.id_calendar);
   await PB.collection('leads').delete(rec.id);
+  // Histórico de orçamentos do lead vai junto (fail-soft: o lead já foi removido).
+  if (typeof pbExcluirOrcamentosDoLead === 'function'){
+    try { await pbExcluirOrcamentosDoLead(dados.idLead); }
+    catch (e){ console.error('excluirLead: limpeza de orçamentos falhou (segue): ' + e); }
+  }
   return { idLead: dados.idLead, excluido: true };
 }
 

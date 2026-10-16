@@ -70,6 +70,9 @@ function abrirFormPacote(pacote){
           <div class="field"><label>Qtd fotos incluídas</label><input id="f_qtdFotos" type="number" step="1" value="${esc(editando?pacote['Qtd fotos incluídas']:'')}"></div>
           <div class="field"><label>Valor foto extra</label><input id="f_valorFotoExtra" type="number" step="0.01" value="${esc(editando?pacote['Valor foto extra']:'')}"></div>
         </div>
+        <div class="field"><label>Itens inclusos (um por linha — aparecem no orçamento em PDF)</label><textarea id="f_itensInclusos" rows="6" placeholder="Sessão de fotos com beca antes da formatura&#10;Cobertura fotográfica completa da cerimônia">${esc(editando?pacote['Itens inclusos']:'')}</textarea></div>
+        <div class="field"><label>Prazo de entrega</label><input id="f_prazoEntrega" value="${esc(editando?pacote['Prazo entrega']:'')}" placeholder="Ex: até 45 dias após a realização do evento"></div>
+        <div class="field"><label>Disponível para os eventos</label>${checksTiposEvento_('f_tiposEvento', editando?pacote['Tipos de evento']:'')}</div>
         <div class="form-actions">
           ${editando ? `<button class="btn-danger" id="excluirPacote" type="button">Excluir</button>` : ''}
           <button class="btn-ghost" id="cancelarPacote">Cancelar</button>
@@ -93,6 +96,9 @@ async function salvarPacote(id){
     valorPacote: Number(document.getElementById('f_valorPacote').value || 0),
     qtdFotos: document.getElementById('f_qtdFotos').value.trim(),
     valorFotoExtra: Number(document.getElementById('f_valorFotoExtra').value || 0),
+    itensInclusos: document.getElementById('f_itensInclusos').value.trim(),
+    prazoEntrega: document.getElementById('f_prazoEntrega').value.trim(),
+    tiposEvento: lerChecksTiposEvento_('f_tiposEvento'),
   };
   if (!dados.nome){ mostrarErro('pacoteErr','Informe o nome do pacote.'); return; }
   const btn = document.getElementById('salvarPacote'); btn.disabled = true; btn.textContent = 'Salvando…';

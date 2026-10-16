@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.18 | 2026-10-16 | Orçamento em PDF por lead (versionado), cadastro de Produtos, formulário de lead em tela cheia e lembrete de "Próximo contato" na Agenda — ⚠️ migrations + reimplantar Apps Script | [2.33](#233-orçamento-em-pdf-produtos-formulário-de-lead-e-agenda-do-próximo-contato-v318) |
 | v3.17 | 2026-10-15 | Contrato Digital — qualificação da CONTRATADA com CNPJ (MEI), nome empresarial e endereço comercial | [2.32](#232-contrato-digital--qualificação-da-contratada-com-cnpj-mei-v317) |
 | v3.16 | 2026-10-13 | Seletor de data e hora (flatpickr) em todo o CRM — sem mudança de dados | [2.31](#231-seletor-de-data-e-hora-com-flatpickr-v316) |
 | v3.5 (PB) | 2026-10-09 | Análise e Cobranças instantâneas — cálculo local do snapshot PocketBase | [2.30](#230-análise-e-cobranças-instantâneas--cálculo-local-do-snapshot-pocketbase-v35) |
@@ -1034,3 +1035,22 @@ Com a abertura do MEI, a cláusula **"QUALIFICAÇÃO DAS PARTES"** do contrato g
 - CPF, e-mail e WhatsApp mantidos; a qualificação do CONTRATANTE não mudou.
 
 Só texto do contrato: **não exige reimplantar o Apps Script nem aplicar migrations**. Arquivo tocado: `index.html`. `node --check` OK.
+
+### 2.33 Orçamento em PDF, Produtos, formulário de lead e Agenda do próximo contato (v3.18)
+
+**Orçamento em PDF (menu CRM · Orçamentos).** Cada lead gera uma proposta em PDF, montada no navegador (jsPDF 2.5.1), com a identidade visual do contrato (logo, dados da empresa, creme/dourado). Conteúdo: apresentação, serviços inclusos, investimento (total em destaque), opcionais, contratação/pagamento e entrega.
+- **Versionamento:** só os dados que aparecem no PDF (cliente, tipo, data, instituição, pacote, desconto, extras aplicáveis e produtos) entram no hash. Se mudarem, o lead fica **"vN · desatualizado"** e o botão vira "Salvar e gerar orçamento vN+1". Outras edições (etapa, observações...) não exigem nova versão.
+- Histórico imutável na coleção `orcamentos` (snapshot JSON); cada versão pode ser baixada de novo ou enviada por WhatsApp (link `wa.me` com texto pronto; o PDF é anexado à mão).
+- A versão/hash só são gravados no lead depois que o registro do orçamento foi salvo; falha ao gerar o PDF não desfaz o salvamento.
+
+**Formulário de lead em tela cheia** (nova view `leadForm`, em `modules/leadForm.js`), em seções, com total ao vivo. Campos novos conforme o tipo de evento: beca com capelo/canudo (Formatura), **ensaio pré-evento** (Aniversário, 15 anos, Casamento, Bodas e Formatura — não Crisma), quadro de formatura em moldura de vidro e álbum, além de **instituição**. `valor_estimado` = pacote + produtos (o desconto fica separado), então valor ponderado e evento criado ao fechar o lead continuam corretos. A edição rápida na lista ficou só com Etapa e Próximo contato.
+
+**Cadastro de Produtos** (menu Serviços, após Pacotes): nome, descrição, valor, cobrança unitária ou fixa, tipos de evento aplicáveis e ativo. **Pacotes** ganharam itens inclusos, prazo de entrega e tipos de evento.
+
+**Agenda do Próximo contato.** Ao salvar um lead com "Próximo contato", cria-se um evento de **dia inteiro** no Google Calendar com cliente, WhatsApp, tipo/instituição, data desejada, pacote, valor e etapa. O evento é atualizado quando algum desses dados muda, removido se a data for limpa e excluído junto com o lead (id guardado em `leads.id_calendar`). Fail-soft: falha na Agenda não derruba o salvamento.
+
+**Deploy necessário:**
+1. Copiar `infra/pb_migrations/` para a VM e reiniciar o PocketBase (novas: `1793000300_create_produtos`, `1793000301_create_orcamentos`, `1793000302_add_campos_pacotes`, `1793000303_add_campos_leads_orcamento`; as migrations de `eventos`, `pacotes` e `leads` foram regeneradas) e atualizar `infra/pb_hooks/auto_id.pb.js`.
+2. Colar a função `agendaSincronizarLead` e o `case 'agendaSincronizarLead'` do `doPost` no `Código.gs` e **reimplantar como nova versão**.
+
+Arquivos: `pbSchema.js`, `pbProdutos.js`, `pbOrcamentos.js`, `pbLeads.js`, `pbPacotes.js`, `pbAgenda.js`, `pbLeitura.js`, `orcamentoRegras.js`, `orcamentoPdf.js`, `modules/{leadForm,produtos,leads,pacotes}.js`, `router.js`, `state.js`, `config.js`, `api.js`, `crm.css`, `crm.html`, geradores em `infra/`. `node --check` OK.

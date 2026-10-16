@@ -103,7 +103,7 @@ async function pbCarregarTudoPB(){
   const S = PB_SCHEMA;
   const [
     clientesR, eventosR, leadsR, financeiroR, producaoR, custosR,
-    participantesR, templatesR, pacotesR, freEvR, frePgR, listasR,
+    participantesR, templatesR, pacotesR, freEvR, frePgR, listasR, produtosR, orcamentosR,
   ] = await Promise.all([
     perfTime('PB clientes',      pbCarregarClientes(),                 a => a.length),
     perfTime('PB eventos',       pbCarregarColecao(S.eventos),         a => a.length),
@@ -117,6 +117,8 @@ async function pbCarregarTudoPB(){
     perfTime('PB freelanceEv',   pbCarregarColecao(S.freelanceEventos), a => a.length),
     perfTime('PB freelancePg',   pbCarregarColecao(S.freelancePagamentos), a => a.length),
     perfTime('PB listas',        pbCarregarListas()),
+    perfTime('PB produtos',      pbCarregarColecao(S.produtos).catch(() => []), a => a.length), // tolera VM sem a migration v3.18
+    perfTime('PB orcamentos',    pbCarregarColecao(S.orcamentos).catch(() => []), a => a.length),
   ]);
 
   marcarVencidasPB_(financeiroR);
@@ -134,6 +136,8 @@ async function pbCarregarTudoPB(){
     freelanceEventos: freelanceEventos,
     templates: templatesR,
     pacotes: pacotesR,
+    produtos: produtosR,
+    orcamentos: orcamentosR,
     participantes: participantesR,
   };
 }

@@ -15,7 +15,7 @@ let navUltimaView = null;
 function renderNav(){
   const el = document.getElementById('navList');
   // 'eventoDetalhe' não é item de menu: destaca a seção Eventos enquanto aberto.
-  const viewAtiva = currentView === 'eventoDetalhe' ? 'eventos' : currentView;
+  const viewAtiva = currentView === 'eventoDetalhe' ? 'eventos' : (currentView === 'leadForm' ? 'leads' : currentView);
   const idxAtivo = NAV.findIndex(g => g.items.some(n => n.id === viewAtiva));
   // Ao navegar (view mudou), abre o grupo da rota ativa; toggles manuais do
   // cabeçalho não mexem na view, então são respeitados.
@@ -109,7 +109,9 @@ async function renderMain(){
   else if (currentView === 'eventoDetalhe') renderDetalheEvento(main);
   else if (currentView === 'eventosColetivos') renderEventosColetivos(main);
   else if (currentView === 'pacotes') renderPacotes(main);
+  else if (currentView === 'produtos') renderProdutos(main);
   else if (currentView === 'leads') renderLeads(main);
+  else if (currentView === 'leadForm') renderLeadForm(main);
   else if (currentView === 'financeiro') renderFinanceiro(main);
   else if (currentView === 'contasEmAtraso') renderContasEmAtraso(main);
   else if (currentView === 'dashboardCobrancas') renderDashboardCobrancas(main);

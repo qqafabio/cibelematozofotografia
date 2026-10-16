@@ -69,6 +69,7 @@ const NAV = [
   ]},
   { group:'📦 Serviços', items:[
     { id:'pacotes', label:'Pacotes', ready:true },
+    { id:'produtos', label:'Produtos', ready:true },
     { id:'freelance', label:'Freelance', ready:true },
   ]},
   { group:'💬 Comunicação', items:[

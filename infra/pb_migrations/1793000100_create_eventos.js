@@ -37,6 +37,7 @@ migrate((db) => {
     new SchemaField({ name: "id_calendar", type: "text", required: false }),
     new SchemaField({ name: "coletivo", type: "text", required: false }),
     new SchemaField({ name: "organizador", type: "text", required: false }),
+    new SchemaField({ name: "data_cadastro", type: "text", required: false }),
   ],
   indexes: [
     "CREATE UNIQUE INDEX `idx_eventos_id_evento` ON `eventos` (`id_evento`)"

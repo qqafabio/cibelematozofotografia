@@ -100,3 +100,42 @@ async function excluirAgenda(idCalendar){
   try { await chamarAgendaGAS_('agendaExcluir', { idCalendar }); }
   catch (e){ console.error('Agenda (excluir) falhou — segue sem bloquear: ' + e); }
 }
+
+// v3.18 — lembrete de DIA INTEIRO do "Próximo contato" do lead. `recLead` é o record
+// snake da coleção 'leads'. Sem data de próximo contato, remove o lembrete existente.
+// Fail-soft como os demais: a Agenda nunca derruba a gravação do lead.
+async function sincronizarAgendaLead(recLead){
+  try {
+    if (!recLead) return '';
+    if (!recLead.proximo_contato){
+      if (recLead.id_calendar){
+        await excluirAgenda(recLead.id_calendar);
+        await PB.collection('leads').update(recLead.id, { id_calendar: '' });
+      }
+      return '';
+    }
+    const liquido = Math.max(0, Number(recLead.valor_estimado || 0) - Number(recLead.desconto || 0));
+    const r = await chamarAgendaGAS_('agendaSincronizarLead', {
+      idCalendar: recLead.id_calendar || '',
+      cliente: recLead.cliente || '',
+      whatsapp: recLead.whatsapp || '',
+      email: recLead.email || '',
+      tipoEvento: recLead.tipo_evento || '',
+      instituicao: recLead.instituicao || '',
+      dataDesejada: recLead.data_desejada || '',
+      pacote: recLead.pacote || '',
+      valorTexto: fmtMoedaAgenda_(liquido),
+      etapa: recLead.etapa_comercial || '',
+      observacoes: recLead.observacoes || '',
+      proximoContato: recLead.proximo_contato,
+    });
+    const idCal = r && r.idCalendar;
+    if (idCal && idCal !== recLead.id_calendar){
+      await PB.collection('leads').update(recLead.id, { id_calendar: idCal });
+    }
+    return idCal || '';
+  } catch (e){
+    console.error('Agenda (lead) falhou — segue sem bloquear: ' + e);
+    return '';
+  }
+}
