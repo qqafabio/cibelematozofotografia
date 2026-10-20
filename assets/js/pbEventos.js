@@ -43,6 +43,9 @@ async function pbCriarProducao_(ev){
 // Cria UMA conta pendente "Saldo do evento" com o valor final (espelha
 // criarContaPendente_ → salvarConta de 1 parcela, backend 414-418/744-819).
 async function pbCriarContaPendente_(ev){
+  // Idempotente: a conta pode já ter sido criada (lead Fechado) antes do evento ser Confirmado.
+  const existentes = await PB.collection('financeiro').getFullList({ filter: 'id_evento=' + Number(ev.id_evento) });
+  if (existentes.length) return existentes[0];
   const valorFinal = Number(ev.valor_final || 0);
   return PB.collection('financeiro').create({
     id_evento: Number(ev.id_evento),

@@ -93,7 +93,7 @@ async function pbAtualizarLead(dados){
     try {
       const estimadoFechar = dados.valorEstimado !== undefined ? Number(dados.valorEstimado) : Number(rec.valor_estimado || 0);
       const descontoFechar = dados.desconto !== undefined ? Number(dados.desconto) : Number(rec.desconto || 0);
-      await pbCriarEvento({
+      const evCriado = await pbCriarEvento({
         idCliente: rec.id_cliente,
         status: 'Aguardando aprovação',
         dataEvento: dados.dataDesejada !== undefined ? dados.dataDesejada : rec.data_desejada,
@@ -104,6 +104,11 @@ async function pbAtualizarLead(dados){
         valorFinal: estimadoFechar - descontoFechar,
         observacoes: `Criado automaticamente a partir do lead #${rec.id_lead}.`,
       });
+      // Lança no Financeiro a conta pendente com o valor do orçamento (fail-soft).
+      if (Number(evCriado.valor_final || 0) > 0 && typeof pbCriarContaPendente_ === 'function'){
+        try { await pbCriarContaPendente_(evCriado); }
+        catch (e){ console.error('atualizarLead: conta pendente (lead Fechado) falhou (segue): ' + e); }
+      }
     } catch (e){
       console.error('atualizarLead: criação do evento (lead Fechado) falhou (segue): ' + e);
     }

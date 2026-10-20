@@ -30,10 +30,15 @@ async function excluirContaComConfirmacao(conta){
 /* ============ FINANCEIRO ============ */
 function agruparContas(){
   const grupos = {};
+  const eventoPorId = {};
+  (eventos || []).forEach(e => { eventoPorId[e['ID Evento']] = e; });
   financeiro.forEach(p => {
     // Em evento coletivo, cada participante (ID Cliente) é uma conta própria sob o mesmo
-    // ID Evento. Em evento individual, ID Cliente é vazio → 1 conta por evento (sem mudança).
-    const idCliente = p['ID Cliente'] || '';
+    // ID Evento. Em evento individual há 1 conta por evento: parcelas gravadas com o
+    // ID Cliente do próprio responsável (ou vazio) pertencem à mesma conta.
+    let idCliente = p['ID Cliente'] || '';
+    const ev = eventoPorId[p['ID Evento']];
+    if (idCliente && ev && String(ev['Coletivo']) !== 'Sim' && String(ev['ID Cliente']) === String(idCliente)) idCliente = '';
     const key = p['ID Evento'] + '|' + idCliente;
     if (!grupos[key]) grupos[key] = { key: key, idEvento: p['ID Evento'], idCliente: idCliente, cliente: p['Cliente'], parcelas: [] };
     grupos[key].parcelas.push(p);
