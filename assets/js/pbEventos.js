@@ -97,6 +97,7 @@ async function pbCriarEvento(dados){
     data_cadastro: hojeBR_(),
     // sem id_evento → hook atribui
   };
+  if (dados.idLead) registro.id_lead = Number(dados.idLead);  // lead que originou o evento (migration 1793000305)
 
   const ev = await PB.collection('eventos').create(registro);
 

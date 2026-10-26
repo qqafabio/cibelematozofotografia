@@ -29,7 +29,7 @@ Gera as coleções (padrão PocketBase 0.22.x `Dao`/`Collection`/`SchemaField`):
 `listas`, `produtos` e `orcamentos` (estas duas só existem no PocketBase, sem aba no Sheets). Cada entidade de negócio tem um `id_<entidade>` numérico com índice
 **único** e as 5 regras de acesso `@request.auth.id != ''`.
 
-> As migrations `1793000302`/`1793000303` (campos novos de `pacotes` e `leads`) são escritas à mão e idempotentes, para quem já tem as coleções criadas.
+> As migrations `1793000302`/`1793000303`/`1793000305` (campos novos de `pacotes`, `leads` e `eventos.id_lead`) são escritas à mão e idempotentes, para quem já tem as coleções criadas. A `1793000305` também preenche `id_lead` nos eventos já gerados por lead "Fechado".
 
 > `clientes` **não** é gerado aqui — já existe na VM desde a v3.1.
 

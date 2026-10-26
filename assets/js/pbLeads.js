@@ -54,6 +54,17 @@ function leadAgendaMudou_(antes, depois){
   return CAMPOS_AGENDA_LEAD.some(k => String(antes[k] == null ? '' : antes[k]) !== String(depois[k] == null ? '' : depois[k]));
 }
 
+// Reabrir e fechar o lead de novo não pode duplicar evento/conta. Vínculo por eventos.id_lead
+// (migration 1793000305); se a coluna ainda não existe (filtro rejeitado), cai na marca das observações.
+async function leadJaGerouEvento_(idLead, marca){
+  try {
+    const r = await PB.collection('eventos').getList(1, 1, { filter: `id_lead = ${Number(idLead)}` });
+    if (r.items.length) return true;
+  } catch (e){ /* coluna ausente: usa a marca abaixo */ }
+  const r = await PB.collection('eventos').getList(1, 1, { filter: `observacoes ~ "${marca}"` });
+  return r.items.length > 0;
+}
+
 async function pbCriarLead(dados){
   await pbAuthGarantir();
   const cli = await pbLocalizarOuCriarCliente(dados.nome, dados.whatsapp, dados.cpf, dados.email);
@@ -91,6 +102,8 @@ async function pbAtualizarLead(dados){
   if (dados.etapa === 'Fechado' && rec.etapa_comercial !== 'Fechado'
       && typeof pbCriarEvento === 'function'){
     try {
+      const marca = `Criado automaticamente a partir do lead #${rec.id_lead}.`;
+      if (await leadJaGerouEvento_(rec.id_lead, marca)) return upd;
       const estimadoFechar = dados.valorEstimado !== undefined ? Number(dados.valorEstimado) : Number(rec.valor_estimado || 0);
       const descontoFechar = dados.desconto !== undefined ? Number(dados.desconto) : Number(rec.desconto || 0);
       const evCriado = await pbCriarEvento({
@@ -102,7 +115,8 @@ async function pbAtualizarLead(dados){
         valorPacote: estimadoFechar,
         desconto: descontoFechar,
         valorFinal: estimadoFechar - descontoFechar,
-        observacoes: `Criado automaticamente a partir do lead #${rec.id_lead}.`,
+        observacoes: marca,
+        idLead: rec.id_lead,
       });
       // Lança no Financeiro a conta pendente com o valor do orçamento (fail-soft).
       if (Number(evCriado.valor_final || 0) > 0 && typeof pbCriarContaPendente_ === 'function'){
