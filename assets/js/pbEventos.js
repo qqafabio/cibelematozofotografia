@@ -178,7 +178,7 @@ async function pbExcluirEvento(dados){
   const valorPago = parcelas.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
   if (valorPago > 0 && !dados.forcar){
     throw new Error('Não é possível excluir: este evento já tem R$ ' + valorPago.toFixed(2) +
-      ' recebido(s) no Financeiro. Reverta o(s) pagamento(s) antes de excluir, ou confirme a exclusão forçada.');
+      ' recebido(s) no Financeiro. Reverta o(s) recebimento(s) antes de excluir, ou confirme a exclusão forçada.');
   }
   const optForcar = dados.forcar ? { query: { forcar: 1 } } : undefined;
 

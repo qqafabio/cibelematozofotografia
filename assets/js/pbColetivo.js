@@ -197,7 +197,7 @@ async function pbAtualizarParticipante(dados){
   if (dados.statusCompra === 'Não quis' && evento){
     const doEvento = await PB.collection('financeiro').getFullList({ filter: 'id_evento=' + Number(evento.id_evento) });
     const emAberto = doEvento.filter(p =>
-      Number(p.id_cliente || 0) === Number(participante.id_cliente) && String(p.status) !== 'Pago');
+      Number(p.id_cliente || 0) === Number(participante.id_cliente) && String(p.status) !== 'Recebido');
     for (const p of emAberto){ await PB.collection('financeiro').update(p.id, { status: 'Cancelado' }); }
   }
 

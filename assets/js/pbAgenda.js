@@ -37,7 +37,7 @@ function statusEntregaTexto_(idEvento){
   const valorPendente = Math.max(valorFinal - valorPago, 0);
   return valorPendente <= 0
     ? `Pagamento: quitado (${fmtMoedaAgenda_(valorFinal)})`
-    : `Pagamento: ${fmtMoedaAgenda_(valorPago)} pago · ${fmtMoedaAgenda_(valorPendente)} pendente`;
+    : `Pagamento: ${fmtMoedaAgenda_(valorPago)} recebido · ${fmtMoedaAgenda_(valorPendente)} pendente`;
 }
 
 // Sincroniza o compromisso do EVENTO na Agenda e grava id_calendar de volta no

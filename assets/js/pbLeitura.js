@@ -64,7 +64,7 @@ function marcarVencidasPB_(financeiro){
   return financeiro;
 }
 
-// Replica listarContasEmAtraso: parcelas vencidas, não quitadas e não "Pago",
+// Replica listarContasEmAtraso: parcelas vencidas, não quitadas e não "Recebido",
 // com diasEmAtraso, ordenadas da mais urgente para a menos. Alimenta o alerta
 // inicial (alertaCobrancasVencidas) — a tela de Cobranças refaz seu próprio fetch.
 function derivarContasEmAtrasoPB_(financeiro){
@@ -74,7 +74,7 @@ function derivarContasEmAtrasoPB_(financeiro){
     const previsto = Number(p['Valor previsto'] || 0);
     const pago = Number(p['Valor pago'] || 0);
     const venc = (typeof parseDataBR === 'function') ? parseDataBR(p['Vencimento']) : null;
-    return venc && venc < hoje && pago < previsto && status !== 'Pago';
+    return venc && venc < hoje && pago < previsto && status !== 'Recebido';
   }).map(p => {
     const venc = (typeof parseDataBR === 'function') ? parseDataBR(p['Vencimento']) : null;
     const diasEmAtraso = venc ? Math.floor((hoje - venc) / 86400000) : 0;

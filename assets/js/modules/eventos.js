@@ -476,12 +476,12 @@ function htmlAbaFinanceiro(ev){
   const parcelas = conta.parcelas.filter(p => String(p['Tipo cobrança']) !== 'Desconto');
   const linhas = parcelas.map(p => {
     const st = String(p['Status']||'');
-    const cls = st === 'Pago' ? 'confirmado' : (st === 'Vencida' ? 'vencida' : '');
+    const cls = st === 'Recebido' ? 'confirmado' : (st === 'Vencida' ? 'vencida' : '');
     return `<tr>
       <td data-label="Tipo">${esc(p['Tipo cobrança']||'—')}</td>
       <td data-label="Vencimento">${esc(p['Vencimento']||'—')}</td>
       <td data-label="Previsto">${formatBRL(p['Valor previsto'])}</td>
-      <td data-label="Pago">${formatBRL(p['Valor pago'])}</td>
+      <td data-label="Recebido">${formatBRL(p['Valor pago'])}</td>
       <td data-label="Status"><span class="status-pill ${cls}">${esc(st||'—')}</span></td>
     </tr>`;
   }).join('');
@@ -495,7 +495,7 @@ function htmlAbaFinanceiro(ev){
         <button class="btn-ghost" id="abaAbrirConta" style="margin-left:auto;">Abrir conta</button>
       </div>
       ${parcelas.length ? `<table class="responsive-table">
-        <thead><tr><th>Tipo</th><th>Vencimento</th><th>Previsto</th><th>Pago</th><th>Status</th></tr></thead>
+        <thead><tr><th>Tipo</th><th>Vencimento</th><th>Previsto</th><th>Recebido</th><th>Status</th></tr></thead>
         <tbody>${linhas}</tbody>
       </table>` : '<p class="detalhe-vazio">Conta sem parcelas lançadas.</p>'}
     </div>`;

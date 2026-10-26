@@ -45,7 +45,7 @@ function idClienteParaPb_(v){
 // Monta os campos de uma linha de parcela/entrada (comum a entrada e parcelas).
 function camposParcela_(p, numParcela, totalParcelas, contaCliente, contaIdCliente){
   const valorPrevisto = Number(p.valor || 0);
-  const valorPago = p.__entrada ? (p.status === 'Pago' ? valorPrevisto : 0) : Number(p.valorPago || 0);
+  const valorPago = p.__entrada ? (p.status === 'Recebido' ? valorPrevisto : 0) : Number(p.valorPago || 0);
   return {
     tipo_cobranca: p.__entrada ? 'Entrada' : (p.tipoCobranca || ''),
     num_parcela: numParcela,
@@ -138,7 +138,7 @@ async function pbExcluirContaFinanceiro(dados){
   const valorPago = parcelas.reduce((s, p) => s + Number(p.valor_pago || 0), 0);
   if (valorPago > 0 && !dados.forcar){
     throw new Error('Não é possível excluir: esta conta já tem R$ ' + valorPago.toFixed(2) +
-      ' recebido(s). Reverta o(s) pagamento(s) antes de excluir, ou confirme a exclusão forçada.');
+      ' recebido(s). Reverta o(s) recebimento(s) antes de excluir, ou confirme a exclusão forçada.');
   }
   const optForcar = dados.forcar ? { query: { forcar: 1 } } : undefined;
   for (const p of parcelas){ await PB.collection('financeiro').delete(p.id, optForcar); }

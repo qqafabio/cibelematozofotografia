@@ -11,7 +11,7 @@
    organizador (igreja/escola); cada participante vira Cliente real e ganha uma
    conta no Financeiro com o valor do pacote. */
 
-const PARTICIPANTE_STATUS = ['Sem contato', 'Interessado', 'Comprou', 'Pago', 'Não quis'];
+const PARTICIPANTE_STATUS = ['Sem contato', 'Interessado', 'Comprou', 'Recebido', 'Não quis'];
 
 function eventosColetivosLista(){
   return eventos.filter(e => String(e['Coletivo']) === 'Sim');
@@ -225,7 +225,7 @@ function desenharTabelaParticipantes(idEvento, filtro){
   if (!parts.length){ el.innerHTML = `<div class="empty-state">Nenhum participante ${f?'encontrado':'importado ainda'}.</div>`; return; }
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th>Nome</th><th>Status</th><th>Fotos extras</th><th>Previsto</th><th>Pago</th><th>Desconto</th><th>Saldo</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Status</th><th>Fotos extras</th><th>Previsto</th><th>Recebido</th><th>Desconto</th><th>Saldo</th></tr></thead>
       <tbody>${parts.map(p => {
         const c = contasDoParticipante(idEvento, p['ID Cliente']);
         const statusOpts = PARTICIPANTE_STATUS.map(s => `<option value="${esc(s)}" ${String(p['Status compra'])===s?'selected':''}>${esc(s)}</option>`).join('');
@@ -235,7 +235,7 @@ function desenharTabelaParticipantes(idEvento, filtro){
           <td data-label="Status"><select class="part-status" data-id="${esc(p['ID'])}" style="padding:4px;">${statusOpts}</select></td>
           <td data-label="Fotos extras"><input class="part-extras" data-id="${esc(p['ID'])}" type="number" step="1" min="0" value="${esc(p['Qtd fotos extras']||0)}" style="width:70px;padding:4px;"></td>
           <td data-label="Previsto">${formatBRL(c.previsto)}</td>
-          <td data-label="Pago">${formatBRL(c.pago)}</td>
+          <td data-label="Recebido">${formatBRL(c.pago)}</td>
           <td data-label="Desconto"><input class="part-desconto" data-id="${esc(p['ID'])}" type="number" step="0.01" min="0" value="${esc(c.desconto||'')}" style="width:90px;padding:4px;"></td>
           <td data-label="Saldo"><strong>${formatBRL(Math.max(0, c.saldo))}</strong></td>
         </tr>`;
@@ -276,7 +276,7 @@ function aplicarMudancaParticipanteLocal(ev, part, campos){
     part['Status compra'] = campos.statusCompra;
     if (campos.statusCompra === 'Não quis'){
       (financeiro || []).forEach(f => {
-        if (String(f['ID Evento']) === String(idEvento) && String(f['ID Cliente']) === String(idCliente) && String(f['Status']) !== 'Pago'){
+        if (String(f['ID Evento']) === String(idEvento) && String(f['ID Cliente']) === String(idCliente) && String(f['Status']) !== 'Recebido'){
           f['Status'] = 'Cancelado';
         }
       });

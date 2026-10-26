@@ -129,12 +129,12 @@ function abrirFormConta(conta){
         <input type="hidden" id="f_entradaIdParcela" value="${esc(entradaExistente ? entradaExistente['ID Parcela'] : '')}">
         <div class="row2">
           <div class="field"><label>Entrada (valor)</label><input id="f_entradaValor" type="number" step="0.01" value="${esc(entradaExistente ? entradaExistente['Valor previsto'] : '')}"></div>
-          <div class="field"><label>Status da entrada</label><select id="f_entradaStatus">${opcoesSelect(listas['Status cobrança'], entradaExistente ? entradaExistente['Status'] : 'Pago')}</select></div>
+          <div class="field"><label>Status da entrada</label><select id="f_entradaStatus">${opcoesSelect(listas['Status cobrança'], entradaExistente ? entradaExistente['Status'] : 'Recebido')}</select></div>
         </div>
-        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">Para reverter um pagamento já recebido, não zere o valor — mude o Status da entrada para algo diferente de "Pago".</p>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">Para reverter um recebimento já registrado, não zere o valor — mude o Status da entrada para algo diferente de "Recebido".</p>
         <div class="row2">
           <div class="field"><label>Forma pagamento</label><select id="f_entradaForma">${opcoesSelect(listas['Forma pagamento'], entradaExistente ? entradaExistente['Forma pagamento'] : '')}</select></div>
-          <div class="field"><label>Data pagamento</label><input id="f_entradaDataPagamento" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(entradaExistente ? entradaExistente['Data pagamento'] : '')}"></div>
+          <div class="field"><label>Data do recebimento</label><input id="f_entradaDataPagamento" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(entradaExistente ? entradaExistente['Data pagamento'] : '')}"></div>
         </div>
  
         <hr style="border:none;border-top:1px solid var(--rule);margin:20px 0;">
@@ -220,9 +220,9 @@ function renderLinhasParcelas(parcelasExistentes){
       </div>
       <div class="row2">
         <div class="field"><label>Forma pagamento</label><select class="p-forma">${opcoesSelect(listas['Forma pagamento'], ant.forma||'')}</select></div>
-        <div class="field"><label>Data pagamento</label><input class="p-dataPagamento" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(ant.dataPagamento||'')}"></div>
+        <div class="field"><label>Data do recebimento</label><input class="p-dataPagamento" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(ant.dataPagamento||'')}"></div>
       </div>
-      <div class="field"><label>Valor pago</label><input class="p-valorPago" type="number" step="0.01" value="${esc(ant.valorPago||'')}"></div>
+      <div class="field"><label>Valor recebido</label><input class="p-valorPago" type="number" step="0.01" value="${esc(ant.valorPago||'')}"></div>
     </div>`;
   }).join('');
   wrap.querySelectorAll('.p-valor').forEach(inp => inp.addEventListener('input', atualizarSaldoEventoInfo));
