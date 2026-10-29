@@ -7,6 +7,7 @@
 
 /* ============ PRODUÇÃO ============ */
 const ETAPAS_PRODUCAO = ['Não iniciado','Em andamento','Concluído'];
+const ETAPAS_PRODUCAO_OPCIONAIS = [...ETAPAS_PRODUCAO, 'Não se aplica'];
 function renderProducao(main){
   main.innerHTML = `
     <div class="view-header"><div><h1>Produção</h1><p>Uma linha por evento — criada automaticamente ao cadastrar o evento.</p></div></div>
@@ -19,11 +20,12 @@ function desenharTabelaProducao(){
   if (!producao.length){ el.innerHTML = `<div class="empty-state">Nenhum evento com produção em aberto ainda.</div>`; return; }
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th>Cliente</th><th>Tipo</th><th>Data evento</th><th>Edição</th><th>Entrega</th><th>NFS-e</th><th>Ações</th></tr></thead>
+      <thead><tr><th>Cliente</th><th>Tipo</th><th>Data evento</th><th>Edição foto</th><th>Edição vídeo</th><th>Entrega</th><th>NFS-e</th><th>Ações</th></tr></thead>
       <tbody>${producao.map(p => `
         <tr data-id="${esc(p['ID Evento'])}">
           <td data-label="Cliente">${esc(p['Cliente'])}</td><td data-label="Tipo">${esc(p['Tipo de evento'])}</td><td data-label="Data evento">${esc(p['Data evento'])}</td>
-          <td data-label="Edição">${esc(p['Edição foto'])}</td>
+          <td data-label="Edição foto"><span class="status-pill ${String(p['Edição foto']).toLowerCase()==='concluído'?'confirmado':''}">${esc(p['Edição foto'])}</span></td>
+          <td data-label="Edição vídeo"><span class="status-pill ${String(p['Edição vídeo']).toLowerCase()==='concluído'?'confirmado':''}">${esc(p['Edição vídeo'])}</span></td>
           <td data-label="Entrega"><span class="status-pill ${String(p['Entrega']).toLowerCase()==='concluído'?'confirmado':''}">${esc(p['Entrega'])}</span></td>
           <td data-label="NFS-e"><a class="btn-nfse" href="https://www.nfse.gov.br/EmissorNacional/Login?ReturnUrl=%2fEmissorNacional" target="_blank" rel="noopener">Emitir NFS-e</a></td>
           <td data-label="Ações"><div class="row-actions">
@@ -37,7 +39,7 @@ function desenharTabelaProducao(){
 function abrirFormProducao(p){
   const campoEtapa = (label, campo) => `
     <div class="field"><label>${label}</label>
-      <select id="f_${campo}">${ETAPAS_PRODUCAO.map(e=>`<option ${p[mapaCampoProducaoLabel_(campo)]===e?'selected':''}>${e}</option>`).join('')}</select>
+      <select id="f_${campo}">${(campo==='entrega'?ETAPAS_PRODUCAO:ETAPAS_PRODUCAO_OPCIONAIS).map(e=>`<option ${p[mapaCampoProducaoLabel_(campo)]===e?'selected':''}>${e}</option>`).join('')}</select>
     </div>`;
   document.getElementById('overlayRoot').innerHTML = `
     <div class="form-overlay" id="overlay">
