@@ -32,6 +32,12 @@
   .msg{text-align:center;padding:60px 20px;}
   .msg p{opacity:.75;font-size:14px;line-height:1.6;}
 
+  .spinner-wrap{text-align:center;padding:50px 20px;opacity:.75;}
+  .spinner{width:28px;height:28px;margin:0 auto 14px;border-radius:50%;
+    border:3px solid rgba(128,128,128,.25);border-top-color:var(--accent);
+    animation:girar .8s linear infinite;}
+  @keyframes girar{to{transform:rotate(360deg);}}
+
   .field label{display:block;font-size:13px;opacity:.75;margin-bottom:6px;}
   .field input{width:100%;font-family:'Work Sans',sans-serif;font-size:15px;padding:11px 12px;border-radius:6px;border:1px solid #DCD4C4;background:rgba(255,255,255,.08);color:inherit;}
   body.tema-linen .field input{background:#FBF9F4;color:#221F1C;}
@@ -54,7 +60,7 @@
 </style>
 </head>
 <body class="tema-linen serif">
-<div id="app"><div class="wrap"><div class="msg"><p>Carregando…</p></div></div></div>
+<div id="app"><div class="wrap"><div class="spinner-wrap"><div class="spinner"></div><p>Carregando…</p></div></div></div>
 
 <!-- Reaproveita a config/instância do PocketBase já usada no CRM (sem login:
      esta página nunca chama pbAuthGarantir — o acesso é só pelo token público). -->
@@ -105,6 +111,22 @@ function renderMensagem_(texto){
   app.innerHTML = `<div class="wrap"><div class="msg"><p>${escV(texto)}</p></div></div>`;
 }
 
+// Capa + título: montado e exibido IMEDIATAMENTE (antes de buscar as fotos),
+// para o cliente ver a marca da fotógrafa na hora em vez de tela em branco.
+function montarCabecalho_(vitrine){
+  const capaUrl = driveImgUrl_(vitrine.capa_url);
+  const capaPos = { top: 'top', bottom: 'bottom' }[vitrine.capa_posicao] || 'center';
+  const capaStyle = capaUrl ? `style="background-image:url('${escV(capaUrl)}');background-position:center ${capaPos};"` : '';
+  return `
+    <div class="capa" ${capaStyle}>
+      <div class="capa-texto">
+        <h1>${escV(vitrine.nome_exibicao || 'Suas fotos')}</h1>
+        ${vitrine.data_exibicao ? `<p>${escV(vitrine.data_exibicao)}</p>` : ''}
+      </div>
+    </div>
+  `;
+}
+
 function renderSenha_(onSubmit){
   app.innerHTML = `
     <div class="wrap" style="max-width:420px;padding-top:80px;">
@@ -143,6 +165,15 @@ function abrirLightbox_(src){
 
 async function renderGaleria_(vitrine, senhaHash){
   aplicarTema_(vitrine);
+  // Mostra a marca (capa/título) na hora e um spinner no lugar da grade —
+  // só a listagem das fotos espera a rede (PocketBase ou Apps Script/Drive).
+  app.innerHTML = `
+    ${montarCabecalho_(vitrine)}
+    <div class="wrap">
+      <div class="spinner-wrap"><div class="spinner"></div><p>Carregando as fotos…</p></div>
+    </div>
+  `;
+
   let fotos = []; // { thumb, ver, baixar, nome }
   let erroFonte = '';
   try {
@@ -169,17 +200,8 @@ async function renderGaleria_(vitrine, senhaHash){
     erroFonte = err.message || String(err);
   }
 
-  const capaUrl = driveImgUrl_(vitrine.capa_url);
-  const capaPos = { top: 'top', bottom: 'bottom' }[vitrine.capa_posicao] || 'center';
-  const capaStyle = capaUrl ? `style="background-image:url('${escV(capaUrl)}');background-position:center ${capaPos};"` : '';
-  app.innerHTML = `
-    <div class="capa" ${capaStyle}>
-      <div class="capa-texto">
-        <h1>${escV(vitrine.nome_exibicao || 'Suas fotos')}</h1>
-        ${vitrine.data_exibicao ? `<p>${escV(vitrine.data_exibicao)}</p>` : ''}
-      </div>
-    </div>
-    <div class="wrap">
+  const wrap = app.querySelector('.wrap');
+  wrap.innerHTML = `
       ${fotos.length ? `<div class="acoes-topo"><button id="baixarTodas">Baixar todas as fotos</button></div>` : ''}
       ${erroFonte ? `<div class="painel"><p class="erro" style="margin:0;">${escV(erroFonte)}</p></div>` : ''}
       ${!erroFonte && !fotos.length ? `<div class="painel"><p style="margin:0;opacity:.75;">Nenhuma foto disponível ainda nesta galeria.</p></div>` : ''}
@@ -191,7 +213,6 @@ async function renderGaleria_(vitrine, senhaHash){
           </div>
         `).join('')}
       </div>
-    </div>
   `;
   app.querySelectorAll('.foto img').forEach(img => img.addEventListener('click', () => abrirLightbox_(img.dataset.ver)));
   const btnTodas = document.getElementById('baixarTodas');
