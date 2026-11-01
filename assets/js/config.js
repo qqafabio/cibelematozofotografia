@@ -77,5 +77,6 @@ const NAV = [
   ]},
   { group:'🔗 Ferramentas', items:[
     { id:'geradorLink', label:'Gerador de link', ready:true, href:'gerador-de-link.html' },
+    { id:'vitrines', label:'Vitrine de Fotos', ready:true },
   ]},
 ];

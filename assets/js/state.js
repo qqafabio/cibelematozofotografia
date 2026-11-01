@@ -17,6 +17,7 @@ let templates = [];
 let pacotes = [];
 let produtos = [];
 let orcamentos = [];
+let vitrines = [];
 let leadFormId = null;
 let participantes = [];
 let listas = {};

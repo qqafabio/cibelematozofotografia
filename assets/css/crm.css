@@ -280,6 +280,13 @@
   .code-area{width:100%;min-height:100px;padding:10px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--paper);font-family:monospace;font-size:12px;color:var(--ink);resize:vertical;}
   .preview-box{margin-top:12px;padding:12px;background:var(--paper);border:1px solid var(--rule);border-radius:var(--r-sm);font-size:12px;white-space:pre-wrap;color:var(--ink);max-height:150px;overflow-y:auto;}
 
+  /* ---- Vitrine de Fotos (v3.19) — grade de miniaturas no gerenciador de fotos ---- */
+  .vitrine-fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:14px;max-height:50vh;overflow-y:auto;}
+  .vitrine-foto-card{position:relative;border-radius:var(--r-sm);overflow:hidden;background:var(--paper);border:1px solid var(--rule);aspect-ratio:1;}
+  .vitrine-foto-card img{width:100%;height:100%;object-fit:cover;display:block;}
+  .vitrine-foto-del{position:absolute;top:4px;right:4px;background:rgba(34,31,28,.65);color:#fff;border:none;width:26px;height:26px;border-radius:var(--r-pill);cursor:pointer;}
+  .vitrine-foto-del:hover{background:var(--error);}
+
   /* ---- Modal Flutuante (Task 2.1) ---- */
   .floating-window-overlay{position:fixed;inset:0;background:rgba(34,31,28,.35);z-index:19;}
   .floating-window{position:fixed;background:var(--paper-raised);border:1px solid var(--rule);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.15);min-width:400px;min-height:300px;display:flex;flex-direction:column;z-index:20;}

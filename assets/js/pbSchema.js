@@ -11,6 +11,16 @@
 
    Cada coleção: { collection, id:{label,pb}, fields:[[label, pb, tipo]] }
      tipo: 'text' | 'number' | 'fk'  (fk = número que vira '' quando vazio)
+         | 'date'                    (campo de data nativo do PocketBase —
+           só use quando uma REGRA de acesso precisa comparar com @now; o
+           resto do app guarda data como texto "DD/MM/AAAA")
+         | 'file'                    (upload nativo do PocketBase, com thumbs)
+         | 'relation:<colecao>'      (relation nativa do PocketBase — só use
+           quando uma REGRA pública precisa expandir campo.de.outra.colecao;
+           fk de negócio comum continua sendo número simples, como sempre)
+   Coleção pode trazer `rules: { listRule, viewRule, createRule, updateRule,
+   deleteRule }` para sobrescrever a regra padrão "@request.auth.id != ''"
+   (usado pelas vitrines públicas — ver 'vitrines'/'vitrineFotos' abaixo).
    Os rótulos batem 1:1 com os cabeçalhos das abas (ver backend.txt);
    as colunas do PocketBase usam snake_case minúsculo.
    Clientes NÃO está aqui: seu adapter dedicado é pbClientes.js.
@@ -275,6 +285,70 @@ const PB_SCHEMA = {
       ['Valor total', 'valor_total', 'number'],
       ['Hash', 'hash', 'text'],
       ['Snapshot', 'snapshot', 'text'],                // JSON completo enviado ao PDF
+    ],
+  },
+
+  /* Vitrines (v3.19) — Fase 1 da vitrine de fotos: 1 linha por galeria pública
+     gerada para um evento. Acesso público é por token (ver `rules` abaixo),
+     não pela regra padrão "@request.auth.id != ''" — por isso esta coleção
+     declara `rules` explícitas (o gerador usa isso no lugar da RULE genérica).
+     'validade' é do tipo PocketBase 'date' (não texto como o resto do app)
+     DE PROPÓSITO: é o único jeito da regra pública comparar com @now no
+     próprio banco. 'senha_hash' é o SHA-256 (hex) da senha, calculado no
+     navegador (nunca guardamos a senha em texto puro). */
+  vitrines: {
+    collection: 'vitrines',
+    migrationTs: 1793000400,
+    somentePB: true,
+    id: { label: 'ID Vitrine', pb: 'id_vitrine' },
+    rules: {
+      listRule: `@request.auth.id != "" || (status = "Ativa" && token != "" && token = @request.query.token && (validade = "" || validade >= @now) && (senha_hash = "" || senha_hash = @request.query.senha_hash))`,
+      viewRule: `@request.auth.id != "" || (status = "Ativa" && token != "" && token = @request.query.token && (validade = "" || validade >= @now) && (senha_hash = "" || senha_hash = @request.query.senha_hash))`,
+      createRule: `@request.auth.id != ""`,
+      updateRule: `@request.auth.id != ""`,
+      deleteRule: `@request.auth.id != ""`,
+    },
+    fields: [
+      ['ID Evento', 'id_evento', 'fk'],
+      ['Token', 'token', 'text'],
+      ['Senha hash', 'senha_hash', 'text'],
+      ['Validade', 'validade', 'date'],
+      ['Status', 'status', 'text'],                    // 'Ativa' | 'Pausada'
+      ['Fonte imagens', 'fonte_imagens', 'text'],       // 'upload_proprio' | 'google_drive'
+      ['Link pasta Drive', 'link_pasta_drive', 'text'],
+      ['Nome exibição', 'nome_exibicao', 'text'],
+      ['Data exibição', 'data_exibicao', 'text'],
+      ['Tema', 'tema', 'text'],                         // 'noir' | 'linen' | 'terra'
+      ['Cor primária', 'cor_primaria', 'text'],
+      ['Tipografia', 'tipografia', 'text'],             // 'serif' | 'sans'
+      ['Capa URL', 'capa_url', 'text'],
+      ['Data criação', 'data_criacao', 'text'],
+    ],
+  },
+
+  /* Fotos da vitrine (v3.19) — só usada quando vitrines.fonte_imagens =
+     'upload_proprio'. 'id_vitrine' é uma RELATION nativa do PocketBase (não
+     o padrão fk=número do resto do app) para a regra pública poder expandir
+     `id_vitrine.token`/`id_vitrine.status`/etc. — sem isso não dá para
+     validar token/senha/validade sem duplicar esses campos em cada foto. */
+  vitrineFotos: {
+    collection: 'vitrine_fotos',
+    migrationTs: 1793000401,
+    somentePB: true,
+    id: { label: 'ID Foto', pb: 'id_foto' },
+    rules: {
+      listRule: `@request.auth.id != "" || (id_vitrine.status = "Ativa" && id_vitrine.token != "" && id_vitrine.token = @request.query.token && (id_vitrine.validade = "" || id_vitrine.validade >= @now) && (id_vitrine.senha_hash = "" || id_vitrine.senha_hash = @request.query.senha_hash))`,
+      viewRule: `@request.auth.id != "" || (id_vitrine.status = "Ativa" && id_vitrine.token != "" && id_vitrine.token = @request.query.token && (id_vitrine.validade = "" || id_vitrine.validade >= @now) && (id_vitrine.senha_hash = "" || id_vitrine.senha_hash = @request.query.senha_hash))`,
+      createRule: `@request.auth.id != ""`,
+      updateRule: `@request.auth.id != ""`,
+      deleteRule: `@request.auth.id != ""`,
+    },
+    fields: [
+      ['ID Vitrine', 'id_vitrine', 'relation:vitrines'],
+      ['Arquivo', 'arquivo', 'file'],
+      ['Ordem', 'ordem', 'number'],
+      ['Nome original', 'nome_original', 'text'],
+      ['Data upload', 'data_upload', 'text'],
     ],
   },
 };

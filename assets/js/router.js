@@ -119,5 +119,6 @@ async function renderMain(){
   else if (currentView === 'custos') renderCustos(main);
   else if (currentView === 'templates') renderTemplates(main);
   else if (currentView === 'freelance') renderFreelance(main);
+  else if (currentView === 'vitrines') renderVitrines(main);
 }
  

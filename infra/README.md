@@ -26,12 +26,38 @@ node infra/gen_pb_migrations.cjs
 Gera as coleções (padrão PocketBase 0.22.x `Dao`/`Collection`/`SchemaField`):
 `eventos`, `pacotes`, `leads`, `financeiro`, `producao`, `custos`,
 `participantes`, `templates`, `freelance_eventos`, `freelance_pagamentos`,
-`listas`, `produtos` e `orcamentos` (estas duas só existem no PocketBase, sem aba no Sheets). Cada entidade de negócio tem um `id_<entidade>` numérico com índice
-**único** e as 5 regras de acesso `@request.auth.id != ''`.
+`listas`, `produtos`, `orcamentos` (estas duas só existem no PocketBase, sem aba no Sheets) e `vitrines`/`vitrine_fotos` (v3.19 — Vitrine de Fotos, Fase 1). Cada entidade de negócio tem um `id_<entidade>` numérico com índice
+**único** e as 5 regras de acesso `@request.auth.id != ''` — **exceto**
+`vitrines`/`vitrine_fotos`, que declaram `rules` próprias em `pbSchema.js`
+(acesso público por token, ver seção "Vitrine de Fotos" abaixo).
 
 > As migrations `1793000302`/`1793000303`/`1793000305` (campos novos de `pacotes`, `leads` e `eventos.id_lead`) são escritas à mão e idempotentes, para quem já tem as coleções criadas. A `1793000305` também preenche `id_lead` nos eventos já gerados por lead "Fechado".
 
 > `clientes` **não** é gerado aqui — já existe na VM desde a v3.1.
+
+### Vitrine de Fotos (v3.19, Fase 1)
+
+Galeria pública por evento com link exclusivo (token+senha+validade), marca
+personalizada e duas fontes de imagem: upload direto no PocketBase, ou link
+de uma pasta do Google Drive.
+
+- **`vitrines`/`vitrine_fotos`** têm regras de acesso **públicas** (sem login),
+  escopadas por `@request.query.token`/`senha_hash` — ver os comentários em
+  `assets/js/pbSchema.js`. `vitrine_fotos.id_vitrine` é uma **relation nativa**
+  do PocketBase (não o padrão fk=número do resto do app): é o que permite a
+  regra pública expandir `id_vitrine.token`/`.status`/`.validade` sem duplicar
+  esses campos em cada foto.
+- **Upload direto**: usa o campo `file` nativo do PocketBase (com thumbs
+  `400x400`/`1600x0`). Por padrão grava em disco na própria VM — para usar
+  **Cloudflare R2** (recomendado: a VM é pequena e R2 tem egress grátis),
+  configure em *PocketBase Admin UI → Settings → Files storage → S3* com as
+  credenciais do bucket. É só isso: nenhum código muda, o SDK do PocketBase
+  já abstrai local-disk vs. S3.
+- **Modo Google Drive**: não usa conta de serviço/Google Cloud. `vitrine.html`
+  chama o **mesmo** `CRM_API_URL` (Apps Script) por GET — ver
+  `infra/apps_script/listarFotosVitrine.gs` (cole como um `.gs` a mais no
+  projeto existente e reimplante a mesma implantação).
+
 
 ### Aplicar na VM
 

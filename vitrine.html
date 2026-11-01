@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitrine de fotos</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--accent:#A8791E;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Work Sans',sans-serif;transition:background .2s,color .2s;}
+  body.serif h1, body.serif .titulo{font-family:'Fraunces',serif;font-weight:500;}
+  body.sans h1, body.sans .titulo{font-family:'Work Sans',sans-serif;font-weight:600;}
+
+  /* Temas: cada um define papel/tinta/painel; a cor de destaque (--accent) vem
+     da vitrine (cor_primaria) e é aplicada por cima, inline, em runtime. */
+  body.tema-linen{background:#FBF9F4;color:#221F1C;}
+  body.tema-linen .painel{background:#FFFFFF;border:1px solid #DCD4C4;}
+  body.tema-noir{background:#15141A;color:#EDEAE2;}
+  body.tema-noir .painel{background:#1E1D24;border:1px solid #33323C;}
+  body.tema-terra{background:#2E2419;color:#F1E9DC;}
+  body.tema-terra .painel{background:#3C3022;border:1px solid #5A4A34;}
+
+  .capa{height:38vh;min-height:220px;background-size:cover;background-position:center;display:flex;align-items:flex-end;position:relative;}
+  .capa::after{content:'';position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0) 60%);}
+  .capa-texto{position:relative;z-index:1;padding:28px 24px;color:#fff;}
+  .capa-texto h1{margin:0 0 4px;font-size:30px;}
+  .capa-texto p{margin:0;opacity:.85;font-size:14px;}
+
+  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 60px;}
+  .painel{border-radius:10px;padding:22px 20px;margin-bottom:20px;}
+  .msg{text-align:center;padding:60px 20px;}
+  .msg p{opacity:.75;font-size:14px;line-height:1.6;}
+
+  .field label{display:block;font-size:13px;opacity:.75;margin-bottom:6px;}
+  .field input{width:100%;font-family:'Work Sans',sans-serif;font-size:15px;padding:11px 12px;border-radius:6px;border:1px solid #DCD4C4;background:rgba(255,255,255,.08);color:inherit;}
+  body.tema-linen .field input{background:#FBF9F4;color:#221F1C;}
+  button{font-family:'Work Sans',sans-serif;cursor:pointer;border-radius:6px;border:none;padding:11px 18px;font-size:14px;}
+  .btn-primary{background:var(--accent);color:#fff;width:100%;}
+  .btn-primary:hover{opacity:.9;}
+  .erro{color:#E2726B;font-size:13px;margin-top:10px;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;}
+  .foto{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;background:rgba(255,255,255,.06);}
+  .foto img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;}
+  .foto a.baixar{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;}
+
+  .acoes-topo{display:flex;justify-content:flex-end;margin-bottom:14px;}
+  .acoes-topo button{background:var(--accent);color:#fff;}
+
+  .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;z-index:30;padding:20px;}
+  .lightbox img{max-width:100%;max-height:85vh;border-radius:6px;}
+  .lightbox-fechar{position:absolute;top:18px;right:22px;color:#fff;font-size:28px;background:none;cursor:pointer;}
+</style>
+</head>
+<body class="tema-linen serif">
+<div id="app"><div class="wrap"><div class="msg"><p>Carregando…</p></div></div></div>
+
+<!-- Reaproveita a config/instância do PocketBase já usada no CRM (sem login:
+     esta página nunca chama pbAuthGarantir — o acesso é só pelo token público). -->
+<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.5/dist/pocketbase.umd.js"></script>
+<script src="assets/js/config.js?v=3.19.0"></script>
+<script src="assets/js/pbCore.js?v=3.15.1"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const TOKEN = (params.get('token') || '').trim();
+const app = document.getElementById('app');
+
+function escV(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function buscarVitrine_(token, senhaHash){
+  pbInit();
+  return PB.collection('vitrines').getFirstListItem(PB.filter('token = {:t}', { t: token }), { token, senha_hash: senhaHash || '' });
+}
+async function buscarFotosProprio_(vitrinePbId, token, senhaHash){
+  return PB.collection('vitrine_fotos').getFullList({
+    filter: PB.filter('id_vitrine = {:v}', { v: vitrinePbId }),
+    sort: 'ordem', token, senha_hash: senhaHash || '',
+  });
+}
+async function buscarFotosDrive_(linkPasta){
+  const res = await fetch(CRM_API_URL + '?pasta=' + encodeURIComponent(linkPasta));
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Não foi possível listar as fotos da pasta do Drive');
+  return json.arquivos;
+}
+
+function aplicarTema_(vitrine){
+  document.body.className = 'tema-' + (vitrine.tema || 'linen') + ' ' + (vitrine.tipografia === 'sans' ? 'sans' : 'serif');
+  if (vitrine.cor_primaria) document.documentElement.style.setProperty('--accent', vitrine.cor_primaria);
+}
+
+function renderMensagem_(texto){
+  app.innerHTML = `<div class="wrap"><div class="msg"><p>${escV(texto)}</p></div></div>`;
+}
+
+function renderSenha_(onSubmit){
+  app.innerHTML = `
+    <div class="wrap" style="max-width:420px;padding-top:80px;">
+      <div class="painel">
+        <h1 class="titulo" style="font-size:20px;margin:0 0 6px;">Esta galeria tem senha</h1>
+        <p style="font-size:13.5px;opacity:.75;margin:0 0 18px;">Peça a senha para quem te enviou o link.</p>
+        <form id="formSenha">
+          <div class="field"><label>Senha</label><input type="password" id="senhaInput" autofocus></div>
+          <div id="senhaErro" class="erro" style="display:none;"></div>
+          <button class="btn-primary" type="submit" style="margin-top:14px;">Entrar</button>
+        </form>
+      </div>
+    </div>
+  `;
+  document.getElementById('formSenha').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const senha = document.getElementById('senhaInput').value;
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(senha));
+    const hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    try {
+      await onSubmit(hash);
+    } catch (err){
+      document.getElementById('senhaErro').style.display = 'block';
+      document.getElementById('senhaErro').textContent = 'Senha incorreta ou link expirado.';
+    }
+  });
+}
+
+function abrirLightbox_(src){
+  const lb = document.createElement('div');
+  lb.className = 'lightbox';
+  lb.innerHTML = `<button class="lightbox-fechar">&times;</button><img src="${src}">`;
+  lb.addEventListener('click', (e) => { if (e.target === lb || e.target.classList.contains('lightbox-fechar')) lb.remove(); });
+  document.body.appendChild(lb);
+}
+
+async function renderGaleria_(vitrine, senhaHash){
+  aplicarTema_(vitrine);
+  let fotos = []; // { thumb, ver, baixar, nome }
+  let erroFonte = '';
+  try {
+    if (vitrine.fonte_imagens === 'google_drive'){
+      const arquivos = await buscarFotosDrive_(vitrine.link_pasta_drive);
+      fotos = arquivos.map(a => ({ thumb: a.thumbnailLink, ver: a.downloadUrl, baixar: a.downloadUrl, nome: a.nome }));
+    } else {
+      const regs = await buscarFotosProprio_(vitrine.id, TOKEN, senhaHash);
+      // `download:1` força o PocketBase a mandar Content-Disposition:
+      // attachment — sem isso, o atributo `download` do <a> é ignorado em
+      // URL cross-origin (o arquivo fica noutro domínio da VM do PocketBase).
+      // Por isso a versão para o lightbox (`ver`) NÃO leva a flag.
+      fotos = regs.map(f => ({
+        thumb: PB.getFileUrl(f, f.arquivo, { thumb: '400x400' }),
+        ver: PB.getFileUrl(f, f.arquivo),
+        baixar: PB.getFileUrl(f, f.arquivo, { download: 1 }),
+        nome: f.nome_original || f.arquivo,
+      }));
+    }
+  } catch (err){
+    erroFonte = err.message || String(err);
+  }
+
+  const capaStyle = vitrine.capa_url ? `style="background-image:url('${escV(vitrine.capa_url)}')"` : '';
+  app.innerHTML = `
+    <div class="capa" ${capaStyle}>
+      <div class="capa-texto">
+        <h1>${escV(vitrine.nome_exibicao || 'Suas fotos')}</h1>
+        ${vitrine.data_exibicao ? `<p>${escV(vitrine.data_exibicao)}</p>` : ''}
+      </div>
+    </div>
+    <div class="wrap">
+      ${fotos.length ? `<div class="acoes-topo"><button id="baixarTodas">Baixar todas as fotos</button></div>` : ''}
+      ${erroFonte ? `<div class="painel"><p class="erro" style="margin:0;">${escV(erroFonte)}</p></div>` : ''}
+      ${!erroFonte && !fotos.length ? `<div class="painel"><p style="margin:0;opacity:.75;">Nenhuma foto disponível ainda nesta galeria.</p></div>` : ''}
+      <div class="grid">
+        ${fotos.map(f => `
+          <div class="foto">
+            <img src="${escV(f.thumb)}" loading="lazy" data-ver="${escV(f.ver)}">
+            <a class="baixar" href="${escV(f.baixar)}" download="${escV(f.nome)}" title="Baixar">⬇</a>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  app.querySelectorAll('.foto img').forEach(img => img.addEventListener('click', () => abrirLightbox_(img.dataset.ver)));
+  const btnTodas = document.getElementById('baixarTodas');
+  if (btnTodas) btnTodas.addEventListener('click', () => {
+    fotos.forEach((f, i) => setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = f.baixar; a.download = f.nome || ('foto-' + i);
+      document.body.appendChild(a); a.click(); a.remove();
+    }, i * 400)); // espaçado: navegador costuma bloquear downloads simultâneos demais
+  });
+}
+
+async function iniciar(){
+  if (!TOKEN){ renderMensagem_('Link inválido — confira se copiou o endereço completo.'); return; }
+  try {
+    const vitrine = await buscarVitrine_(TOKEN, '');
+    await renderGaleria_(vitrine, '');
+  } catch (err){
+    // Não dá para saber SE falhou por senha, validade ou token errado (a regra
+    // do PocketBase só "esconde" o registro) — tenta com senha antes de desistir.
+    renderSenha_(async (hash) => {
+      const vitrine = await buscarVitrine_(TOKEN, hash);
+      await renderGaleria_(vitrine, hash);
+    });
+  }
+}
+iniciar();
+</script>
+</body>
+</html>

@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.19 | 2026-11-01 | Vitrine de Fotos — Fase 1: galeria pública por evento (link+senha+validade, tema/marca, upload direto ou link do Drive) — ⚠️ migrations + reimplantar Apps Script | [2.34](#234-vitrine-de-fotos--fase-1-v319) |
 | v3.18.8 | 2026-10-29 | Produção: nova opção "Não se aplica" nas etapas Backup, Seleção, Edição foto, Edição vídeo, Álbum e Aprovação do cliente | [2.33](#233-orçamento-em-pdf-produtos-formulário-de-lead-e-agenda-do-próximo-contato-v318) |
 | v3.18.7 | 2026-10-29 | Produção: a lista passa a mostrar "Edição foto" e "Edição vídeo" em colunas separadas (antes só aparecia a foto) | [2.33](#233-orçamento-em-pdf-produtos-formulário-de-lead-e-agenda-do-próximo-contato-v318) |
 | v3.18.6 | 2026-10-26 | Contas a receber: o status "Pago" vira "Recebido" (Financeiro, abas do evento, coletivo, Agenda e mensagens) — ⚠️ migration `1793000306` | [2.33](#233-orçamento-em-pdf-produtos-formulário-de-lead-e-agenda-do-próximo-contato-v318) |
@@ -1075,3 +1076,71 @@ Arquivos: `pbSchema.js`, `pbProdutos.js`, `pbOrcamentos.js`, `pbLeads.js`, `pbPa
 **v3.18.7 (correção).** Na lista do menu **Produção**, a coluna "Edição" lia só `Edição foto`; ao mudar apenas a "Edição vídeo" (produções só de vídeo) a lista seguia em "Não iniciado". A coluna foi separada em **Edição foto** e **Edição vídeo**, cada uma com a etiqueta de status (verde quando "Concluído"); não há status combinado porque uma produção pode ter só uma das edições. O salvamento já estava correto. Não exige migration. Arquivos: `modules/producao.js`, `crm.html`.
 
 **v3.18.8 (melhoria).** As etapas **Backup, Seleção, Edição foto, Edição vídeo, Álbum e Aprovação do cliente** do formulário de Produção ganharam a opção **"Não se aplica"** (ex.: evento sem edição de vídeo), pois "Não iniciado/Em andamento/Concluído" confundia nesses casos. **Entrega final** continua só com as três opções originais. O valor é gravado como texto nos campos já existentes e aparece na lista de Produção e na aba Produção do evento com a etiqueta neutra. Os eventos já existentes não mudam (seguem em "Não iniciado" até serem editados). Não exige migration. Arquivos: `modules/producao.js`, `crm.html`.
+
+### 2.34 Vitrine de Fotos — Fase 1 (v3.19)
+
+Resolve a entrega de fotos hoje feita só com um link cru do Google Drive: o
+evento ganha uma **galeria pública própria**, com a marca da fotógrafa, link
+exclusivo (token + senha opcional + validade opcional) e duas fontes de
+imagem à escolha — upload direto no sistema, ou link de uma pasta do Drive
+já existente. Seleção de fotos, marca d'água e contador de download ficam
+para as próximas fases.
+
+**Novo menu "Vitrine de Fotos"** (grupo Ferramentas, `modules/vitrines.js`):
+criar/editar vitrines por evento, escolher tema (Noir/Linen/Terra), cor,
+tipografia e capa, copiar o link público, pausar/reativar, revogar o link
+(gera um token novo sem apagar a vitrine) e, no modo upload direto, enviar e
+excluir fotos (`vf_fotosGrid`, thumbs geradas pelo próprio PocketBase).
+
+**Página pública `vitrine.html`** (sem login): lê `?token=`, busca a vitrine
+e as fotos diretamente no PocketBase usando as **regras de acesso públicas**
+da Fase 1 (`@request.query.token`/`senha_hash`, comparado no próprio banco —
+nunca guardamos senha em texto puro, só o SHA-256 calculado no navegador).
+Se a vitrine tiver senha, mostra um formulário antes de liberar a galeria
+(não dá para avisar separadamente "senha errada" vs. "link expirado": a
+regra do PocketBase só esconde o registro, não diz o motivo — limitação
+aceita conscientemente). Galeria com grade, lightbox e download por foto ou
+"baixar todas" (dispara downloads espaçados; não é um .zip real).
+
+**Duas coleções novas, só no PocketBase** (`pbSchema.js` → `vitrines` e
+`vitrine_fotos`, geradas por `gen_pb_migrations.cjs`): são as primeiras do
+projeto com `rules` de acesso **customizadas por coleção** (o resto do app
+usa a mesma regra `@request.auth.id != ''` para as 5 operações) e com campos
+`file`/`date`/`relation` nativos do PocketBase (o resto do app usa texto
+DD/MM/AAAA e fk numérico simples — aqui são exceções deliberadas: `date`
+porque a regra pública precisa comparar com `@now` no banco, e `relation`
+(não fk) porque a regra pública precisa expandir `id_vitrine.token`/`.status`/
+`.validade` sem duplicar esses campos em cada foto). `gen_pb_migrations.cjs`
+e `gen_pb_hooks.cjs` ganharam suporte a esses tipos/regras sem alterar a
+saída das migrations já aplicadas (conferido por diff).
+
+**Armazenamento do upload direto:** por padrão vai para o disco da própria
+VM; para usar **Cloudflare R2** (gratuito até 10GB, egress sempre grátis —
+ver análise na conversa de planejamento), basta configurar em *PocketBase
+Admin UI → Settings → Files storage → S3* com as credenciais do bucket.
+Nenhum código muda — o SDK do PocketBase abstrai local vs. S3.
+
+**Modo Google Drive sem conta de serviço:** em vez de um projeto novo no
+Google Cloud, `vitrine.html` chama o **mesmo** `CRM_API_URL` (Apps Script) por
+GET — `infra/apps_script/listarFotosVitrine.gs` é colado como um `.gs` a mais
+no projeto já existente (que já roda sob a conta Google da fotógrafa, dona
+das pastas). Cada arquivo tem a permissão ajustada para "qualquer um com o
+link pode visualizar" na hora da listagem, para o `<img>`/download funcionar
+direto no navegador do cliente.
+
+**Deploy necessário:**
+1. Copiar `infra/pb_migrations/1793000400_create_vitrines.js` e
+   `1793000401_create_vitrine_fotos.js` para a VM e reiniciar o PocketBase;
+   atualizar `infra/pb_hooks/auto_id.pb.js` junto (ganhou os hooks de
+   `id_vitrine`/`id_foto`).
+2. Colar `infra/apps_script/listarFotosVitrine.gs` no projeto Apps Script
+   existente (checar antes se já não há um `doGet` lá — se houver, mesclar
+   em vez de sobrescrever) e reimplantar a mesma implantação (nova versão).
+3. Opcional: configurar o bucket R2 em *PocketBase Admin UI → Settings →
+   Files storage* se não quiser usar o disco da VM para os uploads diretos.
+
+Arquivos: `pbSchema.js`, `pbVitrines.js`, `pbLeitura.js`, `modules/vitrines.js`,
+`vitrine.html`, `router.js`, `config.js`, `state.js`, `api.js`, `crm.css`,
+`crm.html`, `gen_pb_migrations.cjs`, `gen_pb_hooks.cjs`,
+`infra/apps_script/listarFotosVitrine.gs`. `node --check` OK.
+

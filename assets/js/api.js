@@ -116,5 +116,6 @@ function aplicarListas_(r){
   produtos = r.produtos || [];
   orcamentos = r.orcamentos || [];
   participantes = r.participantes || [];
+  vitrines = r.vitrines || [];
 }
  
