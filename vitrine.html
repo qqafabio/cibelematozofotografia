@@ -68,6 +68,17 @@ const app = document.getElementById('app');
 
 function escV(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+// Se for um link de "ver"/"compartilhar" do Drive (não uma imagem direta),
+// converte para a URL de thumbnail do Drive — senão o <img>/background-image
+// tenta carregar uma página HTML e falha. URLs que não são do Drive passam
+// direto (campo "Capa" aceita qualquer imagem externa, não só do Drive).
+function driveImgUrl_(url){
+  const s = String(url || '');
+  if (!s || s.indexOf('drive.google.com') === -1) return s;
+  const m = s.match(/[-\w]{25,}/);
+  return m ? ('https://drive.google.com/thumbnail?id=' + m[0] + '&sz=w1600') : s;
+}
+
 async function buscarVitrine_(token, senhaHash){
   pbInit();
   return PB.collection('vitrines').getFirstListItem(PB.filter('token = {:t}', { t: token }), { token, senha_hash: senhaHash || '' });
@@ -155,7 +166,8 @@ async function renderGaleria_(vitrine, senhaHash){
     erroFonte = err.message || String(err);
   }
 
-  const capaStyle = vitrine.capa_url ? `style="background-image:url('${escV(vitrine.capa_url)}')"` : '';
+  const capaUrl = driveImgUrl_(vitrine.capa_url);
+  const capaStyle = capaUrl ? `style="background-image:url('${escV(capaUrl)}')"` : '';
   app.innerHTML = `
     <div class="capa" ${capaStyle}>
       <div class="capa-texto">
