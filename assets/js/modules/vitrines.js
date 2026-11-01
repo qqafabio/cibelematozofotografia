@@ -203,7 +203,7 @@ function abrirFormVitrine(id){
                 <option value="sans" ${(editando ? v['Tipografia'] : 'serif') === 'sans' ? 'selected' : ''}>Sem serifa (moderna)</option>
               </select>
             </div>
-            <div class="field"><label>Capa (URL de uma imagem)</label><input id="vf_capa" placeholder="https://..." value="${esc(editando ? v['Capa URL'] : '')}"></div>
+            <div class="field"><label>URL da capa</label><input id="vf_capa" placeholder="https://..." value="${esc(editando ? v['Capa URL'] : '')}"></div>
             <div class="field"><label>Posição da capa</label>
               <select id="vf_capaPosicao">
                 <option value="top" ${capaPos === 'top' ? 'selected' : ''}>Topo</option>
