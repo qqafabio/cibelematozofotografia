@@ -148,7 +148,10 @@ async function renderGaleria_(vitrine, senhaHash){
   try {
     if (vitrine.fonte_imagens === 'google_drive'){
       const arquivos = await buscarFotosDrive_(vitrine.link_pasta_drive);
-      fotos = arquivos.map(a => ({ thumb: a.thumbnailLink, ver: a.downloadUrl, baixar: a.downloadUrl, nome: a.nome }));
+      // `ver` usa a URL de thumbnail (em tamanho maior), não `downloadUrl`:
+      // o endpoint de download do Drive bloqueia carregamento como <img>
+      // cross-origin (403/CORB) — só o endpoint de thumbnail é embeddable.
+      fotos = arquivos.map(a => ({ thumb: a.thumbnailLink, ver: 'https://drive.google.com/thumbnail?id=' + a.id + '&sz=w2000', baixar: a.downloadUrl, nome: a.nome }));
     } else {
       const regs = await buscarFotosProprio_(vitrine.id, TOKEN, senhaHash);
       // `download:1` força o PocketBase a mandar Content-Disposition:
