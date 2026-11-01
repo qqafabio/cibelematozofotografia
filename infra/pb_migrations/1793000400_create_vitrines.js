@@ -24,6 +24,7 @@ migrate((db) => {
     new SchemaField({ name: "cor_primaria", type: "text", required: false }),
     new SchemaField({ name: "tipografia", type: "text", required: false }),
     new SchemaField({ name: "capa_url", type: "text", required: false }),
+    new SchemaField({ name: "capa_posicao", type: "text", required: false }),
     new SchemaField({ name: "data_criacao", type: "text", required: false }),
   ],
   indexes: [

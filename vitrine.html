@@ -170,7 +170,8 @@ async function renderGaleria_(vitrine, senhaHash){
   }
 
   const capaUrl = driveImgUrl_(vitrine.capa_url);
-  const capaStyle = capaUrl ? `style="background-image:url('${escV(capaUrl)}')"` : '';
+  const capaPos = { top: 'top', bottom: 'bottom' }[vitrine.capa_posicao] || 'center';
+  const capaStyle = capaUrl ? `style="background-image:url('${escV(capaUrl)}');background-position:center ${capaPos};"` : '';
   app.innerHTML = `
     <div class="capa" ${capaStyle}>
       <div class="capa-texto">

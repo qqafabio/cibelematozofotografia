@@ -19,9 +19,8 @@
 
 const VITRINE_FONTES = ['upload_proprio', 'google_drive'];
 const VITRINE_TEMAS = ['noir', 'linen', 'terra'];
+const VITRINE_CAPA_POSICOES = ['top', 'center', 'bottom'];
 
-// DD/MM/AAAA (como os outros campos de data do app) -> "AAAA-MM-DD 00:00:00.000Z"
-// (formato que o PocketBase aceita/devolve num campo `date`).
 // DD/MM/AAAA (como os outros campos de data do app) -> "AAAA-MM-DD 00:00:00.000Z"
 // (formato que o PocketBase aceita/devolve num campo `date`). Grava meia-noite
 // UTC do dia escolhido — no horário de Brasília (UTC-3) isso expira a vitrine
@@ -82,6 +81,7 @@ async function pbCriarVitrine(dados){
     cor_primaria: dados.corPrimaria || '',
     tipografia: dados.tipografia === 'sans' ? 'sans' : 'serif',
     capa_url: dados.capaUrl ? String(dados.capaUrl).trim() : '',
+    capa_posicao: VITRINE_CAPA_POSICOES.indexOf(dados.capaPosicao) !== -1 ? dados.capaPosicao : 'center',
     data_criacao: hojeBR_(),
     // sem id_vitrine → hook atribui
   });
@@ -102,6 +102,7 @@ async function pbAtualizarVitrine(dados){
     cor_primaria: dados.corPrimaria || '',
     tipografia: dados.tipografia === 'sans' ? 'sans' : 'serif',
     capa_url: dados.capaUrl ? String(dados.capaUrl).trim() : '',
+    capa_posicao: VITRINE_CAPA_POSICOES.indexOf(dados.capaPosicao) !== -1 ? dados.capaPosicao : 'center',
     validade: dados.validade ? validadeParaISO_(dados.validade) : '',
   };
   // dados.senha === undefined → mantém a senha atual; string (mesmo '') → regrava.

@@ -322,6 +322,7 @@ const PB_SCHEMA = {
       ['Cor primária', 'cor_primaria', 'text'],
       ['Tipografia', 'tipografia', 'text'],             // 'serif' | 'sans'
       ['Capa URL', 'capa_url', 'text'],
+      ['Capa posição', 'capa_posicao', 'text'],         // 'top' | 'center' | 'bottom' (v3.19.3)
       ['Data criação', 'data_criacao', 'text'],
     ],
   },

@@ -150,6 +150,7 @@ function vitrineParaPayload_(v, extra){
     corPrimaria: v['Cor primária'],
     tipografia: v['Tipografia'],
     capaUrl: v['Capa URL'],
+    capaPosicao: v['Capa posição'],
     validade: v['Validade'] ? validadeParaBR_(v['Validade']) : '',
     status: v['Status'],
   }, extra);
@@ -161,6 +162,7 @@ function abrirFormVitrine(id){
   const idEvSelecionado = editando ? v['ID Evento'] : '';
   const opcoesEventos = eventos.map(e => `<option value="${esc(e['ID Evento'])}" ${String(idEvSelecionado) === String(e['ID Evento']) ? 'selected' : ''}>${esc(e['Cliente / Responsável'])} — ${esc(e['Data do evento'])}</option>`).join('');
   const fonte = editando ? v['Fonte imagens'] : 'upload_proprio';
+  const capaPos = (editando && v['Capa posição']) ? v['Capa posição'] : 'center';
 
   document.getElementById('overlayRoot').innerHTML = `
     <div class="form-overlay" id="overlay">
@@ -194,7 +196,7 @@ function abrirFormVitrine(id){
             </div>
             <div class="field"><label>Cor primária</label><input type="color" id="vf_cor" value="${esc(editando && v['Cor primária'] ? v['Cor primária'] : '#A8791E')}" style="height:42px;padding:4px;"></div>
           </div>
-          <div class="row2">
+          <div class="row3">
             <div class="field"><label>Tipografia</label>
               <select id="vf_tipografia">
                 <option value="serif" ${(editando ? v['Tipografia'] : 'serif') === 'serif' ? 'selected' : ''}>Serifada (elegante)</option>
@@ -202,7 +204,15 @@ function abrirFormVitrine(id){
               </select>
             </div>
             <div class="field"><label>Capa (URL de uma imagem)</label><input id="vf_capa" placeholder="https://..." value="${esc(editando ? v['Capa URL'] : '')}"></div>
+            <div class="field"><label>Posição da capa</label>
+              <select id="vf_capaPosicao">
+                <option value="top" ${capaPos === 'top' ? 'selected' : ''}>Topo</option>
+                <option value="center" ${capaPos === 'center' ? 'selected' : ''}>Centro</option>
+                <option value="bottom" ${capaPos === 'bottom' ? 'selected' : ''}>Base</option>
+              </select>
+            </div>
           </div>
+          <p class="hint">Se o rosto/assunto principal da foto de capa ficar cortado, ajuste a posição acima.</p>
 
           <div class="row2">
             <div class="field"><label>Senha (opcional)</label><input type="text" id="vf_senha" placeholder="${editando && v['Senha hash'] ? 'Já tem senha — deixe em branco para manter' : 'Deixe em branco para não exigir senha'}"></div>
@@ -237,6 +247,7 @@ function abrirFormVitrine(id){
       corPrimaria: document.getElementById('vf_cor').value,
       tipografia: document.getElementById('vf_tipografia').value,
       capaUrl: document.getElementById('vf_capa').value.trim(),
+      capaPosicao: document.getElementById('vf_capaPosicao').value,
       validade: document.getElementById('vf_validade').value.trim(),
     };
     const senhaDigitada = document.getElementById('vf_senha').value;
