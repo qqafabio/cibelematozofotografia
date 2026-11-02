@@ -66,6 +66,15 @@ de uma pasta do Google Drive.
   login) e manda um e-mail pra fotógrafa via Resend. **Troque
   `RESEND_API_KEY`/`EMAIL_FOTOGRAFA` só na cópia que roda na VM** — os valores
   no repositório são placeholders (nunca commitar a chave real).
+- **Fase 3 — marca d'água**: só modo `upload_proprio` (Drive fica sem, por
+  enquanto — Apps Script/PocketBase não compõem imagem). `vitrine_fotos`
+  ganhou o campo `preview`: gerado **no navegador da fotógrafa** no upload
+  (Canvas 2D, `gerarPreviewComMarcaDagua_` em `pbVitrines.js`), não na tela
+  do cliente — por isso não dá pra inspecionar/remover. `vitrine.html` serve
+  `preview` (com fallback pro `arquivo` original nas fotos de antes desta
+  fase) na grade, no "ampliar" e no "baixar" (decisão consciente: sem uma
+  entrega final controlada — Fase 4, ainda não existe — baixar o original
+  esvaziaria a marca d'água).
 
 
 ### Aplicar na VM

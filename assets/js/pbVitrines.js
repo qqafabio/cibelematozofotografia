@@ -137,6 +137,56 @@ async function pbListarFotosVitrine(idVitrinePb){
   return PB.collection('vitrine_fotos').getFullList({ filter: `id_vitrine="${idVitrinePb}"`, sort: 'ordem' });
 }
 
+/* ---- Marca d'água (v3.19 Fase 3) — gerada no NAVEGADOR DA FOTÓGRAFA no
+   momento do upload (não no do cliente): o arquivo que chega no navegador do
+   cliente já é essa versão derivada, então não dá pra "inspecionar e tirar"
+   a marca d'água como daria se fosse aplicada só visualmente na tela do
+   cliente. O 'arquivo' original nunca é tocado — fica guardado para uma
+   futura entrega final controlada (Fase 4, ainda não existe). Redimensiona
+   pro lado maior ~1600px (resolução de conferência, não de impressão) e
+   tiles o texto em diagonal. Só modo upload_proprio por enquanto — o modo
+   Google Drive ainda não tem essa proteção (Fase 3b, não construída). */
+const VITRINE_MARCA_DAGUA_TEXTO = 'CIBELE MATOZO FOTOGRAFIA';
+const VITRINE_PREVIEW_LADO_MAX = 1600;
+
+async function gerarPreviewComMarcaDagua_(arquivo){
+  if (typeof createImageBitmap !== 'function') return null; // navegador muito antigo: upload segue sem preview
+  const bitmap = await createImageBitmap(arquivo);
+  const escala = Math.min(1, VITRINE_PREVIEW_LADO_MAX / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * escala));
+  const h = Math.max(1, Math.round(bitmap.height * escala));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+
+  const fonte = Math.max(16, Math.round(w / 22));
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(-Math.PI / 6); // -30°, mesmo ângulo clássico de marca d'água tiled
+  ctx.font = 'bold ' + fonte + 'px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1;
+  const passoX = ctx.measureText(VITRINE_MARCA_DAGUA_TEXTO).width + 70;
+  const passoY = fonte * 3;
+  const diag = Math.sqrt(w * w + h * h); // cobre o canto a canto mesmo depois de rotacionar
+  for (let y = -diag; y < diag; y += passoY){
+    for (let x = -diag; x < diag; x += passoX){
+      ctx.strokeText(VITRINE_MARCA_DAGUA_TEXTO, x, y);
+      ctx.fillText(VITRINE_MARCA_DAGUA_TEXTO, x, y);
+    }
+  }
+  ctx.restore();
+
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+}
+
 async function pbUploadFotoVitrine(dados){
   await pbAuthGarantir();
   if (!dados.idVitrinePb) throw new Error('Vitrine inválida');
@@ -144,6 +194,14 @@ async function pbUploadFotoVitrine(dados){
   const fd = new FormData();
   fd.append('id_vitrine', dados.idVitrinePb);
   fd.append('arquivo', dados.arquivo);
+  try {
+    const preview = await gerarPreviewComMarcaDagua_(dados.arquivo);
+    if (preview) fd.append('preview', preview, 'preview.jpg');
+  } catch (err){
+    // Sem preview com marca d'água, a vitrine pública cai pro 'arquivo'
+    // original (ver vitrine.html) — upload não trava por causa disso.
+    console.error('Falha ao gerar preview com marca d\'água: ' + err);
+  }
   fd.append('ordem', String(dados.ordem || 0));
   fd.append('nome_original', dados.arquivo.name || '');
   fd.append('data_upload', hojeBR_());

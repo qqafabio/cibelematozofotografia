@@ -220,13 +220,21 @@ async function renderGaleria_(vitrine, senhaHash){
       // attachment — sem isso, o atributo `download` do <a> é ignorado em
       // URL cross-origin (o arquivo fica noutro domínio da VM do PocketBase).
       // Por isso a versão para o lightbox (`ver`) NÃO leva a flag.
-      fotos = regs.map(f => ({
-        id: f.id,
-        thumb: PB.getFileUrl(f, f.arquivo, { thumb: '400x400' }),
-        ver: PB.getFileUrl(f, f.arquivo),
-        baixar: PB.getFileUrl(f, f.arquivo, { download: 1 }),
-        nome: f.nome_original || f.arquivo,
-      }));
+      // Usa SEMPRE o `preview` (com marca d'água, gerado no upload) quando
+      // existe — inclusive para baixar: ainda não existe uma entrega final
+      // controlada (Fase 4), então servir o `arquivo` original aqui
+      // esvaziaria a marca d'água (o cliente só baixaria o limpo direto).
+      // Fotos enviadas antes da Fase 3 não têm `preview` — cai pro original.
+      fotos = regs.map(f => {
+        const campo = f.preview ? 'preview' : 'arquivo';
+        return {
+          id: f.id,
+          thumb: PB.getFileUrl(f, f[campo], { thumb: '400x400' }),
+          ver: PB.getFileUrl(f, f[campo]),
+          baixar: PB.getFileUrl(f, f[campo], { download: 1 }),
+          nome: f.nome_original || f[campo],
+        };
+      });
     }
   } catch (err){
     erroFonte = err.message || String(err);

@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.19 Fase 3 | 2026-11-02 | Vitrine de Fotos — marca d'água automática no upload direto (gerada no navegador da fotógrafa, não dá pra burlar na tela do cliente) — ⚠️ migration | [2.36](#236-vitrine-de-fotos--fase-3-marca-dágua-automática-v319-fase-3) |
 | v3.19 Fase 2 | 2026-11-02 | Vitrine de Fotos — seleção de fotos pelo cliente (limite do pacote, avisa mas permite passar), botão "Finalizar seleção" e aviso por e-mail (Resend) — ⚠️ migrations + pb_hook | [2.35](#235-vitrine-de-fotos--fase-2-seleção-de-fotos-v319-fase-2) |
 | v3.19 | 2026-11-01 | Vitrine de Fotos — Fase 1: galeria pública por evento (link+senha+validade, tema/marca, upload direto ou link do Drive) — ⚠️ migrations + reimplantar Apps Script | [2.34](#234-vitrine-de-fotos--fase-1-v319) |
 | v3.18.8 | 2026-10-29 | Produção: nova opção "Não se aplica" nas etapas Backup, Seleção, Edição foto, Edição vídeo, Álbum e Aprovação do cliente | [2.33](#233-orçamento-em-pdf-produtos-formulário-de-lead-e-agenda-do-próximo-contato-v318) |
@@ -1218,4 +1219,45 @@ produção).
 Arquivos: `pbSchema.js`, `pbVitrines.js`, `modules/vitrines.js`, `vitrine.html`,
 `crm.html`, `infra/pb_migrations/{1793000403,1793000404,1793000405}*.js`,
 `infra/pb_hooks/{auto_id,notificar_selecao}.pb.js`. `node --check` OK.
+
+**v3.19.6 (Resend em produção).** A chave da Resend e o e-mail de aviso
+(`infra/pb_hooks/notificar_selecao.pb.js`) foram configurados direto na VM —
+testado com uma finalização real, e-mail confirmado recebido. O repositório
+continua só com os valores de exemplo.
+
+### 2.36 Vitrine de Fotos — Fase 3: marca d'água automática (v3.19 Fase 3)
+
+Fotos enviadas direto no sistema (modo `upload_proprio`) ganham uma versão
+com marca d'água, gerada **no navegador da fotógrafa no momento do upload**
+(não na tela do cliente — por isso não dá pra "inspecionar e tirar": o
+arquivo que chega no navegador do cliente já é essa versão). Decisão tomada
+com a fotógrafa: enquanto a entrega final controlada não existir (Fase 4),
+o botão de baixar na vitrine pública também entrega a versão com marca
+d'água — senão a marca seria só cosmética (dava pra baixar o limpo igual).
+Modo Google Drive **não** ganha marca d'água nesta fase (Apps Script e
+PocketBase não conseguem compor imagem sem uma peça de infra nova — decisão
+consciente, fica para uma Fase 3b se for necessário).
+
+**Como funciona:** `vitrine_fotos` ganha um segundo campo de arquivo,
+`preview` (migration `1793000406`, aditiva). No upload (`pbUploadFotoVitrine`),
+antes de gravar, o navegador redimensiona a foto pro lado maior ~1600px
+(resolução de conferência, não de impressão) e sobrepõe o texto "CIBELE
+MATOZO FOTOGRAFIA" em grade diagonal (`gerarPreviewComMarcaDagua_`, Canvas
+2D puro, sem lib nova) — os dois arquivos (`arquivo` original intacto e
+`preview` com marca) sobem juntos no mesmo upload. `vitrine.html` passa a
+servir `preview` (com fallback pro `arquivo` original, pras fotos enviadas
+antes desta fase) na grade, no "ampliar" e no "baixar".
+
+Testado localmente antes de aplicar em produção: migration aplicada numa
+réplica do banco real, e o fluxo completo de upload+marca d'água conferido
+visualmente contra um PocketBase de teste (imagem sintética gerada por
+Canvas, marca d'água nítida e bem distribuída no resultado).
+
+**Deploy necessário:** copiar
+`infra/pb_migrations/1793000406_add_preview_vitrine_fotos.js` para a VM e
+reiniciar o PocketBase.
+
+Arquivos: `pbSchema.js`, `pbVitrines.js`, `vitrine.html`,
+`infra/pb_migrations/1793000406_add_preview_vitrine_fotos.js`.
+`node --check` OK.
 

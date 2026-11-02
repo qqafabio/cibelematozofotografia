@@ -363,6 +363,7 @@ const PB_SCHEMA = {
     fields: [
       ['ID Vitrine', 'id_vitrine', 'relation:vitrines'],
       ['Arquivo', 'arquivo', 'file'],
+      ['Preview', 'preview', 'file'], // derivado com marca d'água, gerado no navegador no upload (v3.19 Fase 3) — o 'arquivo' original nunca é alterado
       ['Ordem', 'ordem', 'number'],
       ['Nome original', 'nome_original', 'text'],
       ['Data upload', 'data_upload', 'text'],
