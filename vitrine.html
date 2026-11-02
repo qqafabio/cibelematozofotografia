@@ -421,14 +421,15 @@ async function renderGaleria_(vitrine, senhaHash){
       // attachment — sem isso, o atributo `download` do <a> é ignorado em
       // URL cross-origin (o arquivo fica noutro domínio da VM do PocketBase).
       // Por isso a versão para o lightbox (`ver`) NÃO leva a flag.
-      // Usa o `preview` (com marca d'água, gerado no upload) quando existe E
-      // a marca está habilitada nesta vitrine — inclusive para baixar durante
+      // Usa o `preview` (com marca d'água, gerado no upload SE o switch da
+      // vitrine estava ligado naquele momento — v3.20.1) quando existe E a
+      // marca está habilitada nesta vitrine — inclusive para baixar durante
       // a navegação normal: sem uma entrega final liberada, servir o
       // `arquivo` original aqui esvaziaria a marca d'água. `verLimpo`/
       // `baixarLimpo` (arquivo original, sem marca) só são usados na seção de
-      // entrega final, abaixo — e continuam existindo mesmo com a marca
-      // desligada, já que o `preview` sempre é gerado no upload (dá pra ligar
-      // a marca de volta depois sem precisar reenviar as fotos).
+      // entrega final, abaixo. Se o switch estava desligado NO UPLOAD, a
+      // foto nunca ganhou `preview` — ligar o switch depois não aplica marca
+      // retroativamente; só vale para fotos enviadas dali em diante.
       // Fotos enviadas antes da Fase 3 não têm `preview` — cai pro original.
       fotos = regs.map(f => {
         const campo = usarMarcaDagua && f.preview ? 'preview' : 'arquivo';

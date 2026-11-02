@@ -393,7 +393,7 @@ async function abrirGerenciarFotos_(id){
     let ordem = fotosAtuais.length;
     for (const arquivo of arquivos){
       try {
-        await apiCall('uploadFotoVitrine', { idVitrinePb: v.__pbId, arquivo, ordem: ordem++, categoria });
+        await apiCall('uploadFotoVitrine', { idVitrinePb: v.__pbId, arquivo, ordem: ordem++, categoria, marcaDaguaHabilitada: v["Marca d'água habilitada"] !== 'Não' });
       } catch (err){
         showToast('❌ Erro ao enviar ' + arquivo.name + ': ' + err.message);
       }

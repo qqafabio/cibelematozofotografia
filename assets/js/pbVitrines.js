@@ -217,13 +217,19 @@ async function pbUploadFotoVitrine(dados){
   const fd = new FormData();
   fd.append('id_vitrine', dados.idVitrinePb);
   fd.append('arquivo', dados.arquivo);
-  try {
-    const preview = await gerarPreviewComMarcaDagua_(dados.arquivo);
-    if (preview) fd.append('preview', preview, 'preview.jpg');
-  } catch (err){
-    // Sem preview com marca d'água, a vitrine pública cai pro 'arquivo'
-    // original (ver vitrine.html) — upload não trava por causa disso.
-    console.error('Falha ao gerar preview com marca d\'água: ' + err);
+  // Só gera o preview com marca d'água se o switch da vitrine estiver
+  // ligado (v3.20.1) — antes disso era gerado sempre e a decisão de servir
+  // 'preview' ou 'arquivo' ficava só na vitrine pública; agora, desligado,
+  // nem gasta o processamento no upload.
+  if (dados.marcaDaguaHabilitada){
+    try {
+      const preview = await gerarPreviewComMarcaDagua_(dados.arquivo);
+      if (preview) fd.append('preview', preview, 'preview.jpg');
+    } catch (err){
+      // Sem preview com marca d'água, a vitrine pública cai pro 'arquivo'
+      // original (ver vitrine.html) — upload não trava por causa disso.
+      console.error('Falha ao gerar preview com marca d\'água: ' + err);
+    }
   }
   fd.append('ordem', String(dados.ordem || 0));
   fd.append('nome_original', dados.arquivo.name || '');
