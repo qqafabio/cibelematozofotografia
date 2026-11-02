@@ -67,6 +67,8 @@
   .foto img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;}
   .foto a.baixar{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;}
   .foto .coracao{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.45);border-radius:999px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0;}
+  .foto.pendente-marca a.baixar{opacity:.4;cursor:wait;}
+  .foto.pendente-marca::after{content:'protegendo…';position:absolute;left:6px;bottom:6px;font-size:10px;letter-spacing:.03em;background:rgba(0,0,0,.6);color:#fff;padding:2px 6px;border-radius:999px;pointer-events:none;}
 
   .acoes-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;}
   .acoes-topo button{background:var(--accent);color:#fff;}
@@ -215,14 +217,26 @@ async function marcaDaguaDriveUrl_(urlOrigem){
 // e a marca d'água está habilitada nesta vitrine.
 async function aplicarMarcaDaguaDriveNaGrade_(fotos){
   const CONCORRENCIA = 3;
+  const TENTATIVAS = 3; // rede instável do visitante — não desiste na primeira
   let indice = 0;
+  // Libera "baixar"/"ver" do card (com ou sem marca — ver comentário abaixo).
+  function liberarCard_(f){
+    const card = document.querySelector('.foto[data-ref="' + CSS.escape(String(f.id)) + '"]');
+    if (!card) return;
+    card.classList.remove('pendente-marca');
+    const baixar = card.querySelector('a.baixar');
+    if (baixar){ baixar.href = f.baixar; baixar.title = 'Baixar'; delete baixar.dataset.pendente; }
+  }
   async function processarProximo(){
     const i = indice++;
     if (i >= fotos.length) return;
     const f = fotos[i];
-    // Usa o endpoint direto (sem redirect) pra evitar o erro de CORS no
-    // redirect intermediário do drive.google.com/thumbnail (ver driveUrlDireta_).
-    const url = await marcaDaguaDriveUrl_(driveUrlDireta_(f.id, 2000));
+    let url = null;
+    for (let t = 0; t < TENTATIVAS && !url; t++){
+      // Usa o endpoint direto (sem redirect) pra evitar o erro de CORS no
+      // redirect intermediário do drive.google.com/thumbnail (ver driveUrlDireta_).
+      url = await marcaDaguaDriveUrl_(driveUrlDireta_(f.id, 2000));
+    }
     if (url){
       // Atualiza o objeto (não só o DOM): "Baixar todas as fotos" lê f.baixar
       // direto do array em memória, não do href do botão individual.
@@ -231,10 +245,13 @@ async function aplicarMarcaDaguaDriveNaGrade_(fotos){
       if (card){
         const img = card.querySelector('img');
         if (img){ img.src = url; img.dataset.ver = url; }
-        const baixar = card.querySelector('a.baixar');
-        if (baixar) baixar.href = url;
       }
     }
+    // Libera o card MESMO se as 3 tentativas falharem (rede do
+    // visitante, não do servidor) — serve a foto original sem marca nesse
+    // caso raro em vez de deixá-la bloqueada pra sempre; aceito conscientemente,
+    // mesmo nível de "melhor esforço" já usado no resto desta proteção.
+    liberarCard_(f);
     return processarProximo();
   }
   await Promise.all(Array.from({ length: Math.min(CONCORRENCIA, fotos.length) }, processarProximo));
@@ -492,6 +509,11 @@ async function renderGaleria_(vitrine, senhaHash){
   // Entrega final (v3.19 Fase 4): se o cliente finalizou e tem fotos
   // selecionadas, entrega só as selecionadas; senão, entrega a galeria
   // inteira (ex.: eventos sem fluxo de seleção, álbum vai direto).
+  // Enquanto a marca d'água do Drive ainda está sendo aplicada (em segundo
+  // plano, foto por foto), "baixar" e "abrir em tela cheia" ficam bloqueados
+  // em CADA card individualmente — sem isso, dava pra baixar a foto original
+  // sem marca só clicando antes da vez dela ser processada.
+  const protegerDrive = vitrine.fonte_imagens === 'google_drive' && usarMarcaDagua;
   const entregaInfo = construirEntrega_(vitrine, fotos, selecionados, finalizada);
 
   const wrap = app.querySelector('.wrap');
@@ -511,16 +533,28 @@ async function renderGaleria_(vitrine, senhaHash){
       ${!erroFonte && !fotos.length ? `<div class="painel"><p style="margin:0;opacity:.75;">Nenhuma foto disponível ainda nesta galeria.</p></div>` : ''}
       <div class="grid">
         ${fotos.map(f => `
-          <div class="foto ${selecionados.has(String(f.id)) ? 'selecionada' : ''}" data-ref="${escV(f.id)}">
+          <div class="foto ${selecionados.has(String(f.id)) ? 'selecionada' : ''} ${protegerDrive ? 'pendente-marca' : ''}" data-ref="${escV(f.id)}">
             <img src="${escV(f.thumb)}" loading="lazy" data-ver="${escV(f.ver)}">
             ${selecaoHabilitada && !finalizada ? `<button class="coracao" data-ref="${escV(f.id)}" data-nome="${escV(f.nome)}" title="Selecionar">${selecionados.has(String(f.id)) ? '❤️' : '🤍'}</button>` : ''}
-            <a class="baixar" href="${escV(f.baixar)}" download="${escV(f.nome)}" title="Baixar">⬇</a>
+            <a class="baixar" href="${protegerDrive ? '#' : escV(f.baixar)}" download="${escV(f.nome)}" title="${protegerDrive ? "Aplicando marca d'água…" : 'Baixar'}" ${protegerDrive ? 'data-pendente="1"' : ''}>⬇</a>
           </div>
         `).join('')}
       </div>
       ${montarSecaoEntrega_(entregaInfo, vitrine)}
   `;
-  app.querySelectorAll('.foto img').forEach(img => img.addEventListener('click', () => abrirLightbox_(img.dataset.ver)));
+  app.querySelectorAll('.foto img').forEach(img => img.addEventListener('click', () => {
+    if (img.closest('.foto').classList.contains('pendente-marca')){
+      avisarVitrine_("Essa foto ainda está recebendo a marca d'água — aguarde alguns segundos e tente de novo.");
+      return;
+    }
+    abrirLightbox_(img.dataset.ver);
+  }));
+  app.querySelectorAll('.foto a.baixar[data-pendente]').forEach(a => a.addEventListener('click', (e) => {
+    if (a.dataset.pendente === '1'){
+      e.preventDefault();
+      avisarVitrine_("Essa foto ainda está recebendo a marca d'água — aguarde alguns segundos e tente de novo.");
+    }
+  }));
 
   // Modo Drive + marca d'água habilitada: a grade já está na tela com as
   // fotos originais (sem marca) — troca pra versão marcada em segundo plano,
