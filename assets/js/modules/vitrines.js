@@ -1,5 +1,5 @@
 /* ============================================================
-   CRM · Cibele Matozo Fotografia — Módulo: Vitrine de Fotos (v3.19, Fase 1)
+   CRM · Cibele Matozo Fotografia — Módulo: Vitrine de Fotos (v3.19)
    Carregado como <script> clássico (escopo global compartilhado).
    NÃO usar import/export: os handlers onclick inline e o estado
    global dependem deste escopo. Ordem de carga definida em crm.html.
@@ -7,8 +7,11 @@
    Fase 1: galeria pública com link exclusivo (token+senha+validade),
    marca personalizada (tema/cor/fonte/capa) e as duas fontes de imagem
    (upload direto no PocketBase, ou link de pasta do Google Drive).
-   Seleção de fotos, marca d'água e contador de download ficam para as
-   próximas fases (ver plano salvo em C:\Users\Fábio\.claude\plans).
+   Fase 2: seleção de fotos pelo cliente até o limite do pacote (avisa mas
+   permite passar) + botão "Finalizar seleção", que trava a vitrine e
+   dispara e-mail pra fotógrafa (pb_hook notificar_selecao.pb.js). Marca
+   d'água e contador de download ficam para as próximas fases (ver plano
+   salvo em C:\Users\Fábio\.claude\plans).
    ============================================================ */
 
 const VITRINE_TEMA_LABEL = { noir: 'Noir (escuro)', linen: 'Linen (claro)', terra: 'Terra (terroso)' };
@@ -30,6 +33,18 @@ function vitrineTituloExibicao_(v){
   if (v['Nome exibição']) return v['Nome exibição'];
   const ev = eventoDaVitrine_(v);
   return ev ? ev['Cliente / Responsável'] : ('Evento #' + v['ID Evento']);
+}
+
+// Sugestão pro campo "Qtd. de fotos do pacote" ao criar uma vitrine nova —
+// olha o pacote contratado no evento (texto livre em pacotes.qtd_fotos_incluidas,
+// ex. "Ilimitado" não é número: aí não sugere nada, o admin decide).
+function qtdFotosSugeridaPacote_(idEvento){
+  const ev = eventos.find(e => String(e['ID Evento']) === String(idEvento));
+  if (!ev || !ev['Pacote']) return '';
+  const pac = pacotes.find(p => p['Nome'] === ev['Pacote']);
+  if (!pac) return '';
+  const n = parseInt(pac['Qtd fotos incluídas'], 10);
+  return isNaN(n) ? '' : String(n);
 }
 
 /* ============ LISTA ============ */
@@ -59,16 +74,18 @@ function desenharListaVitrines(){
     const fonteLabel = v['Fonte imagens'] === 'google_drive' ? 'Google Drive' : 'Upload direto';
     const validade = v['Validade'] ? validadeParaBR_(v['Validade']) : 'sem validade';
     const link = vitrineLinkPublico_(v['Token']);
+    const finalizada = !!v['Seleção finalizada em'];
     return `
       <div class="panel tpl-card">
         <div class="tpl-card-head">
           <div>
-            <h3>${esc(vitrineTituloExibicao_(v))} <span class="status-pill ${statusClasse}">${esc(v['Status'])}</span></h3>
-            <p>${ev ? esc(ev['Tipo de evento'] || '') + ' — ' + esc(ev['Data do evento'] || '') : ''} · ${fonteLabel} · validade: ${esc(validade)}${v['Senha hash'] ? ' · 🔒 com senha' : ''}</p>
+            <h3>${esc(vitrineTituloExibicao_(v))} <span class="status-pill ${statusClasse}">${esc(v['Status'])}</span>${finalizada ? ` <span class="status-pill confirmado">✅ Seleção finalizada (${esc(v['Qtd selecionadas final'] || 0)})</span>` : ''}</h3>
+            <p>${ev ? esc(ev['Tipo de evento'] || '') + ' — ' + esc(ev['Data do evento'] || '') : ''} · ${fonteLabel} · validade: ${esc(validade)}${v['Senha hash'] ? ' · 🔒 com senha' : ''}${v['Qtd fotos pacote'] ? ' · pacote: ' + esc(v['Qtd fotos pacote']) + ' fotos' : ''}</p>
           </div>
           <div class="tpl-actions row-actions">
             <button class="btn-ghost btn-sm" data-copiar="${esc(v['ID Vitrine'])}">🔗 Copiar link</button>
             ${v['Fonte imagens'] === 'upload_proprio' ? `<button class="btn-ghost btn-sm" data-fotos="${esc(v['ID Vitrine'])}">🖼️ Fotos</button>` : ''}
+            ${finalizada ? `<button class="btn-ghost btn-sm" data-selecao="${esc(v['ID Vitrine'])}">❤️ Ver seleção</button>` : ''}
             <button class="btn-ghost btn-sm" data-editar="${esc(v['ID Vitrine'])}">✏️ Editar</button>
             <button class="btn-ghost btn-sm" data-pausar="${esc(v['ID Vitrine'])}">${v['Status'] === 'Pausada' ? '▶️ Ativar' : '⏸️ Pausar'}</button>
             <button class="btn-ghost btn-sm" data-regerar="${esc(v['ID Vitrine'])}">♻️ Revogar link</button>
@@ -82,6 +99,7 @@ function desenharListaVitrines(){
 
   container.querySelectorAll('[data-copiar]').forEach(b => b.addEventListener('click', () => copiarLinkVitrine_(b.dataset.copiar)));
   container.querySelectorAll('[data-fotos]').forEach(b => b.addEventListener('click', () => abrirGerenciarFotos_(b.dataset.fotos)));
+  container.querySelectorAll('[data-selecao]').forEach(b => b.addEventListener('click', () => abrirVerSelecao_(b.dataset.selecao)));
   container.querySelectorAll('[data-editar]').forEach(b => b.addEventListener('click', () => abrirFormVitrine(b.dataset.editar)));
   container.querySelectorAll('[data-pausar]').forEach(b => b.addEventListener('click', () => alternarStatusVitrine_(b.dataset.pausar)));
   container.querySelectorAll('[data-regerar]').forEach(b => b.addEventListener('click', () => confirmarRegerarToken_(b.dataset.regerar)));
@@ -151,6 +169,7 @@ function vitrineParaPayload_(v, extra){
     tipografia: v['Tipografia'],
     capaUrl: v['Capa URL'],
     capaPosicao: v['Capa posição'],
+    qtdFotosPacote: v['Qtd fotos pacote'],
     validade: v['Validade'] ? validadeParaBR_(v['Validade']) : '',
     status: v['Status'],
   }, extra);
@@ -214,10 +233,12 @@ function abrirFormVitrine(id){
           </div>
           <p class="hint">Se o rosto/assunto principal da foto de capa ficar cortado, ajuste a posição acima.</p>
 
-          <div class="row2">
+          <div class="row3">
             <div class="field"><label>Senha (opcional)</label><input type="text" id="vf_senha" placeholder="${editando && v['Senha hash'] ? 'Já tem senha — deixe em branco para manter' : 'Deixe em branco para não exigir senha'}"></div>
             <div class="field"><label>Validade (opcional)</label><input id="vf_validade" data-picker="date" placeholder="DD/MM/AAAA" value="${editando && v['Validade'] ? validadeParaBR_(v['Validade']) : ''}"></div>
+            <div class="field"><label>Qtd. de fotos do pacote</label><input type="number" min="0" id="vf_qtdFotosPacote" placeholder="Sem limite" value="${editando && v['Qtd fotos pacote'] ? esc(v['Qtd fotos pacote']) : ''}"></div>
           </div>
+          <p class="hint">A quantidade do pacote vira o limite de seleção na vitrine (o cliente ainda consegue selecionar além — só fica avisado); deixe em branco para não ter limite.</p>
 
           <div class="form-actions">
             <button type="button" class="btn-ghost" onclick="fecharOverlay()">Cancelar</button>
@@ -235,6 +256,18 @@ function abrirFormVitrine(id){
     document.getElementById('vf_uploadHint').style.display = drive ? 'none' : '';
   });
 
+  // Sugere a qtd. de fotos do pacote do evento escolhido — só numa vitrine
+  // NOVA e só se o campo ainda estiver vazio (não atropela o que o admin já digitou).
+  if (!editando){
+    const idEventoSelect = document.getElementById('vf_idEvento');
+    const sugerirQtd = () => {
+      const campo = document.getElementById('vf_qtdFotosPacote');
+      if (campo && !campo.value) campo.value = qtdFotosSugeridaPacote_(idEventoSelect.value);
+    };
+    idEventoSelect.addEventListener('change', sugerirQtd);
+    sugerirQtd();
+  }
+
   document.getElementById('formVitrine').addEventListener('submit', async (e) => {
     e.preventDefault();
     const dados = {
@@ -248,6 +281,7 @@ function abrirFormVitrine(id){
       tipografia: document.getElementById('vf_tipografia').value,
       capaUrl: document.getElementById('vf_capa').value.trim(),
       capaPosicao: document.getElementById('vf_capaPosicao').value,
+      qtdFotosPacote: document.getElementById('vf_qtdFotosPacote').value.trim(),
       validade: document.getElementById('vf_validade').value.trim(),
     };
     const senhaDigitada = document.getElementById('vf_senha').value;
@@ -332,4 +366,46 @@ async function desenharGridFotos_(v){
       showToast('❌ Erro: ' + err.message);
     }
   }));
+}
+
+/* ============ SELEÇÃO DO CLIENTE (v3.19 Fase 2, só leitura) ============ */
+async function abrirVerSelecao_(id){
+  const v = vitrines.find(x => String(x['ID Vitrine']) === String(id));
+  if (!v) return;
+  document.getElementById('overlayRoot').innerHTML = `
+    <div class="form-overlay" id="overlay">
+      <div class="form-panel" style="max-width:720px;">
+        <h2>Seleção — ${esc(vitrineTituloExibicao_(v))}</h2>
+        <p class="hint">${esc(v['Qtd selecionadas final'] || 0)} foto${(v['Qtd selecionadas final'] || 0) === 1 ? '' : 's'} escolhida${(v['Qtd selecionadas final'] || 0) === 1 ? '' : 's'}${v['Seleção finalizada em'] ? ' · finalizada em ' + esc(validadeParaBR_(v['Seleção finalizada em'])) : ''}.</p>
+        <div id="vf_selecaoGrid" class="vitrine-fotos-grid"><div class="empty-state">Carregando…</div></div>
+        <div class="form-actions"><button type="button" class="btn-ghost" onclick="fecharOverlay()">Fechar</button></div>
+      </div>
+    </div>
+  `;
+  document.getElementById('overlay').addEventListener('click', (e) => { if (e.target.id === 'overlay') fecharOverlay(); });
+
+  const grid = document.getElementById('vf_selecaoGrid');
+  try {
+    const selecoes = await pbListarSelecoesVitrine(v.__pbId);
+    if (!selecoes.length){
+      grid.innerHTML = `<div class="empty-state">Nenhuma foto selecionada.</div>`;
+      return;
+    }
+    let thumbDe;
+    if (v['Fonte imagens'] === 'google_drive'){
+      thumbDe = (ref) => 'https://drive.google.com/thumbnail?id=' + ref + '&sz=w400';
+    } else {
+      const fotos = await pbListarFotosVitrine(v.__pbId);
+      const porId = {};
+      fotos.forEach(f => { porId[f.id] = f; });
+      thumbDe = (ref) => { const f = porId[ref]; return f ? PB.getFileUrl(f, f.arquivo, { thumb: '400x400' }) : ''; };
+    }
+    grid.innerHTML = selecoes.map(s => `
+      <div class="vitrine-foto-card">
+        <img src="${thumbDe(s.arquivo_ref)}" loading="lazy" title="${esc(s.nome_arquivo)}">
+      </div>
+    `).join('');
+  } catch (err){
+    grid.innerHTML = `<div class="empty-state">Erro ao carregar a seleção: ${esc(err.message)}</div>`;
+  }
 }

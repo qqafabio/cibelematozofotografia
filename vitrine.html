@@ -47,12 +47,15 @@
   .erro{color:#E2726B;font-size:13px;margin-top:10px;}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;}
-  .foto{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;background:rgba(255,255,255,.06);}
+  .foto{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;background:rgba(255,255,255,.06);border:3px solid transparent;}
+  .foto.selecionada{border-color:var(--accent);}
   .foto img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;}
   .foto a.baixar{position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;}
+  .foto .coracao{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.45);border-radius:999px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;padding:0;}
 
-  .acoes-topo{display:flex;justify-content:flex-end;margin-bottom:14px;}
+  .acoes-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;}
   .acoes-topo button{background:var(--accent);color:#fff;}
+  .contador{font-size:13.5px;opacity:.85;}
 
   .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;z-index:30;padding:20px;}
   .lightbox img{max-width:100%;max-height:85vh;border-radius:6px;}
@@ -100,6 +103,34 @@ async function buscarFotosDrive_(linkPasta){
   const json = await res.json();
   if (!json.ok) throw new Error(json.error || 'Não foi possível listar as fotos da pasta do Drive');
   return json.arquivos;
+}
+
+/* ---- Seleção de fotos (v3.19 Fase 2) ---- */
+async function buscarSelecoes_(vitrinePbId, token, senhaHash){
+  return PB.collection('vitrine_selecoes').getFullList({
+    filter: PB.filter('id_vitrine = {:v}', { v: vitrinePbId }),
+    token, senha_hash: senhaHash || '',
+  });
+}
+async function criarSelecao_(vitrinePbId, arquivoRef, nomeArquivo, token, senhaHash){
+  return PB.collection('vitrine_selecoes').create(
+    { id_vitrine: vitrinePbId, arquivo_ref: arquivoRef, nome_arquivo: nomeArquivo, data_selecao: new Date().toLocaleDateString('pt-BR') },
+    { token, senha_hash: senhaHash || '' }
+  );
+}
+async function apagarSelecao_(idSelecaoPb, token, senhaHash){
+  return PB.collection('vitrine_selecoes').delete(idSelecaoPb, { token, senha_hash: senhaHash || '' });
+}
+async function criarFinalizacao_(vitrinePbId, qtd, token, senhaHash){
+  return PB.collection('vitrine_finalizacoes').create(
+    { id_vitrine: vitrinePbId, qtd_selecionadas: qtd, data: new Date().toLocaleDateString('pt-BR') },
+    { token, senha_hash: senhaHash || '' }
+  );
+}
+// "AAAA-MM-DDT..." (como o pb_hook grava, UTC) -> DD/MM/AAAA só pra exibir.
+function dataBRDeISO_(iso){
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? (m[3] + '/' + m[2] + '/' + m[1]) : '';
 }
 
 function aplicarTema_(vitrine){
@@ -174,7 +205,7 @@ async function renderGaleria_(vitrine, senhaHash){
     </div>
   `;
 
-  let fotos = []; // { thumb, ver, baixar, nome }
+  let fotos = []; // { id, thumb, ver, baixar, nome }
   let erroFonte = '';
   try {
     if (vitrine.fonte_imagens === 'google_drive'){
@@ -182,7 +213,7 @@ async function renderGaleria_(vitrine, senhaHash){
       // `ver` usa a URL de thumbnail (em tamanho maior), não `downloadUrl`:
       // o endpoint de download do Drive bloqueia carregamento como <img>
       // cross-origin (403/CORB) — só o endpoint de thumbnail é embeddable.
-      fotos = arquivos.map(a => ({ thumb: a.thumbnailLink, ver: 'https://drive.google.com/thumbnail?id=' + a.id + '&sz=w2000', baixar: a.downloadUrl, nome: a.nome }));
+      fotos = arquivos.map(a => ({ id: a.id, thumb: a.thumbnailLink, ver: 'https://drive.google.com/thumbnail?id=' + a.id + '&sz=w2000', baixar: a.downloadUrl, nome: a.nome }));
     } else {
       const regs = await buscarFotosProprio_(vitrine.id, TOKEN, senhaHash);
       // `download:1` força o PocketBase a mandar Content-Disposition:
@@ -190,6 +221,7 @@ async function renderGaleria_(vitrine, senhaHash){
       // URL cross-origin (o arquivo fica noutro domínio da VM do PocketBase).
       // Por isso a versão para o lightbox (`ver`) NÃO leva a flag.
       fotos = regs.map(f => ({
+        id: f.id,
         thumb: PB.getFileUrl(f, f.arquivo, { thumb: '400x400' }),
         ver: PB.getFileUrl(f, f.arquivo),
         baixar: PB.getFileUrl(f, f.arquivo, { download: 1 }),
@@ -200,21 +232,100 @@ async function renderGaleria_(vitrine, senhaHash){
     erroFonte = err.message || String(err);
   }
 
+  // Seleção: só busca/mostra enquanto a vitrine não tiver sido finalizada —
+  // depois de finalizar, vitrines.selecao_finalizada_em (setado pelo
+  // pb_hook) trava a UI de seleção; download/visualização continuam livres.
+  const finalizada = !!vitrine.selecao_finalizada_em;
+  const selecionados = new Set(); // arquivo_ref (= id da foto)
+  const selecaoPbIds = {}; // arquivo_ref -> id nativo da linha em vitrine_selecoes (pra desmarcar)
+  if (!erroFonte && fotos.length && !finalizada){
+    try {
+      const sels = await buscarSelecoes_(vitrine.id, TOKEN, senhaHash);
+      sels.forEach(s => { selecionados.add(String(s.arquivo_ref)); selecaoPbIds[s.arquivo_ref] = s.id; });
+    } catch (err){
+      // Não deixa a galeria inteira quebrar por causa disso — só fica sem
+      // mostrar quem já tinha sido selecionado antes (cliente pode remarcar).
+    }
+  }
+
+  const limite = Number(vitrine.qtd_fotos_pacote) || 0; // 0/vazio = sem limite
+  function textoContador(){
+    const n = selecionados.size;
+    if (!limite) return n + ' selecionada' + (n === 1 ? '' : 's');
+    if (n <= limite) return n + ' de ' + limite + ' selecionadas';
+    return n + ' de ' + limite + ' selecionadas (+' + (n - limite) + ' extra' + ((n - limite) === 1 ? '' : 's') + ')';
+  }
+
   const wrap = app.querySelector('.wrap');
   wrap.innerHTML = `
-      ${fotos.length ? `<div class="acoes-topo"><button id="baixarTodas">Baixar todas as fotos</button></div>` : ''}
+      ${finalizada ? `<div class="painel"><p style="margin:0;">✅ Seleção finalizada${vitrine.selecao_finalizada_em ? ' em ' + escV(dataBRDeISO_(vitrine.selecao_finalizada_em)) : ''} — ${escV(vitrine.qtd_fotos_selecionadas_final || 0)} foto(s) escolhida(s).</p></div>` : ''}
+      ${fotos.length ? `
+        <div class="acoes-topo">
+          <span class="contador" id="contadorSelecao">${!finalizada ? textoContador() : ''}</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${!finalizada ? `<button id="finalizarSelecao">Finalizar seleção</button>` : ''}
+            <button id="baixarTodas">Baixar todas as fotos</button>
+          </div>
+        </div>
+      ` : ''}
       ${erroFonte ? `<div class="painel"><p class="erro" style="margin:0;">${escV(erroFonte)}</p></div>` : ''}
       ${!erroFonte && !fotos.length ? `<div class="painel"><p style="margin:0;opacity:.75;">Nenhuma foto disponível ainda nesta galeria.</p></div>` : ''}
       <div class="grid">
         ${fotos.map(f => `
-          <div class="foto">
+          <div class="foto ${selecionados.has(String(f.id)) ? 'selecionada' : ''}" data-ref="${escV(f.id)}">
             <img src="${escV(f.thumb)}" loading="lazy" data-ver="${escV(f.ver)}">
+            ${!finalizada ? `<button class="coracao" data-ref="${escV(f.id)}" data-nome="${escV(f.nome)}" title="Selecionar">${selecionados.has(String(f.id)) ? '❤️' : '🤍'}</button>` : ''}
             <a class="baixar" href="${escV(f.baixar)}" download="${escV(f.nome)}" title="Baixar">⬇</a>
           </div>
         `).join('')}
       </div>
   `;
   app.querySelectorAll('.foto img').forEach(img => img.addEventListener('click', () => abrirLightbox_(img.dataset.ver)));
+
+  wrap.querySelectorAll('.coracao').forEach(btn => btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const ref = btn.dataset.ref;
+    const card = btn.closest('.foto');
+    btn.disabled = true;
+    try {
+      if (selecionados.has(ref)){
+        await apagarSelecao_(selecaoPbIds[ref], TOKEN, senhaHash);
+        selecionados.delete(ref);
+        delete selecaoPbIds[ref];
+        btn.textContent = '🤍';
+        card.classList.remove('selecionada');
+      } else {
+        const rec = await criarSelecao_(vitrine.id, ref, btn.dataset.nome, TOKEN, senhaHash);
+        selecionados.add(ref);
+        selecaoPbIds[ref] = rec.id;
+        btn.textContent = '❤️';
+        card.classList.add('selecionada');
+      }
+      const contadorEl = document.getElementById('contadorSelecao');
+      if (contadorEl) contadorEl.textContent = textoContador();
+    } catch (err){
+      alert('Não foi possível atualizar a seleção: ' + (err.message || err));
+    } finally {
+      btn.disabled = false;
+    }
+  }));
+
+  const btnFinalizar = document.getElementById('finalizarSelecao');
+  if (btnFinalizar) btnFinalizar.addEventListener('click', async () => {
+    if (!selecionados.size && !confirm('Finalizar sem selecionar nenhuma foto?')) return;
+    if (selecionados.size && !confirm('Finalizar a seleção com ' + selecionados.size + ' foto(s)? Depois de finalizar não dá mais pra mudar.')) return;
+    btnFinalizar.disabled = true;
+    try {
+      await criarFinalizacao_(vitrine.id, selecionados.size, TOKEN, senhaHash);
+      vitrine.selecao_finalizada_em = new Date().toISOString();
+      vitrine.qtd_fotos_selecionadas_final = selecionados.size;
+      await renderGaleria_(vitrine, senhaHash); // re-renderiza já travada
+    } catch (err){
+      alert('Não foi possível finalizar a seleção: ' + (err.message || err));
+      btnFinalizar.disabled = false;
+    }
+  });
+
   const btnTodas = document.getElementById('baixarTodas');
   if (btnTodas) btnTodas.addEventListener('click', () => {
     fotos.forEach((f, i) => setTimeout(() => {

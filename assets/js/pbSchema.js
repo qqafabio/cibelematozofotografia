@@ -26,6 +26,19 @@
    Clientes NÃO está aqui: seu adapter dedicado é pbClientes.js.
    ============================================================ */
 
+/* Condição de acesso público (token+senha+validade+status) compartilhada por
+   'vitrines' e tudo que pendura nela ('vitrine_fotos', 'vitrine_selecoes',
+   'vitrine_finalizacoes'). `prefixo` é o caminho até os campos da vitrine:
+     ''                      → regra da própria coleção 'vitrines'
+     'id_vitrine.'           → list/view/delete de uma coleção filha (relation)
+     '@request.data.id_vitrine.' → create de uma coleção filha (valida o
+                                    id_vitrine que está sendo enviado no body)
+   Sempre combinada com "@request.auth.id != ''" (staff sempre passa). */
+function regraVitrinePublica_(prefixo){
+  const p = prefixo;
+  return `(${p}status = "Ativa" && ${p}token != "" && ${p}token = @request.query.token && (${p}validade = "" || ${p}validade >= @now) && (${p}senha_hash = "" || ${p}senha_hash = @request.query.senha_hash))`;
+}
+
 const PB_SCHEMA = {
   /* Eventos — individuais e coletivos (flag 'coletivo'). Aba "Eventos". */
   eventos: {
@@ -323,6 +336,9 @@ const PB_SCHEMA = {
       ['Tipografia', 'tipografia', 'text'],             // 'serif' | 'sans'
       ['Capa URL', 'capa_url', 'text'],
       ['Capa posição', 'capa_posicao', 'text'],         // 'top' | 'center' | 'bottom' (v3.19.3)
+      ['Qtd fotos pacote', 'qtd_fotos_pacote', 'number'], // 0 = sem limite (v3.19 Fase 2)
+      ['Seleção finalizada em', 'selecao_finalizada_em', 'text'], // setado pelo pb_hook, não pelo cliente (v3.19 Fase 2)
+      ['Qtd selecionadas final', 'qtd_fotos_selecionadas_final', 'number'], // idem — espelha vitrine_finalizacoes.qtd_selecionadas pra lista do CRM não precisar de outra query
       ['Data criação', 'data_criacao', 'text'],
     ],
   },
@@ -350,6 +366,58 @@ const PB_SCHEMA = {
       ['Ordem', 'ordem', 'number'],
       ['Nome original', 'nome_original', 'text'],
       ['Data upload', 'data_upload', 'text'],
+    ],
+  },
+
+  /* Seleções da vitrine (v3.19 Fase 2) — 1 linha por foto que o CLIENTE
+     marcou. Cliente cria quando seleciona e apaga quando desmarca (sem
+     coluna de "status": a existência da linha já é a seleção). 'arquivo_ref'
+     é texto solto (não relation) porque referencia coisas de tipos
+     diferentes conforme a fonte da vitrine: o id nativo de 'vitrine_fotos'
+     (upload_proprio) OU o id do arquivo no Google Drive (google_drive, que
+     nem tem registro no PocketBase) — não dá pra ter uma relation que aponte
+     pros dois. 'id_vitrine' SEGUE relation (igual vitrine_fotos) para a
+     regra pública expandir token/senha/validade. */
+  vitrineSelecoes: {
+    collection: 'vitrine_selecoes',
+    migrationTs: 1793000403,
+    somentePB: true,
+    id: { label: 'ID Seleção', pb: 'id_selecao' },
+    rules: {
+      listRule: `@request.auth.id != "" || ${regraVitrinePublica_('id_vitrine.')}`,
+      viewRule: `@request.auth.id != "" || ${regraVitrinePublica_('id_vitrine.')}`,
+      createRule: `@request.auth.id != "" || ${regraVitrinePublica_('@request.data.id_vitrine.')}`,
+      updateRule: `@request.auth.id != ""`,
+      deleteRule: `@request.auth.id != "" || ${regraVitrinePublica_('id_vitrine.')}`,
+    },
+    fields: [
+      ['ID Vitrine', 'id_vitrine', 'relation:vitrines'],
+      ['Arquivo ref', 'arquivo_ref', 'text'],
+      ['Nome arquivo', 'nome_arquivo', 'text'],
+      ['Data seleção', 'data_selecao', 'text'],
+    ],
+  },
+
+  /* Finalização da seleção (v3.19 Fase 2) — 1 linha quando o cliente clica
+     "Finalizar seleção" (não é editável/apagável pelo público: é só um
+     carimbo de "terminei", lido pela fotógrafa no CRM e usado pelo pb_hook
+     de notificação por e-mail — ver infra/pb_hooks/notificar_selecao.pb.js). */
+  vitrineFinalizacoes: {
+    collection: 'vitrine_finalizacoes',
+    migrationTs: 1793000404,
+    somentePB: true,
+    id: { label: 'ID Finalização', pb: 'id_finalizacao' },
+    rules: {
+      listRule: `@request.auth.id != ""`,
+      viewRule: `@request.auth.id != ""`,
+      createRule: `@request.auth.id != "" || ${regraVitrinePublica_('@request.data.id_vitrine.')}`,
+      updateRule: `@request.auth.id != ""`,
+      deleteRule: `@request.auth.id != ""`,
+    },
+    fields: [
+      ['ID Vitrine', 'id_vitrine', 'relation:vitrines'],
+      ['Qtd selecionadas', 'qtd_selecionadas', 'number'],
+      ['Data', 'data', 'text'],
     ],
   },
 };

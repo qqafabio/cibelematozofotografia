@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.19 Fase 2 | 2026-11-02 | Vitrine de Fotos — seleção de fotos pelo cliente (limite do pacote, avisa mas permite passar), botão "Finalizar seleção" e aviso por e-mail (Resend) — ⚠️ migrations + pb_hook | [2.35](#235-vitrine-de-fotos--fase-2-seleção-de-fotos-v319-fase-2) |
 | v3.19 | 2026-11-01 | Vitrine de Fotos — Fase 1: galeria pública por evento (link+senha+validade, tema/marca, upload direto ou link do Drive) — ⚠️ migrations + reimplantar Apps Script | [2.34](#234-vitrine-de-fotos--fase-1-v319) |
 | v3.18.8 | 2026-10-29 | Produção: nova opção "Não se aplica" nas etapas Backup, Seleção, Edição foto, Edição vídeo, Álbum e Aprovação do cliente | [2.33](#233-orçamento-em-pdf-produtos-formulário-de-lead-e-agenda-do-próximo-contato-v318) |
 | v3.18.7 | 2026-10-29 | Produção: a lista passa a mostrar "Edição foto" e "Edição vídeo" em colunas separadas (antes só aparecia a foto) | [2.33](#233-orçamento-em-pdf-produtos-formulário-de-lead-e-agenda-do-próximo-contato-v318) |
@@ -1143,4 +1144,78 @@ Arquivos: `pbSchema.js`, `pbVitrines.js`, `pbLeitura.js`, `modules/vitrines.js`,
 `vitrine.html`, `router.js`, `config.js`, `state.js`, `api.js`, `crm.css`,
 `crm.html`, `gen_pb_migrations.cjs`, `gen_pb_hooks.cjs`,
 `infra/apps_script/listarFotosVitrine.gs`. `node --check` OK.
+
+**v3.19.1–v3.19.5 (correções, testadas ao vivo com a fotógrafa).** (1) Capa
+aceitava só URL de imagem direta — link de "ver" do Drive (`/view?usp=sharing`)
+quebrava (`NS_ERROR_DOM_NETWORK_ERR`); `vitrine.html` agora converte link do
+Drive pra URL de thumbnail sozinho. (2) Lightbox (ampliar foto) no modo Drive
+usava a URL de *download* como `<img src>` — o Drive bloqueia isso como
+recurso incorporado (403/CORB); passou a usar a URL de thumbnail (maior,
+`w2000`) só pra ampliação, mantendo a URL de download só no botão de baixar.
+(3) Capa ganhou campo **"Posição da capa"** (Topo/Centro/Base — `capa_posicao`,
+migration `1793000402`) pra não cortar o rosto/assunto quando o recorte
+central não funciona. (4) A vitrine demorava a abrir no modo Drive porque o
+Apps Script reajustava a permissão de compartilhamento de CADA foto em TODA
+visita; `listarFotosVitrine.gs` passou a pular essa chamada quando já está
+compartilhado e a cachear a listagem por até 6h (`CacheService`) — e a capa/
+título agora aparecem na hora, com spinner só na grade enquanto as fotos
+carregam. (5) O rótulo "Capa (URL de uma imagem)" quebrava linha e desalinhava
+a grade de 3 colunas no formulário; encurtado para "URL da capa" (conferido
+em desktop e mobile). Arquivos: `vitrine.html`, `modules/vitrines.js`,
+`infra/apps_script/listarFotosVitrine.gs`, `pbSchema.js`,
+`infra/pb_migrations/1793000402_add_capa_posicao.js`, `pbVitrines.js`.
+
+### 2.35 Vitrine de Fotos — Fase 2: seleção de fotos (v3.19 Fase 2)
+
+Cliente passa a **escolher as fotos** direto na vitrine pública, até o limite
+do pacote contratado (avisa mas deixa passar — cobrança de fotos extras
+continua fora do escopo), e um botão **"Finalizar seleção"** que trava a
+escolha e avisa a fotógrafa.
+
+**Na vitrine pública:** cada foto ganha um coração (🤍/❤️) pra marcar/
+desmarcar — cada clique cria/apaga uma linha em `vitrine_selecoes` na hora
+(sem rascunho local: fechar a aba não perde a seleção). Contador "X de Y
+selecionadas" acima da grade; passando do limite do pacote, mostra "(+N
+extras)" sem bloquear. "Finalizar seleção" grava um registro em
+`vitrine_finalizacoes` — um **pb_hook** (`notificar_selecao.pb.js`) carimba
+`vitrines.selecao_finalizada_em`/`qtd_fotos_selecionadas_final` (só o servidor
+grava isso; a regra de escrita da vitrine continua exigindo login) e manda um
+e-mail pra fotógrafa via **Resend** (grátis até 3.000/mês). Depois de
+finalizar, a vitrine reabre travada (sem corações, sem botão de finalizar) com
+um aviso "✅ Seleção finalizada em DD/MM — N foto(s)"; download continua livre.
+
+**No CRM:** campo novo **"Qtd. de fotos do pacote"** no formulário da vitrine
+(sugerido automaticamente a partir do pacote do evento ao criar, sempre
+editável) e um selo "✅ Seleção finalizada (N)" + botão **"❤️ Ver seleção"** na
+lista, que abre as miniaturas do que o cliente escolheu.
+
+**Duas coleções novas** (`vitrine_selecoes`, `vitrine_finalizacoes`) seguem o
+mesmo padrão de regra pública por token da Fase 1. `vitrine_selecoes.id_vitrine`
+é relation (não fk simples) pelo mesmo motivo de sempre: a regra pública
+precisa expandir `id_vitrine.token`/`.senha_hash`/etc. sem duplicar esses
+campos. `arquivo_ref` é texto solto (não relation) porque referencia coisas de
+tipo diferente conforme a fonte da vitrine: o id nativo de `vitrine_fotos`
+(upload direto) ou o id do arquivo no Drive (que nem tem registro no
+PocketBase).
+
+**⚠️ Segredo da Resend:** `infra/pb_hooks/notificar_selecao.pb.js` tem
+`RESEND_API_KEY`/`EMAIL_FOTOGRAFA` com valores de exemplo — **troque só na
+cópia que roda na VM** (nunca commitar a chave real, o repositório é
+público). Enquanto não trocar, o hook pula o e-mail mas segue marcando a
+vitrine como finalizada normalmente (testado localmente antes de aplicar em
+produção).
+
+**Deploy necessário:**
+1. Copiar as migrations `1793000403_create_vitrine_selecoes.js`,
+   `1793000404_create_vitrine_finalizacoes.js` e
+   `1793000405_add_campos_selecao_vitrines.js` para a VM, atualizar
+   `infra/pb_hooks/auto_id.pb.js` (ganhou os hooks de `id_selecao`/
+   `id_finalizacao`) e `infra/pb_hooks/notificar_selecao.pb.js`
+   (com a chave/e-mail reais), reiniciar o PocketBase.
+2. Testado de ponta a ponta contra a produção com dados descartáveis
+   (seleção, "+1 extra", finalizar, trava, limpo depois).
+
+Arquivos: `pbSchema.js`, `pbVitrines.js`, `modules/vitrines.js`, `vitrine.html`,
+`crm.html`, `infra/pb_migrations/{1793000403,1793000404,1793000405}*.js`,
+`infra/pb_hooks/{auto_id,notificar_selecao}.pb.js`. `node --check` OK.
 

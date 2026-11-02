@@ -26,9 +26,9 @@ node infra/gen_pb_migrations.cjs
 Gera as coleções (padrão PocketBase 0.22.x `Dao`/`Collection`/`SchemaField`):
 `eventos`, `pacotes`, `leads`, `financeiro`, `producao`, `custos`,
 `participantes`, `templates`, `freelance_eventos`, `freelance_pagamentos`,
-`listas`, `produtos`, `orcamentos` (estas duas só existem no PocketBase, sem aba no Sheets) e `vitrines`/`vitrine_fotos` (v3.19 — Vitrine de Fotos, Fase 1). Cada entidade de negócio tem um `id_<entidade>` numérico com índice
+`listas`, `produtos`, `orcamentos` (estas duas só existem no PocketBase, sem aba no Sheets), `vitrines`/`vitrine_fotos` (v3.19 Fase 1) e `vitrine_selecoes`/`vitrine_finalizacoes` (v3.19 Fase 2 — seleção de fotos). Cada entidade de negócio tem um `id_<entidade>` numérico com índice
 **único** e as 5 regras de acesso `@request.auth.id != ''` — **exceto**
-`vitrines`/`vitrine_fotos`, que declaram `rules` próprias em `pbSchema.js`
+as 4 coleções da Vitrine de Fotos, que declaram `rules` próprias em `pbSchema.js`
 (acesso público por token, ver seção "Vitrine de Fotos" abaixo).
 
 > As migrations `1793000302`/`1793000303`/`1793000305` (campos novos de `pacotes`, `leads` e `eventos.id_lead`) são escritas à mão e idempotentes, para quem já tem as coleções criadas. A `1793000305` também preenche `id_lead` nos eventos já gerados por lead "Fechado".
@@ -57,6 +57,15 @@ de uma pasta do Google Drive.
   chama o **mesmo** `CRM_API_URL` (Apps Script) por GET — ver
   `infra/apps_script/listarFotosVitrine.gs` (cole como um `.gs` a mais no
   projeto existente e reimplante a mesma implantação).
+- **Fase 2 — seleção de fotos**: `vitrine_selecoes`/`vitrine_finalizacoes`
+  seguem o mesmo padrão de regra pública. O pb_hook
+  `infra/pb_hooks/notificar_selecao.pb.js` roda ao criar uma
+  `vitrine_finalizacoes` (botão "Finalizar seleção" na vitrine pública):
+  marca `vitrines.selecao_finalizada_em`/`qtd_fotos_selecionadas_final`
+  (só o servidor grava isso — a regra de escrita da vitrine continua exigindo
+  login) e manda um e-mail pra fotógrafa via Resend. **Troque
+  `RESEND_API_KEY`/`EMAIL_FOTOGRAFA` só na cópia que roda na VM** — os valores
+  no repositório são placeholders (nunca commitar a chave real).
 
 
 ### Aplicar na VM

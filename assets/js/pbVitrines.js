@@ -82,6 +82,7 @@ async function pbCriarVitrine(dados){
     tipografia: dados.tipografia === 'sans' ? 'sans' : 'serif',
     capa_url: dados.capaUrl ? String(dados.capaUrl).trim() : '',
     capa_posicao: VITRINE_CAPA_POSICOES.indexOf(dados.capaPosicao) !== -1 ? dados.capaPosicao : 'center',
+    qtd_fotos_pacote: Number(dados.qtdFotosPacote || 0),
     data_criacao: hojeBR_(),
     // sem id_vitrine → hook atribui
   });
@@ -103,6 +104,7 @@ async function pbAtualizarVitrine(dados){
     tipografia: dados.tipografia === 'sans' ? 'sans' : 'serif',
     capa_url: dados.capaUrl ? String(dados.capaUrl).trim() : '',
     capa_posicao: VITRINE_CAPA_POSICOES.indexOf(dados.capaPosicao) !== -1 ? dados.capaPosicao : 'center',
+    qtd_fotos_pacote: Number(dados.qtdFotosPacote || 0),
     validade: dados.validade ? validadeParaISO_(dados.validade) : '',
   };
   // dados.senha === undefined → mantém a senha atual; string (mesmo '') → regrava.
@@ -152,6 +154,12 @@ async function pbExcluirFotoVitrine(dados){
   await pbAuthGarantir();
   await PB.collection('vitrine_fotos').delete(dados.id); // dados.id = id nativo do PB
   return { id: dados.id, deletado: true };
+}
+
+/* ---- Seleção do cliente (v3.19 Fase 2) — só leitura, pro CRM conferir ---- */
+async function pbListarSelecoesVitrine(idVitrinePb){
+  await pbAuthGarantir();
+  return PB.collection('vitrine_selecoes').getFullList({ filter: `id_vitrine="${idVitrinePb}"` });
 }
 
 Object.assign(window.PB_ACTIONS, {
