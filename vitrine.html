@@ -61,6 +61,13 @@
   .lightbox img{max-width:100%;max-height:85vh;border-radius:6px;}
   .lightbox-fechar{position:absolute;top:18px;right:22px;color:#fff;font-size:28px;background:none;cursor:pointer;}
 
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:40;padding:20px;}
+  .modal-overlay .painel{margin:0;max-width:380px;width:100%;}
+  .modal-overlay p{margin:0 0 18px;font-size:14px;line-height:1.5;}
+  .modal-acoes{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
+  .modal-acoes button{width:auto;}
+  .btn-secundario{background:transparent;border:1px solid currentColor;opacity:.7;color:inherit;}
+
   .entrega{margin-top:34px;padding-top:26px;border-top:1px solid rgba(128,128,128,.25);}
   .entrega h2{font-size:20px;margin:0 0 4px;}
   .entrega-sub{font-size:13px;opacity:.75;margin:0 0 16px;}
@@ -217,6 +224,33 @@ function abrirLightbox_(src){
   document.body.appendChild(lb);
 }
 
+/* ---- Modal próprio (confirmar/avisar) — substitui confirm()/alert() do
+   navegador, que vêm sem a marca/tema da vitrine. Reaproveita a classe
+   .painel (já adapta sozinha por tema: linen/noir/terra). ---- */
+function modalVitrine_(texto, comCancelar){
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="painel">
+        <p>${escV(texto)}</p>
+        <div class="modal-acoes">
+          ${comCancelar ? `<button type="button" class="btn-secundario" id="mvCancelar">Cancelar</button>` : ''}
+          <button type="button" class="btn-primary" id="mvOk">OK</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const fechar = (valor) => { overlay.remove(); resolve(valor); };
+    overlay.querySelector('#mvOk').addEventListener('click', () => fechar(true));
+    const btnCancelar = overlay.querySelector('#mvCancelar');
+    if (btnCancelar) btnCancelar.addEventListener('click', () => fechar(false));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) fechar(false); });
+  });
+}
+function confirmarVitrine_(texto){ return modalVitrine_(texto, true); }
+function avisarVitrine_(texto){ return modalVitrine_(texto, false); }
+
 async function renderGaleria_(vitrine, senhaHash){
   aplicarTema_(vitrine);
   // Mostra a marca (capa/título) na hora e um spinner no lugar da grade —
@@ -353,7 +387,7 @@ async function renderGaleria_(vitrine, senhaHash){
       const contadorEl = document.getElementById('contadorSelecao');
       if (contadorEl) contadorEl.textContent = textoContador();
     } catch (err){
-      alert('Não foi possível atualizar a seleção: ' + (err.message || err));
+      await avisarVitrine_('Não foi possível atualizar a seleção: ' + (err.message || err));
     } finally {
       btn.disabled = false;
     }
@@ -361,8 +395,8 @@ async function renderGaleria_(vitrine, senhaHash){
 
   const btnFinalizar = document.getElementById('finalizarSelecao');
   if (btnFinalizar) btnFinalizar.addEventListener('click', async () => {
-    if (!selecionados.size && !confirm('Finalizar sem selecionar nenhuma foto?')) return;
-    if (selecionados.size && !confirm('Finalizar a seleção com ' + selecionados.size + ' foto(s)? Depois de finalizar não dá mais pra mudar.')) return;
+    if (!selecionados.size && !await confirmarVitrine_('Finalizar sem selecionar nenhuma foto?')) return;
+    if (selecionados.size && !await confirmarVitrine_('Finalizar a seleção com ' + selecionados.size + ' foto(s)? Depois de finalizar não dá mais pra mudar.')) return;
     btnFinalizar.disabled = true;
     try {
       await criarFinalizacao_(vitrine.id, selecionados.size, TOKEN, senhaHash);
@@ -370,7 +404,7 @@ async function renderGaleria_(vitrine, senhaHash){
       vitrine.qtd_fotos_selecionadas_final = selecionados.size;
       await renderGaleria_(vitrine, senhaHash); // re-renderiza já travada
     } catch (err){
-      alert('Não foi possível finalizar a seleção: ' + (err.message || err));
+      await avisarVitrine_('Não foi possível finalizar a seleção: ' + (err.message || err));
       btnFinalizar.disabled = false;
     }
   });
@@ -393,7 +427,7 @@ async function renderGaleria_(vitrine, senhaHash){
   wrap.querySelectorAll('.entrega-baixar').forEach(a => a.addEventListener('click', (e) => {
     if (maxDownloads && downloadsFeitos >= maxDownloads){
       e.preventDefault();
-      alert('O limite de downloads desta entrega já foi atingido.');
+      avisarVitrine_('O limite de downloads desta entrega já foi atingido.');
       return;
     }
     downloadsFeitos++;
