@@ -192,6 +192,7 @@ function vitrineParaPayload_(v, extra){
     subtituloExibicao: v['Subtítulo exibição'],
     qtdFotosPacote: v['Qtd fotos pacote'],
     selecaoHabilitada: v['Seleção habilitada'] !== 'Não',
+    marcaDaguaHabilitada: v["Marca d'água habilitada"] !== 'Não',
     entregaValidade: v['Entrega validade'],
     entregaMaxDownloads: v['Entrega máx downloads'],
     validade: v['Validade'] ? validadeParaBR_(v['Validade']) : '',
@@ -256,6 +257,12 @@ function abrirFormVitrine(id){
             <label class="form-check-label" for="vf_selecaoHabilitada">Permitir que o cliente selecione fotos</label>
           </div>
           <p class="hint">Desligue se quiser só disponibilizar todas as fotos pra baixar, sem a etapa de seleção (some o contador, os corações e o botão de finalizar na vitrine).</p>
+
+          <div class="field form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="vf_marcaDaguaHabilitada" ${(editando ? v["Marca d'água habilitada"] : 'Sim') !== 'Não' ? 'checked' : ''}>
+            <label class="form-check-label" for="vf_marcaDaguaHabilitada">Aplicar marca d'água nas fotos</label>
+          </div>
+          <p class="hint">Vale pras duas fontes de imagem (upload direto e Google Drive). Desligue se o cliente puder ver/baixar as fotos sem marca durante a navegação normal.</p>
 
           <div class="row3" id="vf_selecaoWrap">
             <div class="field"><label>Senha (opcional)</label><input type="text" id="vf_senha" placeholder="${editando && v['Senha hash'] ? 'Já tem senha — deixe em branco para manter' : 'Deixe em branco para não exigir senha'}"></div>
@@ -327,6 +334,7 @@ function abrirFormVitrine(id){
       capaUrl: document.getElementById('vf_capa').value.trim(),
       qtdFotosPacote: document.getElementById('vf_qtdFotosPacote').value.trim(),
       selecaoHabilitada: document.getElementById('vf_selecaoHabilitada').checked,
+      marcaDaguaHabilitada: document.getElementById('vf_marcaDaguaHabilitada').checked,
       entregaValidade: document.getElementById('vf_entregaValidade').value.trim(),
       entregaMaxDownloads: document.getElementById('vf_entregaMaxDownloads').value.trim(),
       validade: document.getElementById('vf_validade').value.trim(),

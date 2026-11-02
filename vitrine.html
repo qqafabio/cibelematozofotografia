@@ -133,6 +133,101 @@ async function buscarFotosDrive_(linkPasta){
   return json.arquivos;
 }
 
+/* ---- Marca d'água opcional (v3.20.1) — mesmo algoritmo de pbVitrines.js
+   (tiles o texto em diagonal, redimensiona pro lado maior ~1600px), mas
+   rodando aqui no navegador de QUEM VISITA a vitrine, não da fotógrafa:
+   - upload_proprio: a marca já vem PRONTA (gerada no upload, ver pbVitrines.js)
+     — aqui só decide servir o arquivo 'preview' (marcado) ou 'arquivo' (original).
+   - google_drive: não existe um passo de upload pra marcar uma vez só, então a
+     marca é gerada SOB DEMANDA no navegador de cada visitante, ao vivo (sem
+     cache/infra nova) — o endpoint final do Drive (lh3.googleusercontent.com)
+     manda 'Access-Control-Allow-Origin: *', então dá pra baixar via fetch()
+     e desenhar num <canvas> sem "sujar" o canvas (confirmado com curl -I
+     antes de implementar). Sem isso habilitado, modo Drive continua 100%
+     como antes (nenhum fetch/processamento extra). */
+const VITRINE_MARCA_DAGUA_TEXTO = 'CIBELE MATOZO FOTOGRAFIA';
+const VITRINE_MARCA_DAGUA_LADO_MAX = 1600;
+
+async function marcaDaguaCanvas_(origem){
+  const bitmap = await createImageBitmap(origem);
+  const escala = Math.min(1, VITRINE_MARCA_DAGUA_LADO_MAX / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * escala));
+  const h = Math.max(1, Math.round(bitmap.height * escala));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+
+  const fonte = Math.max(16, Math.round(w / 22));
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(-Math.PI / 6);
+  ctx.font = 'bold ' + fonte + 'px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1;
+  const passoX = ctx.measureText(VITRINE_MARCA_DAGUA_TEXTO).width + 70;
+  const passoY = fonte * 3;
+  const diag = Math.sqrt(w * w + h * h);
+  for (let y = -diag; y < diag; y += passoY){
+    for (let x = -diag; x < diag; x += passoX){
+      ctx.strokeText(VITRINE_MARCA_DAGUA_TEXTO, x, y);
+      ctx.fillText(VITRINE_MARCA_DAGUA_TEXTO, x, y);
+    }
+  }
+  ctx.restore();
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+}
+
+// Baixa a foto original do Drive e devolve uma URL local (blob:) já com a
+// marca d'água — pra usar no <img src>, no data-ver do lightbox e no href
+// de "baixar". Falha (CORS bloqueado, rede) → null, e quem chamou mantém a
+// URL direta do Drive (sem marca) como já fazia antes desta versão.
+async function marcaDaguaDriveUrl_(urlOrigem){
+  try {
+    const res = await fetch(urlOrigem);
+    if (!res.ok) return null;
+    const blob = await marcaDaguaCanvas_(await res.blob());
+    return blob ? URL.createObjectURL(blob) : null;
+  } catch (err){
+    console.error("Marca d'água (Drive) falhou, mostrando foto sem marca: " + err);
+    return null;
+  }
+}
+
+// Roda em segundo plano, depois da grade já estar na tela (não atrasa o
+// primeiro carregamento) — processa algumas fotos por vez pra não disparar
+// dezenas de downloads simultâneos. Só é chamado quando fonte=google_drive
+// e a marca d'água está habilitada nesta vitrine.
+async function aplicarMarcaDaguaDriveNaGrade_(fotos){
+  const CONCORRENCIA = 3;
+  let indice = 0;
+  async function processarProximo(){
+    const i = indice++;
+    if (i >= fotos.length) return;
+    const f = fotos[i];
+    const url = await marcaDaguaDriveUrl_(f.ver);
+    if (url){
+      // Atualiza o objeto (não só o DOM): "Baixar todas as fotos" lê f.baixar
+      // direto do array em memória, não do href do botão individual.
+      f.thumb = url; f.ver = url; f.baixar = url;
+      const card = document.querySelector('.foto[data-ref="' + CSS.escape(String(f.id)) + '"]');
+      if (card){
+        const img = card.querySelector('img');
+        if (img){ img.src = url; img.dataset.ver = url; }
+        const baixar = card.querySelector('a.baixar');
+        if (baixar) baixar.href = url;
+      }
+    }
+    return processarProximo();
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCORRENCIA, fotos.length) }, processarProximo));
+}
+
 /* ---- Seleção de fotos (v3.19 Fase 2) ---- */
 async function buscarSelecoes_(vitrinePbId, token, senhaHash){
   return PB.collection('vitrine_selecoes').getFullList({
@@ -296,6 +391,13 @@ async function renderGaleria_(vitrine, senhaHash){
   `;
   wirarHeader_();
 
+  // Marca d'água (v3.20.1): opcional por vitrine, vazio conta como "Sim" (igual
+  // selecao_habilitada) — preserva o comportamento de sempre pras vitrines já
+  // criadas. upload_proprio: decide servir 'preview' (marcado) ou 'arquivo'
+  // (original). google_drive: a marca é aplicada DEPOIS do render inicial da
+  // grade (ver aplicarMarcaDaguaDriveNaGrade_ logo abaixo), pra não atrasar o
+  // primeiro carregamento com fetch+canvas de cada foto.
+  const usarMarcaDagua = vitrine.marca_dagua_habilitada !== 'Não';
   let fotos = []; // { id, thumb, ver, baixar, nome, categoria, verLimpo, baixarLimpo }
   let erroFonte = '';
   try {
@@ -304,10 +406,11 @@ async function renderGaleria_(vitrine, senhaHash){
       // `ver` usa a URL de thumbnail (em tamanho maior), não `downloadUrl`:
       // o endpoint de download do Drive bloqueia carregamento como <img>
       // cross-origin (403/CORB) — só o endpoint de thumbnail é embeddable.
-      // Modo Drive não tem marca d'água (Fase 3b, não construída) nem
-      // categoria (Apps Script não devolve isso) — por isso ver/baixar e
-      // verLimpo/baixarLimpo são os MESMOS aqui; a entrega final só adiciona
-      // o contador, não uma versão "mais limpa" que já não existisse antes.
+      // Modo Drive não tem categoria (Apps Script não devolve isso) — por
+      // isso verLimpo/baixarLimpo são os MESMOS que ver/baixar aqui; a marca
+      // d'água (quando habilitada) é aplicada à parte, depois do primeiro
+      // render (ver aplicarMarcaDaguaDriveNaGrade_), sem tocar nesses campos
+      // "Limpo" — a entrega final nunca usa a versão marcada.
       fotos = arquivos.map(a => {
         const ver = 'https://drive.google.com/thumbnail?id=' + a.id + '&sz=w2000';
         return { id: a.id, thumb: a.thumbnailLink, ver, baixar: a.downloadUrl, thumbLimpo: a.thumbnailLink, verLimpo: ver, baixarLimpo: a.downloadUrl, nome: a.nome, categoria: '' };
@@ -318,14 +421,17 @@ async function renderGaleria_(vitrine, senhaHash){
       // attachment — sem isso, o atributo `download` do <a> é ignorado em
       // URL cross-origin (o arquivo fica noutro domínio da VM do PocketBase).
       // Por isso a versão para o lightbox (`ver`) NÃO leva a flag.
-      // Usa SEMPRE o `preview` (com marca d'água, gerado no upload) quando
-      // existe — inclusive para baixar durante a navegação normal: sem uma
-      // entrega final liberada, servir o `arquivo` original aqui esvaziaria
-      // a marca d'água. `verLimpo`/`baixarLimpo` (arquivo original, sem marca)
-      // só são usados na seção de entrega final, abaixo.
+      // Usa o `preview` (com marca d'água, gerado no upload) quando existe E
+      // a marca está habilitada nesta vitrine — inclusive para baixar durante
+      // a navegação normal: sem uma entrega final liberada, servir o
+      // `arquivo` original aqui esvaziaria a marca d'água. `verLimpo`/
+      // `baixarLimpo` (arquivo original, sem marca) só são usados na seção de
+      // entrega final, abaixo — e continuam existindo mesmo com a marca
+      // desligada, já que o `preview` sempre é gerado no upload (dá pra ligar
+      // a marca de volta depois sem precisar reenviar as fotos).
       // Fotos enviadas antes da Fase 3 não têm `preview` — cai pro original.
       fotos = regs.map(f => {
-        const campo = f.preview ? 'preview' : 'arquivo';
+        const campo = usarMarcaDagua && f.preview ? 'preview' : 'arquivo';
         return {
           id: f.id,
           thumb: PB.getFileUrl(f, f[campo], { thumb: '400x400' }),
@@ -402,6 +508,26 @@ async function renderGaleria_(vitrine, senhaHash){
       ${montarSecaoEntrega_(entregaInfo, vitrine)}
   `;
   app.querySelectorAll('.foto img').forEach(img => img.addEventListener('click', () => abrirLightbox_(img.dataset.ver)));
+
+  // Modo Drive + marca d'água habilitada: a grade já está na tela com as
+  // fotos originais (sem marca) — troca pra versão marcada em segundo plano,
+  // foto por foto, assim que cada uma termina de processar. Enquanto isso não
+  // termina, "Baixar todas" fica desabilitado — senão algumas fotos sairiam
+  // marcadas e outras não, dependendo de quando o clique aconteceu.
+  if (vitrine.fonte_imagens === 'google_drive' && usarMarcaDagua && fotos.length){
+    const btnTodasPreparando = document.getElementById('baixarTodas');
+    if (btnTodasPreparando){
+      const rotuloOriginal = btnTodasPreparando.textContent;
+      btnTodasPreparando.disabled = true;
+      btnTodasPreparando.textContent = 'Preparando fotos…';
+      aplicarMarcaDaguaDriveNaGrade_(fotos).finally(() => {
+        btnTodasPreparando.disabled = false;
+        btnTodasPreparando.textContent = rotuloOriginal;
+      });
+    } else {
+      aplicarMarcaDaguaDriveNaGrade_(fotos);
+    }
+  }
 
   wrap.querySelectorAll('.coracao').forEach(btn => btn.addEventListener('click', async (e) => {
     e.stopPropagation();

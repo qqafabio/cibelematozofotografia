@@ -17,6 +17,7 @@ A cada versão implantada:
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
 | v3.20 | 2026-11-02 | Orçamento passa a aceitar mais de um pacote por lead (o cliente escolhe qual fechar) | [2.38](#238-orçamento-com-múltiplos-pacotes-v320) |
+| v3.20.1 | 2026-11-02 | Vitrine de Fotos: marca d'água vira opcional por vitrine (upload direto e Google Drive) | [2.39](#239-vitrine-de-fotos--marca-dágua-opcional-v3201) |
 | v3.19.14 | 2026-11-02 | Vitrine de Fotos: logo aumentada de novo e centralizada no header em mobile | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
 | v3.19.13 | 2026-11-02 | Vitrine de Fotos: logo real da fotógrafa aplicada no header (link do Drive) e aumentada de tamanho | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
 | v3.19.9 | 2026-11-02 | Vitrine de Fotos: upload direto passa a gravar no Cloudflare R2 (configuração de infra, sem mudança de código) | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
@@ -1349,3 +1350,14 @@ Testado via Node (sem navegador): round-trip de serialização/parse de `orc_dad
 Arquivos: `orcamentoRegras.js`, `orcamentoPdf.js`, `modules/leadForm.js`, `pbLeads.js`, `crm.css`, `crm.html`. `node --check` OK nos quatro arquivos `.js`.
 
 
+
+### 2.39 Vitrine de Fotos — marca d'água opcional (v3.20.1)
+
+Até aqui, toda foto enviada direto no sistema (`upload_proprio`) sempre ganhava marca d'água, sem opção de desligar. Novo switch **"Aplicar marca d'água nas fotos"** no formulário de vitrine (ligado por padrão — campo novo vazio conta como "Sim", igual ao switch de seleção — vitrines já existentes continuam exatamente como estavam). Vale para as duas fontes de imagem:
+
+- **`upload_proprio`**: o upload continua sempre gerando o `preview` com marca (igual antes — é barato, roda uma vez só no navegador da fotógrafa, e mantém a opção de ligar a marca depois sem precisar reenviar as fotos). O que muda é só qual arquivo a vitrine pública serve: com o switch ligado, `preview`; desligado, `arquivo` (original) — inclusive para o botão "baixar" durante a navegação normal, mesma lógica já usada para a entrega final.
+- **`google_drive`**: antes não existia marca d'água nesse modo (adiado como "Fase 3b" por depender de reprocessar a imagem em algum lugar). Resolvido sem precisar de infra nova: quando o switch está ligado, o **navegador de quem está vendo a vitrine** baixa a foto original do Drive e desenha a marca num `<canvas>`, ao vivo — o mesmo algoritmo (texto em diagonal, redimensionado a ~1600px) já usado no upload direto, só que rodando no momento da visita em vez de uma vez só no upload. Isso só funciona porque o endpoint final de imagem do Drive (`lh3.googleusercontent.com`) manda `Access-Control-Allow-Origin: *` — confirmado com `curl -I` antes de implementar, senão o `canvas` ficaria "sujo" e travaria a geração do arquivo. A marca é aplicada **depois** que a grade já apareceu na tela (não atrasa o primeiro carregamento), foto por foto em segundo plano, com "Baixar todas as fotos" desabilitado («Preparando fotos…») enquanto isso não termina — sem essa trava, um clique apressado baixaria algumas fotos com marca e outras sem, dependendo da sorte do timing.
+
+Sem migration que precise de dado novo além do campo: `vitrines.marca_dagua_habilitada` (texto, aditiva, `1793000412`) segue o mesmo padrão de `selecao_habilitada`. Testado: migration aplicada e verificada localmente (PocketBase 0.22.55 + cópia real das migrations/hooks de produção) antes de ir para a VM, e depois confirmada na própria produção (schema + um registro de teste gravando `'Não'`, lido de volta corretamente via Node — o mojibake que apareceu numa tentativa via `curl -d` inline foi só artefato do bash, não um bug). A lógica de decisão `preview` vs `arquivo` foi testada isoladamente (6 cenários: ligado/desligado/vazio × com/sem preview). Não foi possível testar ao vivo num navegador real nesta sessão (o tool de automação do navegador ficou instável e interrompeu até chamadas triviais) — o algoritmo de canvas em si é o mesmo já em produção desde a Fase 3, só reaproveitado contra uma imagem baixada do Drive em vez de um arquivo de upload; vale conferir visualmente (nas duas fontes, ligado e desligado) antes de confiar de olhos fechados.
+
+Arquivos: `pbSchema.js`, `pbVitrines.js`, `modules/vitrines.js`, `vitrine.html`, `crm.html`, `infra/pb_migrations/1793000412_add_marca_dagua_habilitada_vitrines.js`. `node --check` OK em todos os `.js` e no bloco `<script>` extraído de `vitrine.html`.
