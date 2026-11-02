@@ -84,7 +84,7 @@ function desenharListaVitrines(){
         <div class="tpl-card-head">
           <div>
             <h3>${esc(vitrineTituloExibicao_(v))} <span class="status-pill ${statusClasse}">${esc(v['Status'])}</span>${finalizada ? ` <span class="status-pill confirmado">✅ Seleção finalizada (${esc(v['Qtd selecionadas final'] || 0)})</span>` : ''}${entregaLiberada ? ` <span class="status-pill confirmado">📦 Entrega liberada (${esc(v['Entrega downloads count'] || 0)} downloads)</span>` : ''}</h3>
-            <p>${ev ? esc(ev['Tipo de evento'] || '') + ' — ' + esc(ev['Data do evento'] || '') : ''} · ${fonteLabel} · validade: ${esc(validade)}${v['Senha hash'] ? ' · 🔒 com senha' : ''}${v['Qtd fotos pacote'] ? ' · pacote: ' + esc(v['Qtd fotos pacote']) + ' fotos' : ''}</p>
+            <p>${ev ? esc(ev['Tipo de evento'] || '') + ' — ' + esc(ev['Data do evento'] || '') : ''} · ${fonteLabel} · validade: ${esc(validade)}${v['Senha hash'] ? ' · 🔒 com senha' : ''}${v['Seleção habilitada'] === 'Não' ? ' · sem seleção (só galeria)' : (v['Qtd fotos pacote'] ? ' · pacote: ' + esc(v['Qtd fotos pacote']) + ' fotos' : '')}</p>
           </div>
           <div class="tpl-actions row-actions">
             <button class="btn-ghost btn-sm" data-copiar="${esc(v['ID Vitrine'])}">🔗 Copiar link</button>
@@ -191,6 +191,7 @@ function vitrineParaPayload_(v, extra){
     capaUrl: v['Capa URL'],
     capaPosicao: v['Capa posição'],
     qtdFotosPacote: v['Qtd fotos pacote'],
+    selecaoHabilitada: v['Seleção habilitada'] !== 'Não',
     entregaValidade: v['Entrega validade'],
     entregaMaxDownloads: v['Entrega máx downloads'],
     validade: v['Validade'] ? validadeParaBR_(v['Validade']) : '',
@@ -256,10 +257,16 @@ function abrirFormVitrine(id){
           </div>
           <p class="hint">Se o rosto/assunto principal da foto de capa ficar cortado, ajuste a posição acima.</p>
 
-          <div class="row3">
+          <div class="field form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="vf_selecaoHabilitada" ${(editando ? v['Seleção habilitada'] : 'Sim') !== 'Não' ? 'checked' : ''}>
+            <label class="form-check-label" for="vf_selecaoHabilitada">Permitir que o cliente selecione fotos</label>
+          </div>
+          <p class="hint">Desligue se quiser só disponibilizar todas as fotos pra baixar, sem a etapa de seleção (some o contador, os corações e o botão de finalizar na vitrine).</p>
+
+          <div class="row3" id="vf_selecaoWrap">
             <div class="field"><label>Senha (opcional)</label><input type="text" id="vf_senha" placeholder="${editando && v['Senha hash'] ? 'Já tem senha — deixe em branco para manter' : 'Deixe em branco para não exigir senha'}"></div>
             <div class="field"><label>Validade (opcional)</label><input id="vf_validade" data-picker="date" placeholder="DD/MM/AAAA" value="${editando && v['Validade'] ? validadeParaBR_(v['Validade']) : ''}"></div>
-            <div class="field"><label>Qtd. de fotos do pacote</label><input type="number" min="0" id="vf_qtdFotosPacote" placeholder="Sem limite" value="${editando && v['Qtd fotos pacote'] ? esc(v['Qtd fotos pacote']) : ''}"></div>
+            <div class="field" id="vf_qtdFotosPacoteWrap"><label>Qtd. de fotos do pacote</label><input type="number" min="0" id="vf_qtdFotosPacote" placeholder="Sem limite" value="${editando && v['Qtd fotos pacote'] ? esc(v['Qtd fotos pacote']) : ''}"></div>
           </div>
           <p class="hint">A quantidade do pacote vira o limite de seleção na vitrine (o cliente ainda consegue selecionar além — só fica avisado); deixe em branco para não ter limite.</p>
 
@@ -284,6 +291,13 @@ function abrirFormVitrine(id){
     document.getElementById('vf_driveWrap').style.display = drive ? '' : 'none';
     document.getElementById('vf_uploadHint').style.display = drive ? 'none' : '';
   });
+
+  const selecaoSwitch = document.getElementById('vf_selecaoHabilitada');
+  const atualizarVisibilidadeQtdPacote = () => {
+    document.getElementById('vf_qtdFotosPacoteWrap').style.display = selecaoSwitch.checked ? '' : 'none';
+  };
+  selecaoSwitch.addEventListener('change', atualizarVisibilidadeQtdPacote);
+  atualizarVisibilidadeQtdPacote();
 
   // Sugere a qtd. de fotos do pacote do evento escolhido — só numa vitrine
   // NOVA e só se o campo ainda estiver vazio (não atropela o que o admin já digitou).
@@ -311,6 +325,7 @@ function abrirFormVitrine(id){
       capaUrl: document.getElementById('vf_capa').value.trim(),
       capaPosicao: document.getElementById('vf_capaPosicao').value,
       qtdFotosPacote: document.getElementById('vf_qtdFotosPacote').value.trim(),
+      selecaoHabilitada: document.getElementById('vf_selecaoHabilitada').checked,
       entregaValidade: document.getElementById('vf_entregaValidade').value.trim(),
       entregaMaxDownloads: document.getElementById('vf_entregaMaxDownloads').value.trim(),
       validade: document.getElementById('vf_validade').value.trim(),

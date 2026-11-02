@@ -413,3 +413,12 @@
 .field .form-check-input{width:1.1em;height:1.1em;padding:0;flex:0 0 auto;margin:0;}
 .tipos-evento-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 14px;margin-bottom:8px;}
 .tipos-evento-grid label{display:inline-flex !important;align-items:center;gap:6px;margin:0 !important;cursor:pointer;font-size:13.5px;color:var(--ink);}
+
+/* v3.19.11 — switch liga/desliga (ex.: "Permitir seleção" na Vitrine de
+   Fotos): a regra acima (.field .form-check-input) encolhe o input pra
+   1.1em quadrado, que funciona pra checkbox normal mas esmaga o formato de
+   "pílula" do switch do Bootstrap — essa regra, mais específica, devolve o
+   tamanho/proporção certos só quando é um .form-switch. */
+.field.form-switch{padding-left:2.6em;display:flex;align-items:center;min-height:1.6em;}
+.field.form-switch .form-check-input{width:2.4em !important;height:1.25em !important;margin-left:-2.6em !important;}
+.field.form-switch .form-check-label{margin-left:.5em;cursor:pointer;}

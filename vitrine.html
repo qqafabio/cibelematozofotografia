@@ -309,13 +309,16 @@ async function renderGaleria_(vitrine, senhaHash){
     erroFonte = err.message || String(err);
   }
 
-  // Seleção: sempre busca (precisamos saber o que foi selecionado tanto pra
-  // desenhar os corações quanto pra filtrar a entrega final abaixo) — só a
-  // UI de marcar/desmarcar é que some depois de finalizada.
-  const finalizada = !!vitrine.selecao_finalizada_em;
+  // Seleção: pode estar desligada pra esta vitrine (campo novo — vazio conta
+  // como "Sim", então vitrines criadas antes desta mudança continuam com
+  // seleção habilitada sem precisar editar nada). Quando desligada, nem
+  // busca as seleções: é só galeria + download, sem corações/contador/
+  // finalizar — pro caso de clientes que só querem disponibilizar tudo.
+  const selecaoHabilitada = vitrine.selecao_habilitada !== 'Não';
+  const finalizada = selecaoHabilitada && !!vitrine.selecao_finalizada_em;
   const selecionados = new Set(); // arquivo_ref (= id da foto)
   const selecaoPbIds = {}; // arquivo_ref -> id nativo da linha em vitrine_selecoes (pra desmarcar)
-  if (!erroFonte && fotos.length){
+  if (!erroFonte && fotos.length && selecaoHabilitada){
     try {
       const sels = await buscarSelecoes_(vitrine.id, TOKEN, senhaHash);
       sels.forEach(s => { selecionados.add(String(s.arquivo_ref)); selecaoPbIds[s.arquivo_ref] = s.id; });
@@ -343,9 +346,9 @@ async function renderGaleria_(vitrine, senhaHash){
       ${finalizada ? `<div class="painel"><p style="margin:0;">✅ Seleção finalizada${vitrine.selecao_finalizada_em ? ' em ' + escV(dataBRDeISO_(vitrine.selecao_finalizada_em)) : ''} — ${escV(vitrine.qtd_fotos_selecionadas_final || 0)} foto(s) escolhida(s).</p></div>` : ''}
       ${fotos.length ? `
         <div class="acoes-topo">
-          <span class="contador" id="contadorSelecao">${!finalizada ? textoContador() : ''}</span>
+          <span class="contador" id="contadorSelecao">${selecaoHabilitada && !finalizada ? textoContador() : ''}</span>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            ${!finalizada ? `<button id="finalizarSelecao">Finalizar seleção</button>` : ''}
+            ${selecaoHabilitada && !finalizada ? `<button id="finalizarSelecao">Finalizar seleção</button>` : ''}
             <button id="baixarTodas">Baixar todas as fotos</button>
           </div>
         </div>
@@ -356,7 +359,7 @@ async function renderGaleria_(vitrine, senhaHash){
         ${fotos.map(f => `
           <div class="foto ${selecionados.has(String(f.id)) ? 'selecionada' : ''}" data-ref="${escV(f.id)}">
             <img src="${escV(f.thumb)}" loading="lazy" data-ver="${escV(f.ver)}">
-            ${!finalizada ? `<button class="coracao" data-ref="${escV(f.id)}" data-nome="${escV(f.nome)}" title="Selecionar">${selecionados.has(String(f.id)) ? '❤️' : '🤍'}</button>` : ''}
+            ${selecaoHabilitada && !finalizada ? `<button class="coracao" data-ref="${escV(f.id)}" data-nome="${escV(f.nome)}" title="Selecionar">${selecionados.has(String(f.id)) ? '❤️' : '🤍'}</button>` : ''}
             <a class="baixar" href="${escV(f.baixar)}" download="${escV(f.nome)}" title="Baixar">⬇</a>
           </div>
         `).join('')}

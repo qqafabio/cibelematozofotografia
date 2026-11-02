@@ -337,6 +337,7 @@ const PB_SCHEMA = {
       ['Capa URL', 'capa_url', 'text'],
       ['Capa posição', 'capa_posicao', 'text'],         // 'top' | 'center' | 'bottom' (v3.19.3)
       ['Qtd fotos pacote', 'qtd_fotos_pacote', 'number'], // 0 = sem limite (v3.19 Fase 2)
+      ['Seleção habilitada', 'selecao_habilitada', 'text'], // 'Sim' | 'Não' (v3.19.11) — '' (vitrines antigas) conta como 'Sim', ver vitrine.html
       ['Seleção finalizada em', 'selecao_finalizada_em', 'text'], // setado pelo pb_hook, não pelo cliente (v3.19 Fase 2)
       ['Qtd selecionadas final', 'qtd_fotos_selecionadas_final', 'number'], // idem — espelha vitrine_finalizacoes.qtd_selecionadas pra lista do CRM não precisar de outra query
       ['Entrega liberada em', 'entrega_liberada_em', 'text'],       // setado pelo admin (v3.19 Fase 4) — '' = entrega ainda não liberada

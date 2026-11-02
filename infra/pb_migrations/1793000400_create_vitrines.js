@@ -26,6 +26,7 @@ migrate((db) => {
     new SchemaField({ name: "capa_url", type: "text", required: false }),
     new SchemaField({ name: "capa_posicao", type: "text", required: false }),
     new SchemaField({ name: "qtd_fotos_pacote", type: "number", required: false, options: { noDecimal: false } }),
+    new SchemaField({ name: "selecao_habilitada", type: "text", required: false }),
     new SchemaField({ name: "selecao_finalizada_em", type: "text", required: false }),
     new SchemaField({ name: "qtd_fotos_selecionadas_final", type: "number", required: false, options: { noDecimal: false } }),
     new SchemaField({ name: "entrega_liberada_em", type: "text", required: false }),
