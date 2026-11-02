@@ -19,7 +19,6 @@
 
 const VITRINE_FONTES = ['upload_proprio', 'google_drive'];
 const VITRINE_TEMAS = ['noir', 'linen', 'terra'];
-const VITRINE_CAPA_POSICOES = ['top', 'center', 'bottom'];
 
 // DD/MM/AAAA (como os outros campos de data do app) -> "AAAA-MM-DD 00:00:00.000Z"
 // (formato que o PocketBase aceita/devolve num campo `date`). Grava meia-noite
@@ -76,12 +75,12 @@ async function pbCriarVitrine(dados){
     fonte_imagens: dados.fonteImagens,
     link_pasta_drive: dados.fonteImagens === 'google_drive' ? String(dados.linkPastaDrive).trim() : '',
     nome_exibicao: dados.nomeExibicao ? String(dados.nomeExibicao).trim() : '',
+    subtitulo_exibicao: dados.subtituloExibicao ? String(dados.subtituloExibicao).trim() : '',
     data_exibicao: dados.dataExibicao ? String(dados.dataExibicao).trim() : '',
     tema: VITRINE_TEMAS.indexOf(dados.tema) !== -1 ? dados.tema : 'linen',
     cor_primaria: dados.corPrimaria || '',
     tipografia: dados.tipografia === 'sans' ? 'sans' : 'serif',
     capa_url: dados.capaUrl ? String(dados.capaUrl).trim() : '',
-    capa_posicao: VITRINE_CAPA_POSICOES.indexOf(dados.capaPosicao) !== -1 ? dados.capaPosicao : 'center',
     qtd_fotos_pacote: Number(dados.qtdFotosPacote || 0),
     selecao_habilitada: dados.selecaoHabilitada === false ? 'Não' : 'Sim',
     entrega_validade: dados.entregaValidade ? String(dados.entregaValidade).trim() : '',
@@ -101,12 +100,12 @@ async function pbAtualizarVitrine(dados){
     fonte_imagens: dados.fonteImagens,
     link_pasta_drive: dados.fonteImagens === 'google_drive' ? String(dados.linkPastaDrive).trim() : '',
     nome_exibicao: dados.nomeExibicao ? String(dados.nomeExibicao).trim() : '',
+    subtitulo_exibicao: dados.subtituloExibicao ? String(dados.subtituloExibicao).trim() : '',
     data_exibicao: dados.dataExibicao ? String(dados.dataExibicao).trim() : '',
     tema: VITRINE_TEMAS.indexOf(dados.tema) !== -1 ? dados.tema : 'linen',
     cor_primaria: dados.corPrimaria || '',
     tipografia: dados.tipografia === 'sans' ? 'sans' : 'serif',
     capa_url: dados.capaUrl ? String(dados.capaUrl).trim() : '',
-    capa_posicao: VITRINE_CAPA_POSICOES.indexOf(dados.capaPosicao) !== -1 ? dados.capaPosicao : 'center',
     qtd_fotos_pacote: Number(dados.qtdFotosPacote || 0),
     selecao_habilitada: dados.selecaoHabilitada === false ? 'Não' : 'Sim',
     entrega_validade: dados.entregaValidade ? String(dados.entregaValidade).trim() : '',

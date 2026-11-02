@@ -189,7 +189,7 @@ function vitrineParaPayload_(v, extra){
     corPrimaria: v['Cor primária'],
     tipografia: v['Tipografia'],
     capaUrl: v['Capa URL'],
-    capaPosicao: v['Capa posição'],
+    subtituloExibicao: v['Subtítulo exibição'],
     qtdFotosPacote: v['Qtd fotos pacote'],
     selecaoHabilitada: v['Seleção habilitada'] !== 'Não',
     entregaValidade: v['Entrega validade'],
@@ -205,7 +205,6 @@ function abrirFormVitrine(id){
   const idEvSelecionado = editando ? v['ID Evento'] : '';
   const opcoesEventos = eventos.map(e => `<option value="${esc(e['ID Evento'])}" ${String(idEvSelecionado) === String(e['ID Evento']) ? 'selected' : ''}>${esc(e['Cliente / Responsável'])} — ${esc(e['Data do evento'])}</option>`).join('');
   const fonte = editando ? v['Fonte imagens'] : 'upload_proprio';
-  const capaPos = (editando && v['Capa posição']) ? v['Capa posição'] : 'center';
 
   document.getElementById('overlayRoot').innerHTML = `
     <div class="form-overlay" id="overlay">
@@ -216,10 +215,12 @@ function abrirFormVitrine(id){
           <div class="field"><label>Evento *</label>
             <select id="vf_idEvento" required>${eventos.length ? opcoesEventos : '<option value="">Cadastre um evento primeiro</option>'}</select>
           </div>
-          <div class="row2">
+          <div class="row3">
+            <div class="field"><label>Subtítulo (opcional)</label><input id="vf_subtituloExibicao" placeholder="Ex.: Vanessa" value="${esc(editando ? v['Subtítulo exibição'] : '')}"></div>
             <div class="field"><label>Nome de exibição</label><input id="vf_nomeExibicao" placeholder="Ex.: Ana & Léo" value="${esc(editando ? v['Nome exibição'] : '')}"></div>
             <div class="field"><label>Data de exibição</label><input id="vf_dataExibicao" placeholder="Ex.: 14 · Março · 2026" value="${esc(editando ? v['Data exibição'] : '')}"></div>
           </div>
+          <p class="hint">O subtítulo aparece como uma linha pequena acima do nome de exibição (ex.: nome de quem contratou).</p>
 
           <div class="field"><label>Fonte das imagens *</label>
             <select id="vf_fonte">
@@ -239,7 +240,7 @@ function abrirFormVitrine(id){
             </div>
             <div class="field"><label>Cor primária</label><input type="color" id="vf_cor" value="${esc(editando && v['Cor primária'] ? v['Cor primária'] : '#A8791E')}" style="height:42px;padding:4px;"></div>
           </div>
-          <div class="row3">
+          <div class="row2">
             <div class="field"><label>Tipografia</label>
               <select id="vf_tipografia">
                 <option value="serif" ${(editando ? v['Tipografia'] : 'serif') === 'serif' ? 'selected' : ''}>Serifada (elegante)</option>
@@ -247,15 +248,8 @@ function abrirFormVitrine(id){
               </select>
             </div>
             <div class="field"><label>URL da capa</label><input id="vf_capa" placeholder="https://..." value="${esc(editando ? v['Capa URL'] : '')}"></div>
-            <div class="field"><label>Posição da capa</label>
-              <select id="vf_capaPosicao">
-                <option value="top" ${capaPos === 'top' ? 'selected' : ''}>Topo</option>
-                <option value="center" ${capaPos === 'center' ? 'selected' : ''}>Centro</option>
-                <option value="bottom" ${capaPos === 'bottom' ? 'selected' : ''}>Base</option>
-              </select>
-            </div>
           </div>
-          <p class="hint">Se o rosto/assunto principal da foto de capa ficar cortado, ajuste a posição acima.</p>
+          <p class="hint">A capa aparece inteira (sem corte) ao lado do título, no header da vitrine.</p>
 
           <div class="field form-check form-switch">
             <input class="form-check-input" type="checkbox" role="switch" id="vf_selecaoHabilitada" ${(editando ? v['Seleção habilitada'] : 'Sim') !== 'Não' ? 'checked' : ''}>
@@ -299,16 +293,23 @@ function abrirFormVitrine(id){
   selecaoSwitch.addEventListener('change', atualizarVisibilidadeQtdPacote);
   atualizarVisibilidadeQtdPacote();
 
-  // Sugere a qtd. de fotos do pacote do evento escolhido — só numa vitrine
-  // NOVA e só se o campo ainda estiver vazio (não atropela o que o admin já digitou).
+  // Sugere a qtd. de fotos do pacote e o subtítulo (responsável do evento)
+  // escolhido — só numa vitrine NOVA e só se o campo ainda estiver vazio
+  // (não atropela o que o admin já digitou).
   if (!editando){
     const idEventoSelect = document.getElementById('vf_idEvento');
     const sugerirQtd = () => {
       const campo = document.getElementById('vf_qtdFotosPacote');
       if (campo && !campo.value) campo.value = qtdFotosSugeridaPacote_(idEventoSelect.value);
     };
-    idEventoSelect.addEventListener('change', sugerirQtd);
+    const sugerirSubtitulo = () => {
+      const campo = document.getElementById('vf_subtituloExibicao');
+      const ev = eventos.find(e => String(e['ID Evento']) === String(idEventoSelect.value));
+      if (campo && !campo.value && ev) campo.value = ev['Cliente / Responsável'] || '';
+    };
+    idEventoSelect.addEventListener('change', () => { sugerirQtd(); sugerirSubtitulo(); });
     sugerirQtd();
+    sugerirSubtitulo();
   }
 
   document.getElementById('formVitrine').addEventListener('submit', async (e) => {
@@ -316,6 +317,7 @@ function abrirFormVitrine(id){
     const dados = {
       idEvento: document.getElementById('vf_idEvento').value,
       nomeExibicao: document.getElementById('vf_nomeExibicao').value.trim(),
+      subtituloExibicao: document.getElementById('vf_subtituloExibicao').value.trim(),
       dataExibicao: document.getElementById('vf_dataExibicao').value.trim(),
       fonteImagens: document.getElementById('vf_fonte').value,
       linkPastaDrive: document.getElementById('vf_linkDrive').value.trim(),
@@ -323,7 +325,6 @@ function abrirFormVitrine(id){
       corPrimaria: document.getElementById('vf_cor').value,
       tipografia: document.getElementById('vf_tipografia').value,
       capaUrl: document.getElementById('vf_capa').value.trim(),
-      capaPosicao: document.getElementById('vf_capaPosicao').value,
       qtdFotosPacote: document.getElementById('vf_qtdFotosPacote').value.trim(),
       selecaoHabilitada: document.getElementById('vf_selecaoHabilitada').checked,
       entregaValidade: document.getElementById('vf_entregaValidade').value.trim(),

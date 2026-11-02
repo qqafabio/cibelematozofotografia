@@ -330,12 +330,12 @@ const PB_SCHEMA = {
       ['Fonte imagens', 'fonte_imagens', 'text'],       // 'upload_proprio' | 'google_drive'
       ['Link pasta Drive', 'link_pasta_drive', 'text'],
       ['Nome exibição', 'nome_exibicao', 'text'],
+      ['Subtítulo exibição', 'subtitulo_exibicao', 'text'], // v3.19.12 — "linha acima do título" do novo header (ex.: nome do cliente)
       ['Data exibição', 'data_exibicao', 'text'],
       ['Tema', 'tema', 'text'],                         // 'noir' | 'linen' | 'terra'
       ['Cor primária', 'cor_primaria', 'text'],
       ['Tipografia', 'tipografia', 'text'],             // 'serif' | 'sans'
       ['Capa URL', 'capa_url', 'text'],
-      ['Capa posição', 'capa_posicao', 'text'],         // 'top' | 'center' | 'bottom' (v3.19.3)
       ['Qtd fotos pacote', 'qtd_fotos_pacote', 'number'], // 0 = sem limite (v3.19 Fase 2)
       ['Seleção habilitada', 'selecao_habilitada', 'text'], // 'Sim' | 'Não' (v3.19.11) — '' (vitrines antigas) conta como 'Sim', ver vitrine.html
       ['Seleção finalizada em', 'selecao_finalizada_em', 'text'], // setado pelo pb_hook, não pelo cliente (v3.19 Fase 2)

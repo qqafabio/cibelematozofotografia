@@ -21,11 +21,23 @@
   body.tema-terra{background:#2E2419;color:#F1E9DC;}
   body.tema-terra .painel{background:#3C3022;border:1px solid #5A4A34;}
 
-  .capa{height:38vh;min-height:220px;background-size:cover;background-position:center;display:flex;align-items:flex-end;position:relative;}
-  .capa::after{content:'';position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0) 60%);}
-  .capa-texto{position:relative;z-index:1;padding:28px 24px;color:#fff;}
-  .capa-texto h1{margin:0 0 4px;font-size:30px;}
-  .capa-texto p{margin:0;opacity:.85;font-size:14px;}
+  .header{display:flex;height:clamp(360px,52vh,560px);}
+  .header-info{flex:1 1 50%;display:flex;flex-direction:column;justify-content:center;padding:40px clamp(20px,4vw,56px);gap:6px;min-width:0;}
+  .header-logo{max-width:100px;max-height:56px;object-fit:contain;margin-bottom:10px;}
+  .header-logo-texto{font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.65;margin:0 0 10px;}
+  .header-kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin:0;}
+  .header-info h1{font-size:clamp(26px,3.6vw,40px);margin:4px 0 0;line-height:1.15;}
+  .header-data{font-size:14px;opacity:.7;margin:8px 0 0;}
+  .header-btn{width:auto !important;align-self:flex-start;margin-top:20px;}
+  .header-capa{flex:1 1 50%;overflow:hidden;background:rgba(128,128,128,.08);}
+  .header-capa img{width:100%;height:100%;object-fit:contain;display:block;}
+  @media (max-width:760px){
+    .header{flex-direction:column;height:auto;}
+    .header-info{padding:32px 20px 20px;}
+    .header-capa{height:46vh;}
+  }
+
+  .info-linha{font-size:12.5px;opacity:.65;margin:0 0 18px;}
 
   .wrap{max-width:980px;margin:0 auto;padding:28px 20px 60px;}
   .painel{border-radius:10px;padding:22px 20px;margin-bottom:20px;}
@@ -174,18 +186,34 @@ function renderMensagem_(texto){
 
 // Capa + título: montado e exibido IMEDIATAMENTE (antes de buscar as fotos),
 // para o cliente ver a marca da fotógrafa na hora em vez de tela em branco.
+// Logo da fotógrafa: mesma em TODAS as vitrines (uma marca só, não é por
+// evento) — cole aqui a URL quando ela mandar a imagem. Vazio = mostra o
+// nome do estúdio em texto no lugar da logo.
+const VITRINE_LOGO_URL = '';
+
 function montarCabecalho_(vitrine){
   const capaUrl = driveImgUrl_(vitrine.capa_url);
-  const capaPos = { top: 'top', bottom: 'bottom' }[vitrine.capa_posicao] || 'center';
-  const capaStyle = capaUrl ? `style="background-image:url('${escV(capaUrl)}');background-position:center ${capaPos};"` : '';
   return `
-    <div class="capa" ${capaStyle}>
-      <div class="capa-texto">
+    <div class="header" id="header">
+      <div class="header-info">
+        ${VITRINE_LOGO_URL
+          ? `<img class="header-logo" src="${escV(VITRINE_LOGO_URL)}" alt="Logo">`
+          : `<p class="header-logo-texto">Cibele Matozo Fotografia</p>`}
+        ${vitrine.subtitulo_exibicao ? `<p class="header-kicker">${escV(vitrine.subtitulo_exibicao)}</p>` : ''}
         <h1>${escV(vitrine.nome_exibicao || 'Suas fotos')}</h1>
-        ${vitrine.data_exibicao ? `<p>${escV(vitrine.data_exibicao)}</p>` : ''}
+        ${vitrine.data_exibicao ? `<p class="header-data">${escV(vitrine.data_exibicao)}</p>` : ''}
+        <button type="button" class="btn-primary header-btn" id="btnVerGaleria">Ver galeria</button>
       </div>
+      ${capaUrl ? `<div class="header-capa"><img src="${escV(capaUrl)}" alt=""></div>` : ''}
     </div>
   `;
+}
+function wirarHeader_(){
+  const btn = document.getElementById('btnVerGaleria');
+  if (btn) btn.addEventListener('click', () => {
+    const wrap = document.querySelector('.wrap');
+    if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 }
 
 function renderSenha_(onSubmit){
@@ -261,6 +289,7 @@ async function renderGaleria_(vitrine, senhaHash){
       <div class="spinner-wrap"><div class="spinner"></div><p>Carregando as fotos…</p></div>
     </div>
   `;
+  wirarHeader_();
 
   let fotos = []; // { id, thumb, ver, baixar, nome, categoria, verLimpo, baixarLimpo }
   let erroFonte = '';
@@ -343,6 +372,7 @@ async function renderGaleria_(vitrine, senhaHash){
 
   const wrap = app.querySelector('.wrap');
   wrap.innerHTML = `
+      ${fotos.length ? `<p class="info-linha">${fotos.length} foto${fotos.length === 1 ? '' : 's'} nesta galeria${vitrine.validade ? ' · disponível até ' + escV(dataBRDeISO_(vitrine.validade)) : ''}</p>` : ''}
       ${finalizada ? `<div class="painel"><p style="margin:0;">✅ Seleção finalizada${vitrine.selecao_finalizada_em ? ' em ' + escV(dataBRDeISO_(vitrine.selecao_finalizada_em)) : ''} — ${escV(vitrine.qtd_fotos_selecionadas_final || 0)} foto(s) escolhida(s).</p></div>` : ''}
       ${fotos.length ? `
         <div class="acoes-topo">
