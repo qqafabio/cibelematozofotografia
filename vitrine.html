@@ -23,7 +23,9 @@
 
   .header{display:flex;height:clamp(360px,52vh,560px);}
   .header-info{flex:1 1 50%;display:flex;flex-direction:column;justify-content:center;padding:40px clamp(20px,4vw,56px);gap:6px;min-width:0;}
-  .header-logo{max-width:100px;max-height:56px;object-fit:contain;margin-bottom:10px;}
+  .header-logo{max-width:220px;max-height:120px;object-fit:contain;margin-bottom:10px;}
+  /* Logo é preta (fundo transparente) — nos temas escuros inverte pra branca, senão fica invisível. */
+  body.tema-noir .header-logo, body.tema-terra .header-logo{filter:invert(1);}
   .header-logo-texto{font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.65;margin:0 0 10px;}
   .header-kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin:0;}
   .header-info h1{font-size:clamp(26px,3.6vw,40px);margin:4px 0 0;line-height:1.15;}
@@ -187,17 +189,19 @@ function renderMensagem_(texto){
 // Capa + título: montado e exibido IMEDIATAMENTE (antes de buscar as fotos),
 // para o cliente ver a marca da fotógrafa na hora em vez de tela em branco.
 // Logo da fotógrafa: mesma em TODAS as vitrines (uma marca só, não é por
-// evento) — cole aqui a URL quando ela mandar a imagem. Vazio = mostra o
-// nome do estúdio em texto no lugar da logo.
-const VITRINE_LOGO_URL = '';
+// evento). Vazio = mostra o nome do estúdio em texto no lugar da logo.
+// Link do Drive (convertido com driveImgUrl_, igual a capa) pra não depender
+// de reupload se ela trocar a imagem — só trocar o link aqui.
+const VITRINE_LOGO_URL = 'https://drive.google.com/file/d/1-H3KSrl5ltt8xZG5knr59z34mzaL5ijV/view?usp=sharing';
 
 function montarCabecalho_(vitrine){
   const capaUrl = driveImgUrl_(vitrine.capa_url);
+  const logoUrl = driveImgUrl_(VITRINE_LOGO_URL);
   return `
     <div class="header" id="header">
       <div class="header-info">
-        ${VITRINE_LOGO_URL
-          ? `<img class="header-logo" src="${escV(VITRINE_LOGO_URL)}" alt="Logo">`
+        ${logoUrl
+          ? `<img class="header-logo" src="${escV(logoUrl)}" alt="Logo">`
           : `<p class="header-logo-texto">Cibele Matozo Fotografia</p>`}
         ${vitrine.subtitulo_exibicao ? `<p class="header-kicker">${escV(vitrine.subtitulo_exibicao)}</p>` : ''}
         <h1>${escV(vitrine.nome_exibicao || 'Suas fotos')}</h1>

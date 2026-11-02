@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.19.13 | 2026-11-02 | Vitrine de Fotos: logo real da fotógrafa aplicada no header (link do Drive) e aumentada de tamanho | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
 | v3.19.9 | 2026-11-02 | Vitrine de Fotos: upload direto passa a gravar no Cloudflare R2 (configuração de infra, sem mudança de código) | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
 | v3.19 Fase 4 | 2026-11-02 | Vitrine de Fotos — entrega final (alta resolução sem marca d'água, álbuns por categoria, validade e limite de downloads próprios) — ⚠️ migrations + pb_hook | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
 | v3.19 Fase 3 | 2026-11-02 | Vitrine de Fotos — marca d'água automática no upload direto (gerada no navegador da fotógrafa, não dá pra burlar na tela do cliente) — ⚠️ migration | [2.36](#236-vitrine-de-fotos--fase-3-marca-dágua-automática-v319-fase-3) |
@@ -1324,4 +1325,6 @@ Arquivos: `pbSchema.js`, `pbVitrines.js`, `modules/vitrines.js`, `vitrine.html`,
 Novo campo **"Subtítulo"** no formulário (`vitrines.subtitulo_exibicao`, migration `1793000411`, aditiva), sugerido automaticamente a partir do responsável do evento ao criar uma vitrine nova (editável depois) — a vitrine pública não tem acesso aos dados do evento (regra de acesso exige login), então precisa desse campo próprio em vez de ler direto do evento. O campo `capa_posicao` não foi removido do banco (coluna órfã inofensiva, evita uma migration destrutiva sem necessidade), só parou de ser lido/escrito pelo código.
 
 Testado visualmente (desktop e mobile via iframe 375px — empilha corretamente, sem corte na foto) e de ponta a ponta contra a produção com dados descartáveis (capa real do Unsplash, acentuação, contador de fotos). Arquivos: `pbSchema.js`, `pbVitrines.js`, `modules/vitrines.js`, `vitrine.html`, `crm.html`, `infra/pb_migrations/1793000411_add_subtitulo_exibicao_vitrines.js`.
+
+**v3.19.13 (ajuste).** `VITRINE_LOGO_URL` passou a apontar pro link real da logo do estúdio (pasta do Drive da fotógrafa, convertido com o mesmo `driveImgUrl_` usado na capa — assim ela pode trocar a imagem só trocando o link, sem reimplantar nada). A logo é preta sobre fundo transparente (PNG, confirmado via `curl -sIL` que o endpoint de thumbnail do Drive preserva o alfa), então ganhou `filter:invert(1)` nos temas escuros (`noir`/`terra`) pra não ficar invisível. Depois de ver em produção com dados descartáveis (uma vitrine de teste por tema), a logo apareceu pequena demais — `.header-logo` foi de `max-width:100px;max-height:56px` para `max-width:220px;max-height:120px`. Não exige migration. Vitrines e usuário de teste usados na verificação foram apagados depois. Arquivos: `vitrine.html`.
 
