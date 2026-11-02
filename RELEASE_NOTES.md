@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.20 | 2026-11-02 | Orçamento passa a aceitar mais de um pacote por lead (o cliente escolhe qual fechar) | [2.38](#238-orçamento-com-múltiplos-pacotes-v320) |
 | v3.19.14 | 2026-11-02 | Vitrine de Fotos: logo aumentada de novo e centralizada no header em mobile | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
 | v3.19.13 | 2026-11-02 | Vitrine de Fotos: logo real da fotógrafa aplicada no header (link do Drive) e aumentada de tamanho | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
 | v3.19.9 | 2026-11-02 | Vitrine de Fotos: upload direto passa a gravar no Cloudflare R2 (configuração de infra, sem mudança de código) | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
@@ -1330,5 +1331,21 @@ Testado visualmente (desktop e mobile via iframe 375px — empilha corretamente,
 **v3.19.13 (ajuste).** `VITRINE_LOGO_URL` passou a apontar pro link real da logo do estúdio (pasta do Drive da fotógrafa, convertido com o mesmo `driveImgUrl_` usado na capa — assim ela pode trocar a imagem só trocando o link, sem reimplantar nada). A logo é preta sobre fundo transparente (PNG, confirmado via `curl -sIL` que o endpoint de thumbnail do Drive preserva o alfa), então ganhou `filter:invert(1)` nos temas escuros (`noir`/`terra`) pra não ficar invisível. Depois de ver em produção com dados descartáveis (uma vitrine de teste por tema), a logo apareceu pequena demais — `.header-logo` foi de `max-width:100px;max-height:56px` para `max-width:220px;max-height:120px`. Não exige migration. Vitrines e usuário de teste usados na verificação foram apagados depois. Arquivos: `vitrine.html`.
 
 **v3.19.14 (ajuste).** Novo pedido: logo ainda um pouco maior (`.header-logo` de `max-width:220px;max-height:120px` para `max-width:260px;max-height:140px`) e, no layout mobile (`@media max-width:760px`, onde o header empilha em coluna), a logo passou a ficar centralizada (`display:block;margin-left:auto;margin-right:auto`) em vez de colada à esquerda. Não exige migration. Arquivos: `vitrine.html`.
+
+### 2.38 Orçamento com múltiplos pacotes (v3.20)
+
+Até aqui cada orçamento só podia trazer **um** pacote. Na prática, muitas vezes a fotógrafa quer deixar o cliente escolher entre opções (ex.: "Essencial" vs. "Premium") dentro do mesmo PDF, em vez de gerar orçamentos separados. O formulário de lead agora tem uma lista de pacotes (botão "Adicionar outro pacote"/remover por linha), cada um com seu próprio pacote do catálogo (auto-preenche valor/itens, editável) e valor — extras (beca/capelo/canudo/ensaio) e produtos adicionais continuam valendo para qualquer pacote escolhido, e o desconto também é único (decisões tomadas com o usuário antes de implementar, para não precisar de UI por-pacote nesses três campos).
+
+**Sem migration**: `leads.pacote` e `leads.orc_dados` já eram campos de texto/JSON livres — só mudou o que vai dentro deles. `leads.pacote` passa a gravar os nomes separados por "; " (mesmo padrão já usado em `pacotes.tipos_evento`), e `orc_dados.pacotes` vira uma lista `[{nome, valorPacote, itens}, ...]` em vez de um único `{valorPacote, itens}`. Leads antigos (de antes do v3.20, ou mesmo de antes do v3.18 sem `orc_dados` nenhum) continuam abrindo normalmente — `orcConfigDoLead_` reconhece o formato anterior e completa o nome do pacote a partir de `leads.pacote`/`leads.valor_estimado`.
+
+**`leads.valor_estimado`** (usado no funil comercial, dashboard e "valor ponderado") precisa de um número único mesmo com vários pacotes — por decisão do usuário, vira a **média** entre os valores estimados de cada pacote (pacote + produtos, antes do desconto). O mesmo critério é usado no `orcamentos.valor_total` do histórico de versões.
+
+**PDF** (`orcamentoPdf.js`): com 1 pacote só, o layout não muda nada (mesma seção "Serviços inclusos — Nome" + "Investimento" com o total de sempre) — inclusive snapshots **já gerados antes desta versão** (que trazem `snap.pacote` no singular, não `snap.pacotes`) continuam sendo renderizados exatamente como antes, via uma normalização no início da geração do PDF. Com 2+ pacotes, o layout muda para uma seção "Opções de pacote" (um bloco por pacote, com nome/descrição/itens), seguida de "Produtos adicionais" (se houver) e uma seção "Investimento" com uma linha "Total com `<nome do pacote>`" para cada opção — deixando claro que são alternativas, não uma soma.
+
+**Lead "Fechado" com 2+ pacotes**: marcar o lead como "Fechado" cria automaticamente um evento (cascata já existente em `pbLeads.js`), que antes herdava `leads.pacote`/`valor_estimado` direto. Com múltiplos pacotes isso gravaria no evento real o texto "Essencial; Premium" e uma média, em vez do pacote que o cliente de fato fechou — por isso, quando há 2+ pacotes nomeados no orçamento e a etapa muda para "Fechado", aparece um campo extra "Qual pacote foi fechado?" (obrigatório nesse caso), e é esse pacote (nome + valor estimado individual) que vai para o evento criado — não a lista nem a média. Com 1 pacote só, nada muda.
+
+Testado via Node (sem navegador): round-trip de serialização/parse de `orc_dados`, migração de leads em formato antigo/muito antigo, cálculo de totais/hash/snapshot com múltiplos pacotes, a geração do PDF (com um stub de jsPDF) nos três cenários — 1 pacote, 2+ pacotes, e snapshot legado singular —, e a lógica de escolha do pacote fechado na cascata lead→evento (1 pacote, 2+ pacotes com escolha, e fallback para leads sem essa informação). Não foi possível testar a interação do formulário num navegador real nesta sessão (sem aba compartilhada); a lógica de desenho dos blocos de pacote segue o mesmo padrão já usado (e testado em produção) para extras/produtos no mesmo formulário.
+
+Arquivos: `orcamentoRegras.js`, `orcamentoPdf.js`, `modules/leadForm.js`, `pbLeads.js`, `crm.css`, `crm.html`. `node --check` OK nos quatro arquivos `.js`.
 
 

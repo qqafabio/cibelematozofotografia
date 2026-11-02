@@ -104,14 +104,20 @@ async function pbAtualizarLead(dados){
     try {
       const marca = `Criado automaticamente a partir do lead #${rec.id_lead}.`;
       if (await leadJaGerouEvento_(rec.id_lead, marca)) return upd;
-      const estimadoFechar = dados.valorEstimado !== undefined ? Number(dados.valorEstimado) : Number(rec.valor_estimado || 0);
+      // Com 2+ pacotes no orçamento, leads.pacote/valor_estimado guardam a lista/média
+      // (não dá pra herdar direto) — dados.pacoteFechadoNome/Valor (v3.20) vêm do
+      // formulário quando o usuário indicou qual dos pacotes foi o fechado.
+      const pacoteFechar = dados.pacoteFechadoNome !== undefined ? dados.pacoteFechadoNome
+        : (dados.pacote !== undefined ? dados.pacote : rec.pacote);
+      const estimadoFechar = dados.pacoteFechadoValor !== undefined ? Number(dados.pacoteFechadoValor)
+        : (dados.valorEstimado !== undefined ? Number(dados.valorEstimado) : Number(rec.valor_estimado || 0));
       const descontoFechar = dados.desconto !== undefined ? Number(dados.desconto) : Number(rec.desconto || 0);
       const evCriado = await pbCriarEvento({
         idCliente: rec.id_cliente,
         status: 'Aguardando aprovação',
         dataEvento: dados.dataDesejada !== undefined ? dados.dataDesejada : rec.data_desejada,
         tipoEvento: dados.tipoEvento !== undefined ? dados.tipoEvento : rec.tipo_evento,
-        pacote: dados.pacote !== undefined ? dados.pacote : rec.pacote,
+        pacote: pacoteFechar,
         valorPacote: estimadoFechar,
         desconto: descontoFechar,
         valorFinal: estimadoFechar - descontoFechar,

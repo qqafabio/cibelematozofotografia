@@ -22,17 +22,37 @@ function orcRegrasDoTipo_(tipo){
   return { becaCanudo: !!(r && r.becaCanudo), ensaioPre: !!(r && r.ensaioPre) };
 }
 
-/* ---- Configuração do orçamento guardada em leads.orc_dados (JSON) ---- */
+/* ---- Configuração do orçamento guardada em leads.orc_dados (JSON) ----
+   v3.20: um orçamento pode oferecer MAIS DE UM pacote (o cliente escolhe qual
+   fechar) — por isso `pacotes` é uma lista, não mais um valor/itens únicos.
+   Extras e produtos continuam valendo para qualquer pacote escolhido (decisão
+   do usuário: mais simples de ler no PDF do que ter extras por pacote), e o
+   desconto também é único (não por pacote). */
 function orcConfigVazia_(){
-  return { valorPacote: null, itens: null, extras: { becaCapelo: false, canudo: false, ensaioPre: false }, produtos: [] };
+  return { pacotes: [], extras: { becaCapelo: false, canudo: false, ensaioPre: false }, produtos: [] };
+}
+function orcPacoteVazio_(){
+  return { nome: '', valorPacote: null, itens: null };
 }
 function orcParseDados_(json){
   const base = orcConfigVazia_();
   if (!json) return base;
   try {
     const o = JSON.parse(json);
-    if (o.valorPacote != null && o.valorPacote !== '') base.valorPacote = Number(o.valorPacote);
-    if (typeof o.itens === 'string') base.itens = o.itens;
+    if (Array.isArray(o.pacotes)){
+      base.pacotes = o.pacotes.map(p => ({
+        nome: String(p.nome || ''),
+        valorPacote: p.valorPacote == null || p.valorPacote === '' ? null : Number(p.valorPacote),
+        itens: typeof p.itens === 'string' ? p.itens : null,
+      }));
+    } else if ((o.valorPacote != null && o.valorPacote !== '') || typeof o.itens === 'string'){
+      // Formato anterior ao v3.20 (um único pacote, sem nome próprio — o nome
+      // vivia em leads.pacote). `nome: null` é preenchido por orcConfigDoLead_,
+      // que é quem tem acesso à linha do lead.
+      base.pacotes = [{ nome: null,
+        valorPacote: o.valorPacote == null || o.valorPacote === '' ? null : Number(o.valorPacote),
+        itens: typeof o.itens === 'string' ? o.itens : null }];
+    }
     Object.assign(base.extras, o.extras || {});
     base.produtos = Array.isArray(o.produtos) ? o.produtos.map(p => ({
       id: Number(p.id), nome: String(p.nome || ''), valor: Number(p.valor || 0),
@@ -43,20 +63,23 @@ function orcParseDados_(json){
 }
 function orcSerializarDados_(cfg){
   return JSON.stringify({
-    valorPacote: cfg.valorPacote == null ? null : Number(cfg.valorPacote),
-    itens: cfg.itens == null ? null : String(cfg.itens),
+    pacotes: cfg.pacotes.map(p => ({
+      nome: String(p.nome || ''),
+      valorPacote: p.valorPacote == null ? null : Number(p.valorPacote),
+      itens: p.itens == null ? null : String(p.itens),
+    })),
     extras: { becaCapelo: !!cfg.extras.becaCapelo, canudo: !!cfg.extras.canudo, ensaioPre: !!cfg.extras.ensaioPre },
     produtos: cfg.produtos.map(p => ({ id: p.id, nome: p.nome, valor: p.valor, cobranca: p.cobranca, qtd: p.qtd })),
   });
 }
 
-/* Itens inclusos do orçamento: texto próprio do lead (cfg.itens) ou, se nunca editado, o do pacote. */
+/* Itens inclusos de 1 pacote: texto próprio (p.itens) ou, se nunca editado, o do catálogo. */
 function orcItensDoPacote_(nomePacote){
   const pac = (typeof pacotes !== 'undefined' ? pacotes : []).find(p => String(p['Nome']) === String(nomePacote));
   return pac ? String(pac['Itens inclusos'] || '') : '';
 }
-function orcItensEfetivos_(cfg, nomePacote){
-  const txt = cfg.itens != null ? cfg.itens : orcItensDoPacote_(nomePacote);
+function orcItensEfetivosPacote_(p){
+  const txt = p.itens != null ? p.itens : orcItensDoPacote_(p.nome);
   return String(txt).split('\n').map(s => s.trim()).filter(Boolean);
 }
 
@@ -65,12 +88,22 @@ function orcSubtotalProduto_(p){
   return p.cobranca === 'fixo' ? Number(p.valor || 0) : Number(p.valor || 0) * Number(p.qtd || 1);
 }
 // valorEstimado = pacote + produtos (é o que vai para leads.valor_estimado); total = estimado − desconto.
+// Continua recebendo 1 valor de pacote por vez — orcTotaisPacotes_ chama isso para cada pacote da lista.
 function orcTotais_(valorPacote, produtosSel, desconto){
   const pacote = Number(valorPacote || 0);
   const produtosTotal = (produtosSel || []).reduce((s, p) => s + orcSubtotalProduto_(p), 0);
   const valorEstimado = pacote + produtosTotal;
   const desc = Number(desconto || 0);
   return { pacote, produtosTotal, valorEstimado, desconto: desc, total: Math.max(0, valorEstimado - desc) };
+}
+// 1 total por pacote do orçamento (produtos/desconto são os mesmos para todos).
+function orcTotaisPacotes_(cfg, desconto){
+  return (cfg.pacotes || []).map(p => Object.assign({ nome: p.nome }, orcTotais_(p.valorPacote, cfg.produtos, desconto)));
+}
+// Número único para leads.valor_estimado (funil/dashboard) quando há vários pacotes: média.
+function orcMedia_(totaisPorPacote, chave){
+  if (!totaisPorPacote.length) return 0;
+  return totaisPorPacote.reduce((s, t) => s + t[chave], 0) / totaisPorPacote.length;
 }
 
 /* ---- Hash: só o que aparece no PDF. Mudou → exige novo orçamento (nova versão). ---- */
@@ -85,14 +118,15 @@ function orcCyrb53_(str){
   h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
-// e: { cliente, tipoEvento, dataDesejada, instituicao, pacote, desconto, cfg }
+// e: { cliente, tipoEvento, dataDesejada, instituicao, desconto, cfg }
 function orcHash_(e){
   const cfg = e.cfg || orcConfigVazia_();
   const regras = orcRegrasDoTipo_(e.tipoEvento);
   return orcCyrb53_(JSON.stringify([
     String(e.cliente || '').trim(), String(e.tipoEvento || '').trim(), String(e.dataDesejada || '').trim(),
-    String(e.instituicao || '').trim(), String(e.pacote || '').trim(),
-    Number(e.desconto || 0), Number(cfg.valorPacote || 0), orcItensEfetivos_(cfg, e.pacote),
+    String(e.instituicao || '').trim(),
+    cfg.pacotes.map(p => [String(p.nome || '').trim(), Number(p.valorPacote || 0), orcItensEfetivosPacote_(p)]),
+    Number(e.desconto || 0),
     regras.becaCanudo && !!cfg.extras.becaCapelo, regras.becaCanudo && !!cfg.extras.canudo,
     regras.ensaioPre && !!cfg.extras.ensaioPre,
     cfg.produtos.map(p => [p.id, p.qtd, p.valor, p.cobranca]).sort((a, b) => a[0] - b[0]),
@@ -102,14 +136,21 @@ function orcHash_(e){
 function orcHashDoLead_(l){
   return orcHash_({
     cliente: l['Cliente'], tipoEvento: l['Tipo de evento'], dataDesejada: l['Data desejada'],
-    instituicao: l['Instituição'], pacote: l['Pacote'], desconto: l['Desconto'],
+    instituicao: l['Instituição'], desconto: l['Desconto'],
     cfg: orcConfigDoLead_(l),
   });
 }
-// Leads antigos (sem orc_dados): o valor estimado manual vira o valor do pacote.
+// Leads antigos (sem orc_dados, ou formato anterior ao v3.20 com 1 pacote sem
+// nome próprio): completa com leads.pacote/valor_estimado para não perder o
+// que já estava preenchido.
 function orcConfigDoLead_(l){
   const cfg = orcParseDados_(l['Orçamento dados']);
-  if (cfg.valorPacote == null) cfg.valorPacote = Number(l['Valor estimado'] || 0);
+  if (cfg.pacotes.length === 1 && cfg.pacotes[0].nome == null){
+    cfg.pacotes[0].nome = String(l['Pacote'] || '').trim();
+    if (cfg.pacotes[0].valorPacote == null) cfg.pacotes[0].valorPacote = Number(l['Valor estimado'] || 0);
+  } else if (!cfg.pacotes.length && (l['Pacote'] || Number(l['Valor estimado'] || 0) > 0)){
+    cfg.pacotes.push({ nome: String(l['Pacote'] || '').trim(), valorPacote: Number(l['Valor estimado'] || 0), itens: null });
+  }
   return cfg;
 }
 // 'sem' (nunca gerado) | 'atual' | 'desatualizado'
@@ -121,30 +162,46 @@ function orcSituacaoLead_(l){
 
 /* ---- Snapshot imutável que alimenta o PDF e o histórico ----
    c: { idLead, versao, cliente:{nome,whatsapp,email}, tipoEvento, dataDesejada,
-        instituicao, pacote (nome), desconto, cfg } */
+        instituicao, desconto, cfg }
+   snap.totais é um resumo AGREGADO (média entre os pacotes quando há mais de
+   um) — usado em orcamentos.valor_total e leads.valor_estimado, que exigem um
+   número único. O valor de cada pacote individual fica em snap.pacotes[i]. */
 function orcMontarSnapshot_(c){
   const cfg = c.cfg;
   const regras = orcRegrasDoTipo_(c.tipoEvento);
-  const pac = (typeof pacotes !== 'undefined' ? pacotes : []).find(p => String(p['Nome']) === String(c.pacote));
-  const itens = orcItensEfetivos_(cfg, c.pacote);
+  const catalogoPacotes = (typeof pacotes !== 'undefined' ? pacotes : []);
   const extras = [];
   if (regras.becaCanudo && cfg.extras.becaCapelo) extras.push('Aluguel de 01 beca completa com capelo');
   if (regras.becaCanudo && cfg.extras.canudo) extras.push('01 canudo de formatura');
   if (regras.ensaioPre && cfg.extras.ensaioPre) extras.push('Ensaio fotográfico pré-evento');
-  const totais = orcTotais_(cfg.valorPacote, cfg.produtos, c.desconto);
+
+  const totaisPorPacote = orcTotaisPacotes_(cfg, c.desconto);
+  const snapPacotes = cfg.pacotes.map((p, i) => {
+    const pac = catalogoPacotes.find(x => String(x['Nome']) === String(p.nome));
+    return {
+      nome: p.nome || '', descricao: pac ? (pac['Descrição'] || '') : '',
+      itens: orcItensEfetivosPacote_(p), extras,
+      prazoEntrega: pac ? (pac['Prazo entrega'] || '') : '',
+      valor: Number(p.valorPacote || 0), total: totaisPorPacote[i].total,
+    };
+  });
+
   const selIds = new Set(cfg.produtos.map(p => Number(p.id)));
   const catalogo = (typeof produtos !== 'undefined' ? produtos : []);
   const opcionais = catalogo
     .filter(p => String(p['Ativo'] || 'Sim') !== 'Não' && !selIds.has(Number(p['ID'])) && aplicaAoTipoEvento_(p['Tipos de evento'], c.tipoEvento))
     .map(p => ({ nome: p['Nome'], descricao: p['Descrição'] || '', valor: Number(p['Valor'] || 0), cobranca: p['Tipo de cobrança'] === 'fixo' ? 'fixo' : 'unitario' }));
+
+  const produtosTotal = cfg.produtos.reduce((s, p) => s + orcSubtotalProduto_(p), 0);
   return {
     idLead: c.idLead, versao: c.versao, geradoEm: new Date().toLocaleDateString('pt-BR'),
     cliente: c.cliente, tipoEvento: c.tipoEvento || '', dataDesejada: c.dataDesejada || '',
     instituicao: c.instituicao || '',
-    pacote: { nome: c.pacote || '', descricao: pac ? (pac['Descrição'] || '') : '', itens, extras,
-              prazoEntrega: pac ? (pac['Prazo entrega'] || '') : '' },
+    pacotes: snapPacotes,
     produtos: cfg.produtos.map(p => Object.assign({}, p, { subtotal: orcSubtotalProduto_(p),
       descricao: ((catalogo.find(x => Number(x['ID']) === Number(p.id)) || {})['Descrição']) || '' })),
-    opcionais, totais,
+    opcionais,
+    totais: { produtosTotal, desconto: Number(c.desconto || 0),
+      valorEstimado: orcMedia_(totaisPorPacote, 'valorEstimado'), total: orcMedia_(totaisPorPacote, 'total') },
   };
 }

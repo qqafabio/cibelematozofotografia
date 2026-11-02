@@ -395,6 +395,11 @@
   .lf-resumo{background:var(--gold-soft);border-radius:var(--r-md);padding:14px 16px;margin:6px 0 16px;}
   .lf-resumo .lf-linha{display:flex;justify-content:space-between;font-size:13.5px;padding:2px 0;}
   .lf-resumo .lf-total{font-family:'Fraunces',serif;font-size:19px;font-weight:600;border-top:1px solid var(--rule);margin-top:6px;padding-top:8px;}
+  .lf-resumo .lf-total-pacote{font-weight:600;font-size:14.5px;border-top:1px dashed var(--rule);margin-top:4px;padding-top:6px;}
+  .lf-pacote{border:1px solid var(--rule-soft);border-radius:var(--r-md);padding:14px 16px 2px;margin-bottom:14px;background:var(--paper-raised);}
+  .lf-pacote-head{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+  .lf-pacote-head strong{font-family:'Fraunces',serif;font-weight:500;font-size:14.5px;flex:1 1 auto;}
+  .lf-pacote-remover{padding:4px 8px;}
   .lf-bar{position:sticky;bottom:0;z-index:15;background:var(--paper);border-top:1px solid var(--rule);padding:12px 0;margin-top:8px;display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap;}
   .lf-bar .lf-bar-info{margin-right:auto;font-size:12.5px;color:var(--ink-soft);}
   .lf-hist{width:100%;font-size:13.5px;}

@@ -67,13 +67,10 @@ function renderLeadForm(main){
 
     <div class="lf-card">
       <h3><i class="bi bi-receipt"></i> Orçamento</h3>
+      <div id="lfPacotes"></div>
       <div class="row g-3">
-        <div class="col-md-6 field"><label>Pacote</label><select id="f_pacote"></select></div>
-        <div class="col-md-3 field"><label>Valor do pacote (R$)</label><input id="f_valorPacote" type="number" step="0.01" min="0" value="${cfg.valorPacote == null ? '' : esc(cfg.valorPacote)}"></div>
-        <div class="col-md-3 field"><label>Desconto (R$)</label><input id="f_desconto" type="number" step="0.01" min="0" value="${v('Desconto')}"></div>
+        <div class="col-md-4 field"><label>Desconto (R$)</label><input id="f_desconto" type="number" step="0.01" min="0" value="${v('Desconto')}"></div>
       </div>
-      <div class="field mt-3"><label>Itens inclusos neste orçamento <small class="text-muted">(um por linha · aparecem no PDF · só deste lead, não altera o pacote)</small></label>
-        <textarea id="f_itens" rows="6" placeholder="Selecione um pacote para preencher, ou escreva os itens"></textarea></div>
       <div id="lfDinamico"></div>
       <div class="lf-resumo" id="lfResumo"></div>
     </div>
@@ -83,6 +80,7 @@ function renderLeadForm(main){
       <div class="row g-3">
         <div class="col-md-6 field"><label>Etapa comercial</label><select id="f_etapa">${opcoesSelect(listas['Etapa comercial'], editando ? lead['Etapa comercial'] : '')}</select></div>
         <div class="col-md-6 field"><label>Próximo contato</label><input id="f_proximoContato" data-picker="date" placeholder="DD/MM/AAAA" value="${v('Próximo contato')}"><small class="text-muted">Cria um lembrete de dia inteiro na Google Agenda.</small></div>
+        <div class="col-12 field" id="lfPacoteFechadoWrap" style="display:none;"><label>Qual pacote foi fechado? <small class="text-muted">(o evento criado a partir deste lead usa este pacote)</small></label><select id="f_pacoteFechado"></select></div>
         <div class="col-12 field"><label>Observações</label><textarea id="f_obs" rows="3">${v('Observações')}</textarea></div>
       </div>
     </div>
@@ -110,9 +108,7 @@ function renderLeadForm(main){
   if (!editando) aplicarMascara('f_whatsapp', maskWhatsapp);
 
   const sTipo = document.getElementById('f_tipo');
-  const sPacote = document.getElementById('f_pacote');
-  sPacote.innerHTML = lfOpcoesPacotes_(sTipo.value, editando ? lead['Pacote'] : '');
-  document.getElementById('f_itens').value = cfg.itens != null ? cfg.itens : orcItensDoPacote_(sPacote.value);
+  lfDesenharPacotes_();
   lfDesenharDinamico_();
 
   sTipo.addEventListener('change', () => {
@@ -121,19 +117,92 @@ function renderLeadForm(main){
       const cat = produtos.find(x => Number(x['ID']) === p.id);
       return !cat || aplicaAoTipoEvento_(cat['Tipos de evento'], sTipo.value);
     });
-    sPacote.innerHTML = lfOpcoesPacotes_(sTipo.value, sPacote.value);
+    lfDesenharPacotes_();
     lfDesenharDinamico_();
   });
-  sPacote.addEventListener('change', () => {
-    const pac = pacotes.find(p => String(p['Nome']) === sPacote.value);
-    if (pac) document.getElementById('f_valorPacote').value = Number(pac['Valor pacote'] || 0);
-    document.getElementById('f_itens').value = pac ? String(pac['Itens inclusos'] || '') : '';
-    lfAtualizarResumo_();
-  });
-  ['f_valorPacote', 'f_itens', 'f_desconto', 'f_dataDesejada', 'f_instituicao', 'f_nome'].forEach(id => {
+  ['f_desconto', 'f_dataDesejada', 'f_instituicao', 'f_nome'].forEach(id => {
     const el = document.getElementById(id);
     if (el){ el.addEventListener('input', lfAtualizarResumo_); el.addEventListener('change', lfAtualizarResumo_); }
   });
+  document.getElementById('f_etapa').addEventListener('change', lfAtualizarPacoteFechado_);
+}
+
+/* Lista de pacotes do orçamento (v3.20): 1+ blocos, cada um com pacote do
+   catálogo (auto-preenche valor/itens) + valor + itens, todos editáveis.
+   Estado vivo em lfEst.cfg.pacotes — os listeners escrevem direto nele,
+   igual ao padrão já usado para extras/produtos em lfDesenharDinamico_. */
+function lfDesenharPacotes_(){
+  const cont = document.getElementById('lfPacotes');
+  const tipo = document.getElementById('f_tipo').value;
+  const cfg = lfEst.cfg;
+  if (!cfg.pacotes.length) cfg.pacotes.push(orcPacoteVazio_());
+
+  cont.innerHTML = cfg.pacotes.map((p, i) => `
+    <div class="lf-pacote" data-pacote="${i}">
+      <div class="lf-pacote-head">
+        <strong>Pacote ${i + 1}</strong>
+        ${cfg.pacotes.length > 1 ? `<button type="button" class="btn-ghost lf-pacote-remover" data-pac-remover="${i}" title="Remover este pacote"><i class="bi bi-trash"></i></button>` : ''}
+      </div>
+      <div class="row g-3">
+        <div class="col-md-7 field"><label>Pacote do catálogo</label><select data-pac-nome="${i}">${lfOpcoesPacotes_(tipo, p.nome)}</select></div>
+        <div class="col-md-5 field"><label>Valor (R$)</label><input type="number" step="0.01" min="0" data-pac-valor="${i}" value="${p.valorPacote == null ? '' : esc(p.valorPacote)}"></div>
+      </div>
+      <div class="field mt-2"><label>Itens inclusos neste orçamento <small class="text-muted">(um por linha · só deste lead, não altera o pacote)</small></label>
+        <textarea rows="4" data-pac-itens="${i}" placeholder="Selecione um pacote para preencher, ou escreva os itens">${esc(p.itens != null ? p.itens : orcItensDoPacote_(p.nome))}</textarea></div>
+    </div>`).join('')
+    + `<button type="button" class="btn-ghost" id="lfAdicionarPacote"><i class="bi bi-plus-lg"></i> Adicionar outro pacote</button>`;
+
+  cont.querySelectorAll('[data-pac-nome]').forEach(sel => sel.addEventListener('change', () => {
+    const i = Number(sel.dataset.pacNome);
+    const p = cfg.pacotes[i];
+    p.nome = sel.value;
+    const pac = pacotes.find(x => String(x['Nome']) === sel.value);
+    const valorEl = cont.querySelector(`[data-pac-valor="${i}"]`);
+    const itensEl = cont.querySelector(`[data-pac-itens="${i}"]`);
+    if (pac){ p.valorPacote = Number(pac['Valor pacote'] || 0); if (valorEl) valorEl.value = p.valorPacote; }
+    p.itens = null; // volta a seguir os itens do catálogo até o usuário editar manualmente
+    if (itensEl) itensEl.value = pac ? String(pac['Itens inclusos'] || '') : '';
+    lfAtualizarResumo_();
+  }));
+  cont.querySelectorAll('[data-pac-valor]').forEach(inp => inp.addEventListener('input', () => {
+    const i = Number(inp.dataset.pacValor);
+    cfg.pacotes[i].valorPacote = inp.value === '' ? null : Number(inp.value);
+    lfAtualizarResumo_();
+  }));
+  cont.querySelectorAll('[data-pac-itens]').forEach(ta => ['input', 'change'].forEach(ev => ta.addEventListener(ev, () => {
+    const i = Number(ta.dataset.pacItens);
+    cfg.pacotes[i].itens = ta.value;
+    lfAtualizarResumo_();
+  })));
+  cont.querySelectorAll('[data-pac-remover]').forEach(btn => btn.addEventListener('click', () => {
+    cfg.pacotes.splice(Number(btn.dataset.pacRemover), 1);
+    lfDesenharPacotes_();
+    lfAtualizarResumo_();
+  }));
+  const addBtn = document.getElementById('lfAdicionarPacote');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    cfg.pacotes.push(orcPacoteVazio_());
+    lfDesenharPacotes_();
+    lfAtualizarResumo_();
+  });
+  lfAtualizarPacoteFechado_();
+}
+
+/* Com 2+ pacotes no orçamento, o evento criado ao marcar o lead como
+   "Fechado" (cascata em pbLeads.js) não pode herdar leads.pacote (vira
+   "Nome A; Nome B") nem leads.valor_estimado (vira a média) — por isso só
+   aparece quando faz sentido, pedindo qual dos pacotes foi o escolhido. */
+function lfAtualizarPacoteFechado_(){
+  const wrap = document.getElementById('lfPacoteFechadoWrap');
+  if (!wrap) return;
+  const nomes = lfEst.cfg.pacotes.map(p => String(p.nome || '').trim()).filter(Boolean);
+  const etapa = document.getElementById('f_etapa');
+  const mostrar = nomes.length > 1 && etapa && etapa.value === 'Fechado';
+  wrap.style.display = mostrar ? '' : 'none';
+  if (!mostrar) return;
+  const sel = document.getElementById('f_pacoteFechado');
+  const atual = sel.value;
+  sel.innerHTML = nomes.map(n => `<option value="${esc(n)}" ${n === atual ? 'selected' : ''}>${esc(n)}</option>`).join('');
 }
 
 /* Opcionais da regra do tipo + produtos do catálogo aplicáveis. */
@@ -194,41 +263,40 @@ function lfDesenharDinamico_(){
   lfAtualizarResumo_();
 }
 
-/* Lê o formulário inteiro (inclui o estado vivo de extras/produtos). */
+/* Lê o formulário inteiro (inclui o estado vivo de pacotes/extras/produtos). */
 function lfLer_(){
   const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   const lead = lfEst.lead;
-  const vp = g('f_valorPacote');
-  lfEst.cfg.valorPacote = vp === '' ? null : Number(vp);
-  lfEst.cfg.itens = document.getElementById('f_itens').value;
   return {
     nome: lead ? lead['Cliente'] : g('f_nome'),
     whatsapp: lead ? lead['WhatsApp'] : g('f_whatsapp'),
     email: lead ? lead['E-mail'] : g('f_email'),
     tipoEvento: g('f_tipo'), dataDesejada: g('f_dataDesejada'), instituicao: g('f_instituicao'),
-    servico: g('f_servico'), origem: g('f_origem'), pacote: g('f_pacote'),
+    servico: g('f_servico'), origem: g('f_origem'),
     desconto: Number(g('f_desconto') || 0), etapa: document.getElementById('f_etapa').value,
     proximoContato: g('f_proximoContato'), observacoes: g('f_obs'), cfg: lfEst.cfg,
   };
 }
 function lfHash_(c, nomeCliente){
   return orcHash_({ cliente: nomeCliente == null ? c.nome : nomeCliente, tipoEvento: c.tipoEvento, dataDesejada: c.dataDesejada,
-    instituicao: c.instituicao, pacote: c.pacote, desconto: c.desconto, cfg: c.cfg });
+    instituicao: c.instituicao, desconto: c.desconto, cfg: c.cfg });
 }
 function lfPrecisaGerar_(c){
   const mudou = lfHash_(c) !== lfEst.hashAtual;
-  return mudou && (!!c.pacote || lfEst.versaoAtual > 0);
+  const temPacote = c.cfg.pacotes.some(p => String(p.nome || '').trim());
+  return mudou && (temPacote || lfEst.versaoAtual > 0);
 }
 
 function lfAtualizarResumo_(){
   if (!document.getElementById('lfResumo')) return;
   const c = lfLer_();
-  const t = orcTotais_(c.cfg.valorPacote, c.cfg.produtos, c.desconto);
+  const totaisPorPacote = orcTotaisPacotes_(c.cfg, c.desconto);
+  const multi = totaisPorPacote.length > 1;
   document.getElementById('lfResumo').innerHTML = `
-    <div class="lf-linha"><span>Pacote${c.pacote ? ' ' + esc(c.pacote) : ''}</span><span>${formatBRL(t.pacote)}</span></div>
+    ${c.cfg.pacotes.map((p, i) => `<div class="lf-linha"><span>Pacote${p.nome ? ' ' + esc(p.nome) : ' ' + (i + 1)}</span><span>${formatBRL(totaisPorPacote[i] ? totaisPorPacote[i].pacote : 0)}</span></div>`).join('')}
     ${c.cfg.produtos.map(p => `<div class="lf-linha"><span>${esc(p.nome)}${p.cobranca === 'fixo' ? '' : ` (${p.qtd} × ${formatBRL(p.valor)})`}</span><span>${formatBRL(orcSubtotalProduto_(p))}</span></div>`).join('')}
-    ${t.desconto > 0 ? `<div class="lf-linha"><span>Desconto</span><span>− ${formatBRL(t.desconto)}</span></div>` : ''}
-    <div class="lf-linha lf-total"><span>Total</span><span>${formatBRL(t.total)}</span></div>`;
+    ${c.desconto > 0 ? `<div class="lf-linha"><span>Desconto</span><span>− ${formatBRL(c.desconto)}</span></div>` : ''}
+    ${totaisPorPacote.map((t, i) => `<div class="lf-linha ${multi ? 'lf-total-pacote' : 'lf-total'}"><span>Total${multi ? ' com ' + esc(c.cfg.pacotes[i].nome || 'Pacote ' + (i + 1)) : ''}</span><span>${formatBRL(t.total)}</span></div>`).join('')}`;
   c.cfg.produtos.forEach(p => {
     const el = document.querySelector(`[data-prod-sub="${p.id}"]`);
     if (el) el.textContent = formatBRL(orcSubtotalProduto_(p));
@@ -280,7 +348,11 @@ async function orcAcaoHistorico_(idOrc, whatsapp){
 }
 function orcMensagemWhatsApp_(snap){
   const primeiro = String(snap.cliente.nome || '').split(' ')[0];
-  return `Olá, ${primeiro}! Segue o orçamento${snap.tipoEvento ? ' do seu evento (' + snap.tipoEvento + ')' : ''}, no valor total de ${formatBRL(snap.totais.total)}. Qualquer dúvida estou à disposição! — Cibele Matozo Fotografia`;
+  const pacotesSnap = Array.isArray(snap.pacotes) ? snap.pacotes : null;
+  const valorTxt = pacotesSnap && pacotesSnap.length > 1
+    ? `com opções de pacote entre ${formatBRL(Math.min(...pacotesSnap.map(p => p.total)))} e ${formatBRL(Math.max(...pacotesSnap.map(p => p.total)))}`
+    : `no valor total de ${formatBRL(snap.totais.total)}`;
+  return `Olá, ${primeiro}! Segue o orçamento${snap.tipoEvento ? ' do seu evento (' + snap.tipoEvento + ')' : ''}, ${valorTxt}. Qualquer dúvida estou à disposição! — Cibele Matozo Fotografia`;
 }
 async function orcEnviarWhatsApp_(snap){
   const msg = orcMensagemWhatsApp_(snap);
@@ -300,16 +372,36 @@ async function orcEnviarWhatsApp_(snap){
 async function lfSalvar_(){
   const c = lfLer_();
   if (!lfEst.lead && !c.nome){ mostrarErro('leadErr', 'Informe o nome.'); window.scrollTo(0, 0); return; }
+  const totaisPorPacote = orcTotaisPacotes_(c.cfg, c.desconto);
+  const nomesPacotes = c.cfg.pacotes.map(p => String(p.nome || '').trim()).filter(Boolean);
+  const wrapFechado = document.getElementById('lfPacoteFechadoWrap');
+  const pacoteFechadoVisivel = wrapFechado && wrapFechado.style.display !== 'none';
+  // Só exige a escolha quando a cascata (pbLeads.js) de fato vai rodar — ou seja,
+  // na transição PARA "Fechado" (ela é idempotente: não roda de novo se já estava).
+  const etapaAnterior = lfEst.lead ? String(lfEst.lead['Etapa comercial'] || '') : '';
+  const vaiFechar = c.etapa === 'Fechado' && etapaAnterior !== 'Fechado';
+  if (pacoteFechadoVisivel && vaiFechar && !document.getElementById('f_pacoteFechado').value){
+    mostrarErro('leadErr', 'Selecione qual pacote foi fechado.'); window.scrollTo(0, 0); return;
+  }
   const precisa = lfPrecisaGerar_(c);
   const btn = document.getElementById('lfSalvar');
   const rotulo = btn.textContent;
   btn.disabled = true; btn.textContent = 'Salvando…';
-  const t = orcTotais_(c.cfg.valorPacote, c.cfg.produtos, c.desconto);
+  const valorEstimadoMedio = orcMedia_(totaisPorPacote, 'valorEstimado');
   const dados = {
-    tipoEvento: c.tipoEvento, dataDesejada: c.dataDesejada, servico: c.servico, pacote: c.pacote, origem: c.origem,
-    etapa: c.etapa, valorEstimado: t.valorEstimado, desconto: c.desconto, proximoContato: c.proximoContato,
+    tipoEvento: c.tipoEvento, dataDesejada: c.dataDesejada, servico: c.servico, pacote: nomesPacotes.join('; '), origem: c.origem,
+    etapa: c.etapa, valorEstimado: valorEstimadoMedio, desconto: c.desconto, proximoContato: c.proximoContato,
     observacoes: c.observacoes, instituicao: c.instituicao, orcDados: orcSerializarDados_(c.cfg),
   };
+  // Lead "Fechado" cria um evento automaticamente (pbLeads.js) — com 1 pacote só,
+  // herda leads.pacote/valor_estimado normalmente; com 2+, o pacote realmente
+  // fechado (escolhido acima) é quem define o que vai para o evento.
+  if (pacoteFechadoVisivel){
+    const nome = document.getElementById('f_pacoteFechado').value;
+    const i = c.cfg.pacotes.findIndex(p => String(p.nome || '').trim() === nome);
+    dados.pacoteFechadoNome = nome;
+    dados.pacoteFechadoValor = i !== -1 ? totaisPorPacote[i].valorEstimado : valorEstimadoMedio;
+  }
   let pdfErro = null;
   try {
     let idLead = leadFormId, cliente;
@@ -325,7 +417,7 @@ async function lfSalvar_(){
       const versao = lfEst.versaoAtual + 1;
       const hash = lfHash_(c, cliente.nome);
       const snap = orcMontarSnapshot_({ idLead, versao, cliente, tipoEvento: c.tipoEvento, dataDesejada: c.dataDesejada,
-        instituicao: c.instituicao, pacote: c.pacote, desconto: c.desconto, cfg: c.cfg });
+        instituicao: c.instituicao, desconto: c.desconto, cfg: c.cfg });
       await apiCall('criarOrcamento', { idLead, versao, hash, snapshot: snap });
       // Só marca a versão/hash no lead depois que o orçamento foi gravado: se algo falhar
       // antes, o lead continua "desatualizado" e o orçamento é exigido de novo.

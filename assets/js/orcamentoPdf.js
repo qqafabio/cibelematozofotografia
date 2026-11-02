@@ -136,28 +136,59 @@ function orcGerarPdf_(snap){
   }
   y += 4;
 
+  // v3.20: snapshots antigos (pré multi-pacote) trazem snap.pacote singular —
+  // normaliza para o mesmo formato de lista usado daqui pra baixo.
+  const snapPacotes = Array.isArray(snap.pacotes) ? snap.pacotes
+    : [Object.assign({ nome: '', descricao: '', itens: [], extras: [], prazoEntrega: '' }, snap.pacote || {},
+        { valor: (snap.totais || {}).pacote || 0, total: (snap.totais || {}).total || 0 })];
+
   let n = 1;
   secao(n++, 'Apresentação');
   paragrafo(`A ${ORC_EMPRESA.nome} apresenta esta proposta para a cobertura fotográfica de ${snap.tipoEvento || 'seu evento'}`
     + `${snap.instituicao ? ' — ' + snap.instituicao : ''}${snap.dataDesejada ? ', prevista para ' + snap.dataDesejada : ''}, `
     + `preparada especialmente para ${snap.cliente.nome}. Cada detalhe abaixo foi pensado para registrar os melhores momentos com cuidado, sensibilidade e profissionalismo.`);
 
-  const incluso = snap.pacote.itens.concat(snap.pacote.extras);
-  if (snap.pacote.nome || incluso.length){
-    secao(n++, snap.pacote.nome ? `Serviços inclusos — ${snap.pacote.nome}` : 'Serviços inclusos');
-    if (snap.pacote.descricao) paragrafo(snap.pacote.descricao, { cor: C.soft });
-    if (incluso.length) incluso.forEach(bullet);
-    else paragrafo('Detalhamento do pacote conforme combinado.', { cor: C.soft });
-  }
+  if (snapPacotes.length <= 1){
+    const p = snapPacotes[0];
+    const incluso = p.itens.concat(p.extras);
+    if (p.nome || incluso.length){
+      secao(n++, p.nome ? `Serviços inclusos — ${p.nome}` : 'Serviços inclusos');
+      if (p.descricao) paragrafo(p.descricao, { cor: C.soft });
+      if (incluso.length) incluso.forEach(bullet);
+      else paragrafo('Detalhamento do pacote conforme combinado.', { cor: C.soft });
+    }
 
-  secao(n++, 'Investimento');
-  const t = snap.totais;
-  linhaValor(snap.pacote.nome ? `Pacote ${snap.pacote.nome}` : 'Cobertura fotográfica', '', orcBRL_(t.pacote));
-  snap.produtos.forEach(p => linhaValor(rotuloProduto(p), p.descricao, orcBRL_(p.subtotal)));
-  if (t.desconto > 0) linhaValor('Desconto', '', '- ' + orcBRL_(t.desconto));
-  y += 2;
-  linhaValor('TOTAL', '', orcBRL_(t.total), true);
-  y += 3;
+    secao(n++, 'Investimento');
+    linhaValor(p.nome ? `Pacote ${p.nome}` : 'Cobertura fotográfica', '', orcBRL_(p.valor));
+    snap.produtos.forEach(pr => linhaValor(rotuloProduto(pr), pr.descricao, orcBRL_(pr.subtotal)));
+    if (snap.totais.desconto > 0) linhaValor('Desconto', '', '- ' + orcBRL_(snap.totais.desconto));
+    y += 2;
+    linhaValor('TOTAL', '', orcBRL_(p.total), true);
+    y += 3;
+  } else {
+    secao(n++, 'Opções de pacote');
+    paragrafo('Escolha uma das opções abaixo — os valores do investimento já consideram os produtos adicionais e o desconto, quando houver.', { cor: C.soft });
+    snapPacotes.forEach(p => {
+      garantir(16);
+      color(C.ink); serif(13, true); doc.text(p.nome || 'Pacote', M, y); y += 5.5;
+      if (p.descricao) paragrafo(p.descricao, { cor: C.soft });
+      const incluso = p.itens.concat(p.extras);
+      if (incluso.length) incluso.forEach(bullet);
+      y += 1;
+    });
+
+    if (snap.produtos.length){
+      secao(n++, 'Produtos adicionais');
+      paragrafo('Inclusos em qualquer um dos pacotes acima.', { cor: C.soft });
+      snap.produtos.forEach(pr => linhaValor(rotuloProduto(pr), pr.descricao, orcBRL_(pr.subtotal)));
+      y += 2;
+    }
+
+    secao(n++, 'Investimento');
+    if (snap.totais.desconto > 0) paragrafo(`Desconto aplicado: ${orcBRL_(snap.totais.desconto)}`, { cor: C.soft });
+    snapPacotes.forEach(p => linhaValor(`Total com ${p.nome || 'este pacote'}`, '', orcBRL_(p.total)));
+    y += 3;
+  }
 
   if (snap.opcionais.length){
     secao(n++, 'Opcionais disponíveis');
@@ -174,9 +205,12 @@ function orcGerarPdf_(snap){
     'PIX: parcelamento a combinar diretamente com a Cibele.',
   ].forEach(bullet);
 
-  if (snap.pacote.prazoEntrega){
+  const prazos = snapPacotes.map(p => p.prazoEntrega).filter(Boolean);
+  if (prazos.length){
     secao(n++, 'Entrega do material');
-    bullet(snap.pacote.prazoEntrega);
+    const unicos = Array.from(new Set(prazos));
+    if (unicos.length === 1) bullet(unicos[0]);
+    else snapPacotes.forEach(p => { if (p.prazoEntrega) bullet(`${p.nome || 'Pacote'}: ${p.prazoEntrega}`); });
   }
 
   y += 4;
