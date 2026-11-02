@@ -48,11 +48,13 @@ de uma pasta do Google Drive.
   regra pública expandir `id_vitrine.token`/`.status`/`.validade` sem duplicar
   esses campos em cada foto.
 - **Upload direto**: usa o campo `file` nativo do PocketBase (com thumbs
-  `400x400`/`1600x0`). Por padrão grava em disco na própria VM — para usar
-  **Cloudflare R2** (recomendado: a VM é pequena e R2 tem egress grátis),
-  configure em *PocketBase Admin UI → Settings → Files storage → S3* com as
-  credenciais do bucket. É só isso: nenhum código muda, o SDK do PocketBase
-  já abstrai local-disk vs. S3.
+  `400x400`/`1600x0`). **Já configurado para gravar no Cloudflare R2** (v3.19.9
+  — bucket `cibele-vitrine-fotos`, camada grátis, egress sempre grátis) via
+  *PocketBase Admin UI → Settings → Files storage → S3* — as credenciais
+  ficam só nas configurações internas do PocketBase na VM, nunca neste
+  repositório. Nenhum código muda por causa disso: o SDK do PocketBase já
+  abstrai local-disk vs. S3. Se precisar reconfigurar/trocar de bucket, é só
+  repetir esse mesmo caminho na Admin UI com as novas credenciais.
 - **Modo Google Drive**: não usa conta de serviço/Google Cloud. `vitrine.html`
   chama o **mesmo** `CRM_API_URL` (Apps Script) por GET — ver
   `infra/apps_script/listarFotosVitrine.gs` (cole como um `.gs` a mais no

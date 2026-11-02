@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.19.9 | 2026-11-02 | Vitrine de Fotos: upload direto passa a gravar no Cloudflare R2 (configuração de infra, sem mudança de código) | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
 | v3.19 Fase 4 | 2026-11-02 | Vitrine de Fotos — entrega final (alta resolução sem marca d'água, álbuns por categoria, validade e limite de downloads próprios) — ⚠️ migrations + pb_hook | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
 | v3.19 Fase 3 | 2026-11-02 | Vitrine de Fotos — marca d'água automática no upload direto (gerada no navegador da fotógrafa, não dá pra burlar na tela do cliente) — ⚠️ migration | [2.36](#236-vitrine-de-fotos--fase-3-marca-dágua-automática-v319-fase-3) |
 | v3.19 Fase 2 | 2026-11-02 | Vitrine de Fotos — seleção de fotos pelo cliente (limite do pacote, avisa mas permite passar), botão "Finalizar seleção" e aviso por e-mail (Resend) — ⚠️ migrations + pb_hook | [2.35](#235-vitrine-de-fotos--fase-2-seleção-de-fotos-v319-fase-2) |
@@ -1311,4 +1312,6 @@ Arquivos: `pbSchema.js`, `pbVitrines.js`, `modules/vitrines.js`, `vitrine.html`,
 `infra/pb_hooks/{auto_id,contar_downloads}.pb.js`. `node --check` OK.
 
 **Com isso, as 4 fases planejadas da Vitrine de Fotos estão completas.**
+
+**v3.19.9 (armazenamento).** O upload direto passou a gravar no **Cloudflare R2** (bucket `cibele-vitrine-fotos`, camada grátis — 10GB, egress sempre grátis) em vez do disco da VM. Configurado via *PocketBase Admin UI → Settings → Files storage → S3* (credenciais aplicadas direto no servidor, nunca commitadas). Zero mudança de código — o SDK do PocketBase abstrai local-disk vs. S3, como já estava documentado desde a Fase 1. A única foto já enviada antes dessa mudança foi migrada (regravada no mesmo registro) e conferida byte a byte idêntica ao original; os arquivos órfãos no disco da VM foram removidos depois.
 
