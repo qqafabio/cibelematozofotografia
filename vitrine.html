@@ -183,6 +183,16 @@ async function marcaDaguaCanvas_(origem){
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
 }
 
+// Endpoint FINAL de imagem do Drive, sem passar pelo redirect intermediário
+// de drive.google.com/thumbnail — esse redirect (302) não manda
+// Access-Control-Allow-Origin na resposta de redirect em si, e o Firefox
+// (confirmado em produção) recusa seguir um redirect cross-origin em modo
+// 'cors' se a resposta do 302 não tiver o cabeçalho, mesmo a URL final tendo
+// (o endpoint direto já manda 'Access-Control-Allow-Origin: *' sempre).
+function driveUrlDireta_(id, tamanho){
+  return 'https://lh3.googleusercontent.com/d/' + id + '=w' + tamanho;
+}
+
 // Baixa a foto original do Drive e devolve uma URL local (blob:) já com a
 // marca d'água — pra usar no <img src>, no data-ver do lightbox e no href
 // de "baixar". Falha (CORS bloqueado, rede) → null, e quem chamou mantém a
@@ -210,7 +220,9 @@ async function aplicarMarcaDaguaDriveNaGrade_(fotos){
     const i = indice++;
     if (i >= fotos.length) return;
     const f = fotos[i];
-    const url = await marcaDaguaDriveUrl_(f.ver);
+    // Usa o endpoint direto (sem redirect) pra evitar o erro de CORS no
+    // redirect intermediário do drive.google.com/thumbnail (ver driveUrlDireta_).
+    const url = await marcaDaguaDriveUrl_(driveUrlDireta_(f.id, 2000));
     if (url){
       // Atualiza o objeto (não só o DOM): "Baixar todas as fotos" lê f.baixar
       // direto do array em memória, não do href do botão individual.
