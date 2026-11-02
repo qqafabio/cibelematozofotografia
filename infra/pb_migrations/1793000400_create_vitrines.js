@@ -28,6 +28,10 @@ migrate((db) => {
     new SchemaField({ name: "qtd_fotos_pacote", type: "number", required: false, options: { noDecimal: false } }),
     new SchemaField({ name: "selecao_finalizada_em", type: "text", required: false }),
     new SchemaField({ name: "qtd_fotos_selecionadas_final", type: "number", required: false, options: { noDecimal: false } }),
+    new SchemaField({ name: "entrega_liberada_em", type: "text", required: false }),
+    new SchemaField({ name: "entrega_validade", type: "text", required: false }),
+    new SchemaField({ name: "entrega_max_downloads", type: "number", required: false, options: { noDecimal: false } }),
+    new SchemaField({ name: "entrega_downloads_count", type: "number", required: false, options: { noDecimal: false } }),
     new SchemaField({ name: "data_criacao", type: "text", required: false }),
   ],
   indexes: [

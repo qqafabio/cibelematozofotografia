@@ -16,6 +16,7 @@ migrate((db) => {
     new SchemaField({ name: "id_vitrine", type: "relation", required: false, options: { collectionId: vitrinesCol.id, maxSelect: 1, cascadeDelete: true } }),
     new SchemaField({ name: "arquivo", type: "file", required: false, options: { maxSelect: 1, maxSize: 52428800, thumbs: ["400x400", "1600x0"] } }),
     new SchemaField({ name: "preview", type: "file", required: false, options: { maxSelect: 1, maxSize: 52428800, thumbs: ["400x400", "1600x0"] } }),
+    new SchemaField({ name: "categoria", type: "text", required: false }),
     new SchemaField({ name: "ordem", type: "number", required: false, options: { noDecimal: false } }),
     new SchemaField({ name: "nome_original", type: "text", required: false }),
     new SchemaField({ name: "data_upload", type: "text", required: false }),

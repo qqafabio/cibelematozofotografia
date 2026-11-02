@@ -60,6 +60,12 @@
   .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;z-index:30;padding:20px;}
   .lightbox img{max-width:100%;max-height:85vh;border-radius:6px;}
   .lightbox-fechar{position:absolute;top:18px;right:22px;color:#fff;font-size:28px;background:none;cursor:pointer;}
+
+  .entrega{margin-top:34px;padding-top:26px;border-top:1px solid rgba(128,128,128,.25);}
+  .entrega h2{font-size:20px;margin:0 0 4px;}
+  .entrega-sub{font-size:13px;opacity:.75;margin:0 0 16px;}
+  .album-titulo{font-size:14px;font-weight:600;margin:18px 0 8px;opacity:.85;}
+  .album-titulo:first-child{margin-top:0;}
 </style>
 </head>
 <body class="tema-linen serif">
@@ -131,6 +137,23 @@ async function criarFinalizacao_(vitrinePbId, qtd, token, senhaHash){
 function dataBRDeISO_(iso){
   const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? (m[3] + '/' + m[2] + '/' + m[1]) : '';
+}
+// DD/MM/AAAA (texto solto, não é campo `date` do PocketBase) -> Date local, só pra comparar com hoje.
+function parseDataBR_(s){
+  const p = String(s || '').split('/');
+  if (p.length !== 3) return null;
+  const d = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/* ---- Entrega final (v3.19 Fase 4) — contador "auto-declarado": o cliente
+   cria a linha ao clicar em baixar, não é um proxy que de fato intercepta o
+   arquivo (mesmo nível de confiança do resto da vitrine). ---- */
+async function criarDownloadEvento_(vitrinePbId, arquivoRef, token, senhaHash){
+  return PB.collection('vitrine_downloads').create(
+    { id_vitrine: vitrinePbId, arquivo_ref: arquivoRef, data: new Date().toLocaleDateString('pt-BR') },
+    { token, senha_hash: senhaHash || '' }
+  );
 }
 
 function aplicarTema_(vitrine){
@@ -205,7 +228,7 @@ async function renderGaleria_(vitrine, senhaHash){
     </div>
   `;
 
-  let fotos = []; // { id, thumb, ver, baixar, nome }
+  let fotos = []; // { id, thumb, ver, baixar, nome, categoria, verLimpo, baixarLimpo }
   let erroFonte = '';
   try {
     if (vitrine.fonte_imagens === 'google_drive'){
@@ -213,7 +236,14 @@ async function renderGaleria_(vitrine, senhaHash){
       // `ver` usa a URL de thumbnail (em tamanho maior), não `downloadUrl`:
       // o endpoint de download do Drive bloqueia carregamento como <img>
       // cross-origin (403/CORB) — só o endpoint de thumbnail é embeddable.
-      fotos = arquivos.map(a => ({ id: a.id, thumb: a.thumbnailLink, ver: 'https://drive.google.com/thumbnail?id=' + a.id + '&sz=w2000', baixar: a.downloadUrl, nome: a.nome }));
+      // Modo Drive não tem marca d'água (Fase 3b, não construída) nem
+      // categoria (Apps Script não devolve isso) — por isso ver/baixar e
+      // verLimpo/baixarLimpo são os MESMOS aqui; a entrega final só adiciona
+      // o contador, não uma versão "mais limpa" que já não existisse antes.
+      fotos = arquivos.map(a => {
+        const ver = 'https://drive.google.com/thumbnail?id=' + a.id + '&sz=w2000';
+        return { id: a.id, thumb: a.thumbnailLink, ver, baixar: a.downloadUrl, thumbLimpo: a.thumbnailLink, verLimpo: ver, baixarLimpo: a.downloadUrl, nome: a.nome, categoria: '' };
+      });
     } else {
       const regs = await buscarFotosProprio_(vitrine.id, TOKEN, senhaHash);
       // `download:1` força o PocketBase a mandar Content-Disposition:
@@ -221,9 +251,10 @@ async function renderGaleria_(vitrine, senhaHash){
       // URL cross-origin (o arquivo fica noutro domínio da VM do PocketBase).
       // Por isso a versão para o lightbox (`ver`) NÃO leva a flag.
       // Usa SEMPRE o `preview` (com marca d'água, gerado no upload) quando
-      // existe — inclusive para baixar: ainda não existe uma entrega final
-      // controlada (Fase 4), então servir o `arquivo` original aqui
-      // esvaziaria a marca d'água (o cliente só baixaria o limpo direto).
+      // existe — inclusive para baixar durante a navegação normal: sem uma
+      // entrega final liberada, servir o `arquivo` original aqui esvaziaria
+      // a marca d'água. `verLimpo`/`baixarLimpo` (arquivo original, sem marca)
+      // só são usados na seção de entrega final, abaixo.
       // Fotos enviadas antes da Fase 3 não têm `preview` — cai pro original.
       fotos = regs.map(f => {
         const campo = f.preview ? 'preview' : 'arquivo';
@@ -232,7 +263,11 @@ async function renderGaleria_(vitrine, senhaHash){
           thumb: PB.getFileUrl(f, f[campo], { thumb: '400x400' }),
           ver: PB.getFileUrl(f, f[campo]),
           baixar: PB.getFileUrl(f, f[campo], { download: 1 }),
+          thumbLimpo: PB.getFileUrl(f, f.arquivo, { thumb: '400x400' }),
+          verLimpo: PB.getFileUrl(f, f.arquivo),
+          baixarLimpo: PB.getFileUrl(f, f.arquivo, { download: 1 }),
           nome: f.nome_original || f[campo],
+          categoria: f.categoria || '',
         };
       });
     }
@@ -240,13 +275,13 @@ async function renderGaleria_(vitrine, senhaHash){
     erroFonte = err.message || String(err);
   }
 
-  // Seleção: só busca/mostra enquanto a vitrine não tiver sido finalizada —
-  // depois de finalizar, vitrines.selecao_finalizada_em (setado pelo
-  // pb_hook) trava a UI de seleção; download/visualização continuam livres.
+  // Seleção: sempre busca (precisamos saber o que foi selecionado tanto pra
+  // desenhar os corações quanto pra filtrar a entrega final abaixo) — só a
+  // UI de marcar/desmarcar é que some depois de finalizada.
   const finalizada = !!vitrine.selecao_finalizada_em;
   const selecionados = new Set(); // arquivo_ref (= id da foto)
   const selecaoPbIds = {}; // arquivo_ref -> id nativo da linha em vitrine_selecoes (pra desmarcar)
-  if (!erroFonte && fotos.length && !finalizada){
+  if (!erroFonte && fotos.length){
     try {
       const sels = await buscarSelecoes_(vitrine.id, TOKEN, senhaHash);
       sels.forEach(s => { selecionados.add(String(s.arquivo_ref)); selecaoPbIds[s.arquivo_ref] = s.id; });
@@ -263,6 +298,11 @@ async function renderGaleria_(vitrine, senhaHash){
     if (n <= limite) return n + ' de ' + limite + ' selecionadas';
     return n + ' de ' + limite + ' selecionadas (+' + (n - limite) + ' extra' + ((n - limite) === 1 ? '' : 's') + ')';
   }
+
+  // Entrega final (v3.19 Fase 4): se o cliente finalizou e tem fotos
+  // selecionadas, entrega só as selecionadas; senão, entrega a galeria
+  // inteira (ex.: eventos sem fluxo de seleção, álbum vai direto).
+  const entregaInfo = construirEntrega_(vitrine, fotos, selecionados, finalizada);
 
   const wrap = app.querySelector('.wrap');
   wrap.innerHTML = `
@@ -287,6 +327,7 @@ async function renderGaleria_(vitrine, senhaHash){
           </div>
         `).join('')}
       </div>
+      ${montarSecaoEntrega_(entregaInfo, vitrine)}
   `;
   app.querySelectorAll('.foto img').forEach(img => img.addEventListener('click', () => abrirLightbox_(img.dataset.ver)));
 
@@ -342,6 +383,72 @@ async function renderGaleria_(vitrine, senhaHash){
       document.body.appendChild(a); a.click(); a.remove();
     }, i * 400)); // espaçado: navegador costuma bloquear downloads simultâneos demais
   });
+
+  // Clique em "baixar" na entrega final CONTA (fire-and-forget: não atrasa
+  // o download) e bloqueia cliques seguintes assim que bate o limite — o
+  // download em si não é interceptado, é o mesmo nível de confiança do
+  // resto da vitrine (ver pbSchema.js/vitrine_downloads).
+  const maxDownloads = Number(vitrine.entrega_max_downloads) || 0;
+  let downloadsFeitos = Number(vitrine.entrega_downloads_count) || 0;
+  wrap.querySelectorAll('.entrega-baixar').forEach(a => a.addEventListener('click', (e) => {
+    if (maxDownloads && downloadsFeitos >= maxDownloads){
+      e.preventDefault();
+      alert('O limite de downloads desta entrega já foi atingido.');
+      return;
+    }
+    downloadsFeitos++;
+    criarDownloadEvento_(vitrine.id, a.dataset.ref, TOKEN, senhaHash).catch(() => {});
+  }));
+}
+
+// Decide o que (e se) mostrar na seção de entrega final, a partir do estado
+// já carregado da vitrine — sem rede extra (os dados já vieram no fetch
+// principal da vitrine/fotos/seleções).
+function construirEntrega_(vitrine, fotos, selecionados, finalizada){
+  if (!vitrine.entrega_liberada_em) return null;
+  if (vitrine.entrega_validade){
+    const limite = parseDataBR_(vitrine.entrega_validade);
+    if (limite){
+      limite.setHours(23, 59, 59, 999);
+      if (new Date() > limite) return { expirada: true };
+    }
+  }
+  const usarSelecionadas = finalizada && selecionados.size > 0;
+  const itens = usarSelecionadas ? fotos.filter(f => selecionados.has(String(f.id))) : fotos.slice();
+  if (!itens.length) return { vazia: true };
+  const categorias = Array.from(new Set(itens.map(f => f.categoria || '')));
+  return { itens, agrupar: categorias.length > 1, categorias };
+}
+
+function montarSecaoEntrega_(info, vitrine){
+  if (!info) return '';
+  if (info.expirada) return `<div class="entrega"><h2>📦 Entrega final</h2><p class="entrega-sub">O prazo para baixar em alta resolução já encerrou. Fale com a fotógrafa se precisar de um novo prazo.</p></div>`;
+  if (info.vazia) return `<div class="entrega"><h2>📦 Entrega final</h2><p class="entrega-sub">Ainda não há fotos liberadas para entrega.</p></div>`;
+
+  const max = Number(vitrine.entrega_max_downloads) || 0;
+  const atual = Number(vitrine.entrega_downloads_count) || 0;
+  const esgotado = max > 0 && atual >= max;
+  const grupos = info.agrupar
+    ? info.categorias.map(c => ({ nome: c || 'Geral', itens: info.itens.filter(f => (f.categoria || '') === c) }))
+    : [{ nome: null, itens: info.itens }];
+
+  return `
+    <div class="entrega">
+      <h2>📦 Entrega final</h2>
+      <p class="entrega-sub">Fotos em alta resolução, sem marca d'água.${max ? ' Limite de ' + max + ' downloads' + (esgotado ? ' — já atingido.' : '.') : ''}</p>
+      ${esgotado ? `<div class="painel"><p style="margin:0;">Limite de downloads atingido. Fale com a fotógrafa se precisar de mais.</p></div>` : grupos.map(g => `
+        ${g.nome ? `<p class="album-titulo">${escV(g.nome)}</p>` : ''}
+        <div class="grid">
+          ${g.itens.map(f => `
+            <div class="foto">
+              <img src="${escV(f.thumbLimpo)}" loading="lazy" data-ver="${escV(f.verLimpo)}">
+              <a class="baixar entrega-baixar" href="${escV(f.baixarLimpo)}" download="${escV(f.nome)}" data-ref="${escV(f.id)}" title="Baixar em alta resolução">⬇</a>
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 async function iniciar(){

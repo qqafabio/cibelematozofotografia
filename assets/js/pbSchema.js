@@ -339,6 +339,10 @@ const PB_SCHEMA = {
       ['Qtd fotos pacote', 'qtd_fotos_pacote', 'number'], // 0 = sem limite (v3.19 Fase 2)
       ['Seleção finalizada em', 'selecao_finalizada_em', 'text'], // setado pelo pb_hook, não pelo cliente (v3.19 Fase 2)
       ['Qtd selecionadas final', 'qtd_fotos_selecionadas_final', 'number'], // idem — espelha vitrine_finalizacoes.qtd_selecionadas pra lista do CRM não precisar de outra query
+      ['Entrega liberada em', 'entrega_liberada_em', 'text'],       // setado pelo admin (v3.19 Fase 4) — '' = entrega ainda não liberada
+      ['Entrega validade', 'entrega_validade', 'text'],             // DD/MM/AAAA, opcional — checado no cliente (vitrine.html), não é regra do PocketBase
+      ['Entrega máx downloads', 'entrega_max_downloads', 'number'], // 0 = sem limite
+      ['Entrega downloads count', 'entrega_downloads_count', 'number'], // setado pelo pb_hook (contar_downloads.pb.js), espelha a contagem de vitrine_downloads
       ['Data criação', 'data_criacao', 'text'],
     ],
   },
@@ -364,6 +368,7 @@ const PB_SCHEMA = {
       ['ID Vitrine', 'id_vitrine', 'relation:vitrines'],
       ['Arquivo', 'arquivo', 'file'],
       ['Preview', 'preview', 'file'], // derivado com marca d'água, gerado no navegador no upload (v3.19 Fase 3) — o 'arquivo' original nunca é alterado
+      ['Categoria', 'categoria', 'text'], // álbum/categoria opcional (v3.19 Fase 4), ex. "Cerimônia", "Festa" — '' = sem categoria
       ['Ordem', 'ordem', 'number'],
       ['Nome original', 'nome_original', 'text'],
       ['Data upload', 'data_upload', 'text'],
@@ -418,6 +423,33 @@ const PB_SCHEMA = {
     fields: [
       ['ID Vitrine', 'id_vitrine', 'relation:vitrines'],
       ['Qtd selecionadas', 'qtd_selecionadas', 'number'],
+      ['Data', 'data', 'text'],
+    ],
+  },
+
+  /* Downloads da entrega final (v3.19 Fase 4) — 1 linha por clique em
+     "Baixar" na seção de entrega final (contador "auto-declarado": o
+     cliente cria a linha ao clicar, não é um proxy que de fato intercepta
+     o arquivo — mesmo nível de confiança do resto da vitrine, dá pra ver
+     quantos downloads rolaram e avisar/bloquear na tela ao atingir o
+     limite, mas não impede alguém tecnicamente capaz de contornar).
+     'arquivo_ref' guarda o id do arquivo (upload_proprio) ou do Drive
+     (google_drive) — mesmo padrão solto de vitrine_selecoes. */
+  vitrineDownloads: {
+    collection: 'vitrine_downloads',
+    migrationTs: 1793000407,
+    somentePB: true,
+    id: { label: 'ID Download', pb: 'id_download' },
+    rules: {
+      listRule: `@request.auth.id != ""`,
+      viewRule: `@request.auth.id != ""`,
+      createRule: `@request.auth.id != "" || ${regraVitrinePublica_('@request.data.id_vitrine.')}`,
+      updateRule: `@request.auth.id != ""`,
+      deleteRule: `@request.auth.id != ""`,
+    },
+    fields: [
+      ['ID Vitrine', 'id_vitrine', 'relation:vitrines'],
+      ['Arquivo ref', 'arquivo_ref', 'text'],
       ['Data', 'data', 'text'],
     ],
   },

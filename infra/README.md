@@ -75,6 +75,17 @@ de uma pasta do Google Drive.
   fase) na grade, no "ampliar" e no "baixar" (decisão consciente: sem uma
   entrega final controlada — Fase 4, ainda não existe — baixar o original
   esvaziaria a marca d'água).
+- **Fase 4 — entrega final**: mesma vitrine/link, não uma página separada.
+  `vitrines` ganha `entrega_liberada_em` (botão "📦 Liberar entrega" no CRM),
+  `entrega_validade`/`entrega_max_downloads` (checados/aplicados no
+  navegador, não são regra do PocketBase) e `entrega_downloads_count`
+  (espelhado pelo pb_hook `contar_downloads.pb.js` a cada criação em
+  `vitrine_downloads` — mesmo padrão "auto-declarado" da seleção: o cliente
+  cria o registro ao clicar em baixar, não é um proxy que intercepta o
+  arquivo). `vitrine_fotos` ganha `categoria` (álbum opcional) — a entrega
+  agrupa por categoria quando há mais de uma. Reaproveita as mesmas fotos já
+  na galeria (sem upload separado de versão editada): entrega só as
+  selecionadas se o cliente finalizou uma seleção, senão entrega tudo.
 
 
 ### Aplicar na VM

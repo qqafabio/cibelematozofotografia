@@ -83,6 +83,8 @@ async function pbCriarVitrine(dados){
     capa_url: dados.capaUrl ? String(dados.capaUrl).trim() : '',
     capa_posicao: VITRINE_CAPA_POSICOES.indexOf(dados.capaPosicao) !== -1 ? dados.capaPosicao : 'center',
     qtd_fotos_pacote: Number(dados.qtdFotosPacote || 0),
+    entrega_validade: dados.entregaValidade ? String(dados.entregaValidade).trim() : '',
+    entrega_max_downloads: Number(dados.entregaMaxDownloads || 0),
     data_criacao: hojeBR_(),
     // sem id_vitrine → hook atribui
   });
@@ -105,6 +107,8 @@ async function pbAtualizarVitrine(dados){
     capa_url: dados.capaUrl ? String(dados.capaUrl).trim() : '',
     capa_posicao: VITRINE_CAPA_POSICOES.indexOf(dados.capaPosicao) !== -1 ? dados.capaPosicao : 'center',
     qtd_fotos_pacote: Number(dados.qtdFotosPacote || 0),
+    entrega_validade: dados.entregaValidade ? String(dados.entregaValidade).trim() : '',
+    entrega_max_downloads: Number(dados.entregaMaxDownloads || 0),
     validade: dados.validade ? validadeParaISO_(dados.validade) : '',
   };
   // dados.senha === undefined → mantém a senha atual; string (mesmo '') → regrava.
@@ -119,6 +123,22 @@ async function pbRegerarTokenVitrine(dados){
   const token = pbGerarTokenVitrine_();
   await PB.collection('vitrines').update(rec.id, { token });
   return { id: dados.id, token };
+}
+
+/* ---- Entrega final (v3.19 Fase 4) — liberar/revogar é separado do resto
+   do formulário porque é uma decisão operacional (não um campo de edição
+   normal): a fotógrafa aperta o botão quando a entrega está pronta. */
+async function pbLiberarEntrega(dados){
+  await pbAuthGarantir();
+  const rec = await pbAchar_('vitrines', 'id_vitrine', dados.id);
+  await PB.collection('vitrines').update(rec.id, { entrega_liberada_em: hojeBR_() });
+  return { id: dados.id, liberada: true };
+}
+async function pbRevogarEntrega(dados){
+  await pbAuthGarantir();
+  const rec = await pbAchar_('vitrines', 'id_vitrine', dados.id);
+  await PB.collection('vitrines').update(rec.id, { entrega_liberada_em: '' });
+  return { id: dados.id, liberada: false };
 }
 
 async function pbExcluirVitrine(dados){
@@ -204,6 +224,7 @@ async function pbUploadFotoVitrine(dados){
   }
   fd.append('ordem', String(dados.ordem || 0));
   fd.append('nome_original', dados.arquivo.name || '');
+  fd.append('categoria', dados.categoria ? String(dados.categoria).trim() : '');
   fd.append('data_upload', hojeBR_());
   return PB.collection('vitrine_fotos').create(fd);
 }
@@ -224,6 +245,8 @@ Object.assign(window.PB_ACTIONS, {
   criarVitrine: (d) => perfTime('PB criarVitrine', pbCriarVitrine(d)),
   atualizarVitrine: (d) => perfTime('PB atualizarVitrine', pbAtualizarVitrine(d)),
   regerarTokenVitrine: (d) => perfTime('PB regerarTokenVitrine', pbRegerarTokenVitrine(d)),
+  liberarEntrega: (d) => perfTime('PB liberarEntrega', pbLiberarEntrega(d)),
+  revogarEntrega: (d) => perfTime('PB revogarEntrega', pbRevogarEntrega(d)),
   deletarVitrine: (d) => perfTime('PB deletarVitrine', pbExcluirVitrine(d)),
   uploadFotoVitrine: (d) => perfTime('PB uploadFotoVitrine', pbUploadFotoVitrine(d)),
   excluirFotoVitrine: (d) => perfTime('PB excluirFotoVitrine', pbExcluirFotoVitrine(d)),

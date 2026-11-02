@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.19 Fase 4 | 2026-11-02 | Vitrine de Fotos — entrega final (alta resolução sem marca d'água, álbuns por categoria, validade e limite de downloads próprios) — ⚠️ migrations + pb_hook | [2.37](#237-vitrine-de-fotos--fase-4-entrega-final-v319-fase-4) |
 | v3.19 Fase 3 | 2026-11-02 | Vitrine de Fotos — marca d'água automática no upload direto (gerada no navegador da fotógrafa, não dá pra burlar na tela do cliente) — ⚠️ migration | [2.36](#236-vitrine-de-fotos--fase-3-marca-dágua-automática-v319-fase-3) |
 | v3.19 Fase 2 | 2026-11-02 | Vitrine de Fotos — seleção de fotos pelo cliente (limite do pacote, avisa mas permite passar), botão "Finalizar seleção" e aviso por e-mail (Resend) — ⚠️ migrations + pb_hook | [2.35](#235-vitrine-de-fotos--fase-2-seleção-de-fotos-v319-fase-2) |
 | v3.19 | 2026-11-01 | Vitrine de Fotos — Fase 1: galeria pública por evento (link+senha+validade, tema/marca, upload direto ou link do Drive) — ⚠️ migrations + reimplantar Apps Script | [2.34](#234-vitrine-de-fotos--fase-1-v319) |
@@ -1260,4 +1261,54 @@ reiniciar o PocketBase.
 Arquivos: `pbSchema.js`, `pbVitrines.js`, `vitrine.html`,
 `infra/pb_migrations/1793000406_add_preview_vitrine_fotos.js`.
 `node --check` OK.
+
+### 2.37 Vitrine de Fotos — Fase 4: entrega final (v3.19 Fase 4)
+
+Fecha o roteiro da Vitrine de Fotos: a fotógrafa libera uma seção
+**"📦 Entrega final"** na mesma vitrine (mesmo link — não é uma página
+separada), com as fotos em alta resolução **sem marca d'água**, validade e
+limite de downloads próprios (independentes da validade/senha da vitrine).
+
+**Decisões tomadas com a fotógrafa:** a entrega reaproveita as MESMAS fotos
+já na galeria (sem um segundo upload de versão editada) — se o cliente
+finalizou uma seleção, entrega só as selecionadas; senão, entrega a galeria
+inteira (ex.: eventos sem fluxo de seleção). O contador de downloads vale
+para os dois modos (upload direto e Google Drive), mas em ambos é
+**"auto-declarado"**: o cliente cria um registro ao clicar em baixar (como a
+seleção), não é um proxy que de fato intercepta o arquivo. Isso evitou
+precisar de uma peça de infra nova pro modo Drive (que não tem como
+interceptar downloads do próprio Google de qualquer forma).
+
+**Como funciona:** `vitrines` ganha `entrega_liberada_em` (setado só pelo
+botão "📦 Liberar entrega" na lista do CRM), `entrega_validade` (texto
+DD/MM/AAAA, checado no navegador — não é regra do PocketBase, já que não
+precisa comparar no banco), `entrega_max_downloads` e
+`entrega_downloads_count` (espelhado pelo pb_hook `contar_downloads.pb.js`
+a cada novo registro em `vitrine_downloads`, mesmo padrão de
+`notificar_selecao.pb.js` da Fase 2). `vitrine_fotos` ganha `categoria`
+(álbum opcional, ex. "Cerimônia"/"Festa" — preenchido no upload, um valor
+por lote) — a entrega agrupa por categoria só quando há mais de uma usada
+nas fotos entregues.
+
+No modo upload direto, a entrega serve o `arquivo` original (sem marca
+d'água) em vez do `preview`; a galeria de navegação/seleção normal continua
+só com `preview`. Download que passa do limite é bloqueado na hora (alerta
++ clique ignorado), sem precisar recarregar a página.
+
+Testado de ponta a ponta contra a produção com dados descartáveis: duas
+fotos em categorias diferentes agruparam certo na entrega, e o aviso de
+"limite de downloads atingido" apareceu corretamente ao simular o contador
+no limite — tudo limpo depois.
+
+**Deploy necessário:** copiar `infra/pb_migrations/1793000407_create_vitrine_downloads.js`,
+`1793000408_add_campos_entrega_vitrines.js` e
+`1793000409_add_categoria_vitrine_fotos.js` para a VM, atualizar
+`infra/pb_hooks/auto_id.pb.js` (ganhou o hook de `id_download`) e colar
+`infra/pb_hooks/contar_downloads.pb.js`, reiniciar o PocketBase.
+
+Arquivos: `pbSchema.js`, `pbVitrines.js`, `modules/vitrines.js`, `vitrine.html`,
+`crm.html`, `infra/pb_migrations/{1793000407,1793000408,1793000409}*.js`,
+`infra/pb_hooks/{auto_id,contar_downloads}.pb.js`. `node --check` OK.
+
+**Com isso, as 4 fases planejadas da Vitrine de Fotos estão completas.**
 

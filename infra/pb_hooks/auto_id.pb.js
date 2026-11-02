@@ -127,6 +127,14 @@ onRecordBeforeCreateRequest((e) => {
 
 onRecordBeforeCreateRequest((e) => {
   // id já informado explicitamente (ex.: cascata que herda o id do pai) -> respeita.
+  if (e.record.get("id_download")) return;
+  const row = new DynamicModel({ maxid: 0 });
+  $app.dao().db().newQuery("SELECT COALESCE(MAX(id_download), 0) AS maxid FROM vitrine_downloads").one(row);
+  e.record.set("id_download", row.maxid + 1);
+}, "vitrine_downloads");
+
+onRecordBeforeCreateRequest((e) => {
+  // id já informado explicitamente (ex.: cascata que herda o id do pai) -> respeita.
   if (e.record.get("id_cliente")) return;
   const row = new DynamicModel({ maxid: 0 });
   $app.dao().db().newQuery("SELECT COALESCE(MAX(id_cliente), 0) AS maxid FROM clientes").one(row);

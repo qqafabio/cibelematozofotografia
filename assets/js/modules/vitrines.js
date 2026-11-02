@@ -9,9 +9,12 @@
    (upload direto no PocketBase, ou link de pasta do Google Drive).
    Fase 2: seleção de fotos pelo cliente até o limite do pacote (avisa mas
    permite passar) + botão "Finalizar seleção", que trava a vitrine e
-   dispara e-mail pra fotógrafa (pb_hook notificar_selecao.pb.js). Marca
-   d'água e contador de download ficam para as próximas fases (ver plano
-   salvo em C:\Users\Fábio\.claude\plans).
+   dispara e-mail pra fotógrafa (pb_hook notificar_selecao.pb.js).
+   Fase 3: marca d'água automática (só upload direto).
+   Fase 4: entrega final — a fotógrafa libera as MESMAS fotos já na galeria
+   (sem upload separado) com validade e limite de downloads próprios; o
+   contador é "auto-declarado" pelo cliente ao clicar em baixar (pb_hook
+   contar_downloads.pb.js), não um proxy que de fato intercepta o arquivo.
    ============================================================ */
 
 const VITRINE_TEMA_LABEL = { noir: 'Noir (escuro)', linen: 'Linen (claro)', terra: 'Terra (terroso)' };
@@ -75,17 +78,19 @@ function desenharListaVitrines(){
     const validade = v['Validade'] ? validadeParaBR_(v['Validade']) : 'sem validade';
     const link = vitrineLinkPublico_(v['Token']);
     const finalizada = !!v['Seleção finalizada em'];
+    const entregaLiberada = !!v['Entrega liberada em'];
     return `
       <div class="panel tpl-card">
         <div class="tpl-card-head">
           <div>
-            <h3>${esc(vitrineTituloExibicao_(v))} <span class="status-pill ${statusClasse}">${esc(v['Status'])}</span>${finalizada ? ` <span class="status-pill confirmado">✅ Seleção finalizada (${esc(v['Qtd selecionadas final'] || 0)})</span>` : ''}</h3>
+            <h3>${esc(vitrineTituloExibicao_(v))} <span class="status-pill ${statusClasse}">${esc(v['Status'])}</span>${finalizada ? ` <span class="status-pill confirmado">✅ Seleção finalizada (${esc(v['Qtd selecionadas final'] || 0)})</span>` : ''}${entregaLiberada ? ` <span class="status-pill confirmado">📦 Entrega liberada (${esc(v['Entrega downloads count'] || 0)} downloads)</span>` : ''}</h3>
             <p>${ev ? esc(ev['Tipo de evento'] || '') + ' — ' + esc(ev['Data do evento'] || '') : ''} · ${fonteLabel} · validade: ${esc(validade)}${v['Senha hash'] ? ' · 🔒 com senha' : ''}${v['Qtd fotos pacote'] ? ' · pacote: ' + esc(v['Qtd fotos pacote']) + ' fotos' : ''}</p>
           </div>
           <div class="tpl-actions row-actions">
             <button class="btn-ghost btn-sm" data-copiar="${esc(v['ID Vitrine'])}">🔗 Copiar link</button>
             ${v['Fonte imagens'] === 'upload_proprio' ? `<button class="btn-ghost btn-sm" data-fotos="${esc(v['ID Vitrine'])}">🖼️ Fotos</button>` : ''}
             ${finalizada ? `<button class="btn-ghost btn-sm" data-selecao="${esc(v['ID Vitrine'])}">❤️ Ver seleção</button>` : ''}
+            <button class="btn-ghost btn-sm" data-entrega="${esc(v['ID Vitrine'])}">${entregaLiberada ? '📦 Revogar entrega' : '📦 Liberar entrega'}</button>
             <button class="btn-ghost btn-sm" data-editar="${esc(v['ID Vitrine'])}">✏️ Editar</button>
             <button class="btn-ghost btn-sm" data-pausar="${esc(v['ID Vitrine'])}">${v['Status'] === 'Pausada' ? '▶️ Ativar' : '⏸️ Pausar'}</button>
             <button class="btn-ghost btn-sm" data-regerar="${esc(v['ID Vitrine'])}">♻️ Revogar link</button>
@@ -100,6 +105,7 @@ function desenharListaVitrines(){
   container.querySelectorAll('[data-copiar]').forEach(b => b.addEventListener('click', () => copiarLinkVitrine_(b.dataset.copiar)));
   container.querySelectorAll('[data-fotos]').forEach(b => b.addEventListener('click', () => abrirGerenciarFotos_(b.dataset.fotos)));
   container.querySelectorAll('[data-selecao]').forEach(b => b.addEventListener('click', () => abrirVerSelecao_(b.dataset.selecao)));
+  container.querySelectorAll('[data-entrega]').forEach(b => b.addEventListener('click', () => alternarEntregaVitrine_(b.dataset.entrega)));
   container.querySelectorAll('[data-editar]').forEach(b => b.addEventListener('click', () => abrirFormVitrine(b.dataset.editar)));
   container.querySelectorAll('[data-pausar]').forEach(b => b.addEventListener('click', () => alternarStatusVitrine_(b.dataset.pausar)));
   container.querySelectorAll('[data-regerar]').forEach(b => b.addEventListener('click', () => confirmarRegerarToken_(b.dataset.regerar)));
@@ -121,6 +127,21 @@ async function alternarStatusVitrine_(id){
     await apiCall('atualizarVitrine', vitrineParaPayload_(v, { status: novoStatus }));
     v['Status'] = novoStatus;
     showToast(novoStatus === 'Pausada' ? '⏸️ Vitrine pausada' : '▶️ Vitrine ativada novamente');
+    desenharListaVitrines();
+  } catch (err){
+    showToast('❌ Erro: ' + err.message);
+  }
+}
+
+async function alternarEntregaVitrine_(id){
+  const v = vitrines.find(x => String(x['ID Vitrine']) === String(id));
+  if (!v) return;
+  const liberada = !!v['Entrega liberada em'];
+  if (!liberada && !await confirmarAcao({ titulo: 'Liberar entrega final?', texto: 'O cliente passa a ver uma seção de "Entrega final" na vitrine, com download em alta resolução (sem marca d\'água) das fotos.', confirmar: 'Liberar' })) return;
+  try {
+    const r = await apiCall(liberada ? 'revogarEntrega' : 'liberarEntrega', { id });
+    v['Entrega liberada em'] = r.liberada ? hojeBR_() : '';
+    showToast(r.liberada ? '📦 Entrega liberada' : '📦 Entrega revogada');
     desenharListaVitrines();
   } catch (err){
     showToast('❌ Erro: ' + err.message);
@@ -170,6 +191,8 @@ function vitrineParaPayload_(v, extra){
     capaUrl: v['Capa URL'],
     capaPosicao: v['Capa posição'],
     qtdFotosPacote: v['Qtd fotos pacote'],
+    entregaValidade: v['Entrega validade'],
+    entregaMaxDownloads: v['Entrega máx downloads'],
     validade: v['Validade'] ? validadeParaBR_(v['Validade']) : '',
     status: v['Status'],
   }, extra);
@@ -240,6 +263,12 @@ function abrirFormVitrine(id){
           </div>
           <p class="hint">A quantidade do pacote vira o limite de seleção na vitrine (o cliente ainda consegue selecionar além — só fica avisado); deixe em branco para não ter limite.</p>
 
+          <div class="row2">
+            <div class="field"><label>Validade da entrega (opcional)</label><input id="vf_entregaValidade" data-picker="date" placeholder="DD/MM/AAAA" value="${editando && v['Entrega validade'] ? esc(v['Entrega validade']) : ''}"></div>
+            <div class="field"><label>Limite de downloads (opcional)</label><input type="number" min="0" id="vf_entregaMaxDownloads" placeholder="Sem limite" value="${editando && v['Entrega máx downloads'] ? esc(v['Entrega máx downloads']) : ''}"></div>
+          </div>
+          <p class="hint">Vale só pra seção "Entrega final" (depois de clicar em "📦 Liberar entrega" na lista) — não afeta a navegação/seleção normal da vitrine.</p>
+
           <div class="form-actions">
             <button type="button" class="btn-ghost" onclick="fecharOverlay()">Cancelar</button>
             <button type="submit" class="btn-primary">💾 Salvar</button>
@@ -282,6 +311,8 @@ function abrirFormVitrine(id){
       capaUrl: document.getElementById('vf_capa').value.trim(),
       capaPosicao: document.getElementById('vf_capaPosicao').value,
       qtdFotosPacote: document.getElementById('vf_qtdFotosPacote').value.trim(),
+      entregaValidade: document.getElementById('vf_entregaValidade').value.trim(),
+      entregaMaxDownloads: document.getElementById('vf_entregaMaxDownloads').value.trim(),
       validade: document.getElementById('vf_validade').value.trim(),
     };
     const senhaDigitada = document.getElementById('vf_senha').value;
@@ -318,7 +349,11 @@ async function abrirGerenciarFotos_(id){
     <div class="form-overlay" id="overlay">
       <div class="form-panel" style="max-width:720px;">
         <h2>Fotos — ${esc(vitrineTituloExibicao_(v))}</h2>
-        <div class="field"><input type="file" id="vf_arquivos" accept="image/*" multiple></div>
+        <div class="row2">
+          <div class="field"><label>Categoria/álbum (opcional)</label><input type="text" id="vf_categoriaUpload" placeholder="Ex.: Cerimônia, Festa..."></div>
+          <div class="field"><label>Arquivos</label><input type="file" id="vf_arquivos" accept="image/*" multiple></div>
+        </div>
+        <p class="hint">A categoria vale pra este lote de fotos — usada pra agrupar na entrega final (Fase 4). Deixe em branco se não quiser separar por álbum.</p>
         <div id="vf_fotosGrid" class="vitrine-fotos-grid"><div class="empty-state">Carregando…</div></div>
         <div class="form-actions"><button type="button" class="btn-ghost" onclick="fecharOverlay()">Fechar</button></div>
       </div>
@@ -328,12 +363,13 @@ async function abrirGerenciarFotos_(id){
   document.getElementById('vf_arquivos').addEventListener('change', async (e) => {
     const arquivos = Array.from(e.target.files || []);
     if (!arquivos.length) return;
+    const categoria = document.getElementById('vf_categoriaUpload').value.trim();
     await pbAuthGarantir();
     const fotosAtuais = await pbListarFotosVitrine(v.__pbId);
     let ordem = fotosAtuais.length;
     for (const arquivo of arquivos){
       try {
-        await apiCall('uploadFotoVitrine', { idVitrinePb: v.__pbId, arquivo, ordem: ordem++ });
+        await apiCall('uploadFotoVitrine', { idVitrinePb: v.__pbId, arquivo, ordem: ordem++, categoria });
       } catch (err){
         showToast('❌ Erro ao enviar ' + arquivo.name + ': ' + err.message);
       }
@@ -354,7 +390,7 @@ async function desenharGridFotos_(v){
   }
   grid.innerHTML = fotos.map(f => `
     <div class="vitrine-foto-card">
-      <img src="${PB.getFileUrl(f, f.arquivo, { thumb: '400x400' })}" loading="lazy">
+      <img src="${PB.getFileUrl(f, f.arquivo, { thumb: '400x400' })}" loading="lazy" title="${esc(f.categoria || '')}">
       <button class="btn-icon vitrine-foto-del" data-del="${f.id}" title="Excluir"><i class="bi bi-trash"></i></button>
     </div>
   `).join('');
