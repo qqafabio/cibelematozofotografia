@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.20.6 | 2026-11-03 | Eventos Coletivos: corrige dropdown de Excluir cortado pelo overflow da tabela | [2.40](#240-eventos-coletivos--ícones-de-ação-na-listagem-v3205) |
 | v3.20.5 | 2026-11-03 | Eventos Coletivos: adiciona os ícones de olho e 3 pontinhos (ver detalhe / excluir) na listagem, igual ao menu Evento | [2.40](#240-eventos-coletivos--ícones-de-ação-na-listagem-v3205) |
 | v3.20 | 2026-11-02 | Orçamento passa a aceitar mais de um pacote por lead (o cliente escolhe qual fechar) | [2.38](#238-orçamento-com-múltiplos-pacotes-v320) |
 | v3.20.4 | 2026-11-02 | Vitrine de Fotos: bloqueia baixar/ver em tela cheia foto por foto enquanto a marca d'água do Drive ainda não foi aplicada | [2.39](#239-vitrine-de-fotos--marca-dágua-opcional-v3201) |
@@ -1375,3 +1376,5 @@ Arquivos: `pbSchema.js`, `pbVitrines.js`, `modules/vitrines.js`, `vitrine.html`,
 ### 2.40 Eventos Coletivos — ícones de ação na listagem (v3.20.5)
 
 A listagem de Eventos Coletivos abria o detalhe clicando na linha inteira e não tinha como excluir um evento coletivo direto da lista (só o botão "🗑 Excluir evento" dentro do detalhe). O menu Evento (individual) já tinha o padrão de coluna "Ações" com ícone de olho (abrir detalhe) e 3 pontinhos (dropdown com Excluir) — replicado aqui: linha deixa de ser clicável, nova coluna "Ações" com os mesmos dois ícones, reaproveitando `abrirDetalheColetivo` e `excluirEventoColetivoComConfirmacao` já existentes. Não exige migration. Arquivos: `modules/eventosColetivos.js`.
+
+**v3.20.6 (correção).** O dropdown "Excluir" (⋮) ficava cortado pela borda da linha da tabela, impossível de clicar. Causa: o wrapper `<div class="panel">` do Evento individual usa a classe `panel-list` (que libera o `overflow:hidden` do `.panel` justamente para o menu `⋮` não ser cortado — ver comentário em `crm.css`), mas o wrapper de Eventos Coletivos tinha ficado só com `panel`. Corrigido adicionando `panel-list` ao wrapper, igual ao de Eventos. Não exige migration. Arquivos: `modules/eventosColetivos.js`.

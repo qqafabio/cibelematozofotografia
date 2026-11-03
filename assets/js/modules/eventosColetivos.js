@@ -52,7 +52,7 @@ function renderEventosColetivos(main){
       <div><h1>Eventos Coletivos</h1><p>${lista.length} evento${lista.length===1?'':'s'} com muitos participantes (formatura, crisma, investidura…).</p></div>
       <button class="btn-primary" id="novoColetivoBtn">+ Novo evento coletivo</button>
     </div>
-    <div class="panel"><div id="tabelaColetivos"></div></div>
+    <div class="panel panel-list"><div id="tabelaColetivos"></div></div>
   `;
   document.getElementById('novoColetivoBtn').addEventListener('click', () => abrirFormEventoColetivo(null));
   desenharTabelaColetivos();
