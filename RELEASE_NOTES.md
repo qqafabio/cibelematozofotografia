@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.20.8 | 2026-11-03 | Evento coletivo: editar Valor pacote não soma mais em cima de contas já parceladas, e remover parcela na tela Financeiro agora exclui de verdade | [2.42](#242-evento-coletivo--valor-pacote-duplicando-cobrança-e-parcela-removida-não-excluída-v3208) |
 | v3.20.7 | 2026-11-03 | Custos: receita de evento coletivo passa a somar o contratado de todos os participantes, não só 1 pacote | [2.41](#241-custos--receita-de-evento-coletivo-soma-todos-os-participantes-v3207) |
 | v3.20.6 | 2026-11-03 | Eventos Coletivos: corrige dropdown de Excluir cortado pelo overflow da tabela | [2.40](#240-eventos-coletivos--ícones-de-ação-na-listagem-v3205) |
 | v3.20.5 | 2026-11-03 | Eventos Coletivos: adiciona os ícones de olho e 3 pontinhos (ver detalhe / excluir) na listagem, igual ao menu Evento | [2.40](#240-eventos-coletivos--ícones-de-ação-na-listagem-v3205) |
@@ -1383,3 +1384,12 @@ A listagem de Eventos Coletivos abria o detalhe clicando na linha inteira e não
 ### 2.41 Custos — receita de evento coletivo soma todos os participantes (v3.20.7)
 
 Na tela Custos ("Receita × custo por evento"), um evento coletivo (ex.: formatura com vários clientes/participantes) mostrava como "Receita" só o valor de 1 pacote, mesmo com vários participantes já importados. Causa: `pbCriarEventoColetivo` grava `valor_final = valorPacote` (valor de 1 pessoa) uma única vez, na criação do evento, e esse campo nunca é atualizado conforme participantes são importados depois — a tela de Custos usava esse campo congelado. Corrigido: para eventos com `Coletivo = Sim`, a receita agora soma o contratado (previsto − desconto) de cada participante (mesma conta usada no resumo da tela de detalhe do evento coletivo), em vez do `Valor final` do cabeçalho. Eventos individuais continuam usando `Valor final` normalmente. Não exige migration. Arquivos: `modules/custos.js`.
+
+### 2.42 Evento coletivo — Valor pacote duplicando cobrança e parcela removida não excluída (v3.20.8)
+
+Dois bugs relacionados reportados juntos, ambos no fluxo de evento coletivo + Financeiro:
+
+1. **Editar o "Valor pacote" do evento coletivo e salvar somava em cima de contas já parceladas.** `reaplicarPacoteParticipante_` (chamada por `pbAtualizarEvento` quando o valor do pacote muda) procurava a parcela do participante só pelo `tipo_cobranca` começando com "Pacote" — mas quando a conta de um participante já tinha sido parcelada manualmente pela tela Financeiro (N linhas "Parcela", sem o prefixo "Pacote"), a busca não achava nada e criava uma linha **nova**, somando ao que já existia. Corrigido: agora considera todas as parcelas "de cobrança" do participante (exclui só Entrada/Desconto/Fotos extras); se achar exatamente 1, atualiza o valor nela (sem renomear o tipo, pra não mexer num rótulo que o usuário já customizou); se achar 0, cria a primeira; se achar mais de 1 (conta já parcelada em várias vezes), não mexe sozinho — não dá pra adivinhar qual parcela ajustar sem arriscar fazer errado.
+2. **Remover uma parcela na tela Financeiro (reduzindo "Total de parcelas") e salvar não excluía nada.** `pbSalvarConta` só sabia criar/atualizar as parcelas da lista enviada pelo formulário — uma parcela tirada da tela (e por isso ausente da lista) simplesmente não era mencionada na chamada, e continuava gravada no banco do jeito que estava. Corrigido: ao salvar, a função agora compara a lista enviada com o que já existe no banco para aquela conta (mesmo evento + mesmo cliente) e apaga as que saíram — preservando Entrada e Desconto (tratadas à parte) e qualquer parcela que já tenha valor recebido (mesma guarda de segurança usada em `excluirContaFinanceiro`, pra nunca apagar um recebimento sozinho).
+
+Com o nº 2 corrigido, dá pra entrar na conta de um participante afetado pelo bug nº 1 e remover a parcela duplicada manualmente pela tela — antes essa exclusão não tinha efeito nenhum. Não exige migration. Arquivos: `pbColetivo.js`, `pbFinanceiro.js`.

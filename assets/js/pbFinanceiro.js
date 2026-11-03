@@ -93,15 +93,33 @@ async function pbSalvarConta(dados){
 
   // Parcelas renumeradas 1..N.
   const total = lista.length;
+  const idsMantidos = new Set();
   for (let i = 0; i < lista.length; i++){
     const parcela = lista[i];
     const campos = camposParcela_(parcela, i + 1, total, contaCliente, contaIdCliente);
     if (parcela.idParcela){
       const rec = await pbAchar_('financeiro', 'id_parcela', parcela.idParcela);
       await PB.collection('financeiro').update(rec.id, campos);
+      idsMantidos.add(String(parcela.idParcela));
     } else {
-      await PB.collection('financeiro').create(Object.assign({ id_evento: Number(evento.id_evento) }, campos));
+      const novo = await PB.collection('financeiro').create(Object.assign({ id_evento: Number(evento.id_evento) }, campos));
+      if (novo && novo.id_parcela !== undefined) idsMantidos.add(String(novo.id_parcela));
     }
+  }
+
+  // Remove parcelas que existiam antes e saíram da lista enviada (ex.: usuário
+  // reduziu "Total de parcelas" e salvou) — sem isso, a parcela removida na tela
+  // continuava gravada no banco. Não mexe em Entrada/Desconto (tratadas à parte)
+  // nem em parcelas que já têm valor recebido (guarda de segurança, mesmo padrão
+  // de excluirContaFinanceiro — não apaga um recebimento sozinho).
+  const idClienteNorm = idClienteParaPb_(contaIdCliente);
+  const doConta = await PB.collection('financeiro').getFullList({ filter: 'id_evento=' + Number(evento.id_evento) });
+  for (const p of doConta){
+    if (String(idClienteParaPb_(p.id_cliente)) !== String(idClienteNorm)) continue;
+    if (p.tipo_cobranca === 'Entrada' || p.tipo_cobranca === 'Desconto') continue;
+    if (idsMantidos.has(String(p.id_parcela))) continue;
+    if (Number(p.valor_pago || 0) > 0) continue;
+    await PB.collection('financeiro').delete(p.id);
   }
 
   // Desconto (R$): linha dedicada. Só a modal do Financeiro manda dados.desconto;

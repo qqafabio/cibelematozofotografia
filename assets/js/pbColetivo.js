@@ -50,25 +50,35 @@ async function recalcularFotosExtrasParticipante_(evento, idCliente, nomeCliente
 
 /* (Re)aplica o "Valor pacote" do evento à parcela de pacote do participante.
    Atualiza (preservando valor pago) ou cria se não existir. Valor 0 não apaga
-   a parcela existente. backend.txt 1607-1633. */
+   a parcela existente. backend.txt 1607-1633.
+
+   Só mexe sozinho quando há exatamente 1 parcela "de cobrança" (a do pacote
+   original, com ou sem o prefixo "Pacote" — ex.: renomeada para "Parcela" ao
+   editar a conta manualmente). Se a conta já foi customizada em várias
+   parcelas (ex.: parcelado em N vezes pela tela Financeiro), não dá pra
+   adivinhar qual delas ajustar — nesse caso não cria nem altera nada, pra não
+   duplicar cobrança em cima do que o usuário já lançou à mão. */
 async function reaplicarPacoteParticipante_(evento, idCliente, nomeCliente){
   const valorPacote = Number(evento.valor_pacote || 0);
   const pacoteNome = String(evento.pacote || '').trim();
   const tipoPacote = pacoteNome ? ('Pacote ' + pacoteNome) : 'Pacote';
-  const doEvento = await PB.collection('financeiro').getFullList({ filter: 'id_evento=' + Number(evento.id_evento) });
-  const linha = doEvento.find(p =>
-    Number(p.id_cliente || 0) === Number(idCliente) && String(p.tipo_cobranca || '').indexOf('Pacote') === 0);
-  if (linha){
+  const ESPECIAIS = ['Entrada', 'Desconto', 'Fotos extras'];
+  const doParticipante = (await PB.collection('financeiro').getFullList({ filter: 'id_evento=' + Number(evento.id_evento) }))
+    .filter(p => Number(p.id_cliente || 0) === Number(idCliente) && ESPECIAIS.indexOf(String(p.tipo_cobranca)) === -1);
+  if (doParticipante.length === 0){
+    if (valorPacote > 0){
+      await PB.collection('financeiro').create({
+        id_evento: Number(evento.id_evento), id_cliente: Number(idCliente), cliente: nomeCliente,
+        tipo_cobranca: tipoPacote, num_parcela: 1, total_parcelas: 1, vencimento: '',
+        valor_previsto: valorPacote, forma_pagamento: '', status: 'Pendente', data_pagamento: '',
+        valor_pago: 0, saldo: valorPacote,
+      });
+    }
+  } else if (doParticipante.length === 1){
+    const linha = doParticipante[0];
     const pago = Number(linha.valor_pago || 0);
     await PB.collection('financeiro').update(linha.id, {
-      tipo_cobranca: tipoPacote, valor_previsto: valorPacote, saldo: valorPacote - pago,
-    });
-  } else if (valorPacote > 0){
-    await PB.collection('financeiro').create({
-      id_evento: Number(evento.id_evento), id_cliente: Number(idCliente), cliente: nomeCliente,
-      tipo_cobranca: tipoPacote, num_parcela: 1, total_parcelas: 1, vencimento: '',
-      valor_previsto: valorPacote, forma_pagamento: '', status: 'Pendente', data_pagamento: '',
-      valor_pago: 0, saldo: valorPacote,
+      valor_previsto: valorPacote, saldo: valorPacote - pago,
     });
   }
 }
