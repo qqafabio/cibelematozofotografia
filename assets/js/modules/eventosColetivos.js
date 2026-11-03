@@ -64,23 +64,31 @@ function desenharTabelaColetivos(){
   const ordenados = [...lista].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
   el.innerHTML = `
     <table class="responsive-table">
-      <thead><tr><th>Data</th><th>Tipo</th><th>Organizador</th><th>Local</th><th>Participantes</th><th>Pacote</th></tr></thead>
+      <thead><tr><th>Data</th><th>Tipo</th><th>Organizador</th><th>Local</th><th>Participantes</th><th>Pacote</th><th>Ações</th></tr></thead>
       <tbody>${ordenados.map(e => `
-        <tr class="clickable" data-id="${esc(e['ID Evento'])}">
+        <tr data-id="${esc(e['ID Evento'])}">
           <td data-label="Data">${esc(e['Data do evento'])}</td>
           <td data-label="Tipo">${esc(e['Tipo de evento'])}</td>
           <td data-label="Organizador">${esc(e['Organizador']||e['Cliente / Responsável'])}</td>
           <td data-label="Local">${esc(e['Local'])}</td>
           <td data-label="Participantes">${participantesDoEvento(e['ID Evento']).length}</td>
           <td data-label="Pacote">${esc(e['Pacote'])}</td>
+          <td data-label="Ações"><div class="row-actions">
+            <button class="btn-icon" data-view="${esc(e['ID Evento'])}" title="Abrir detalhe"><i class="bi bi-eye"></i></button>
+            <div class="dropdown d-inline-block">
+              <button class="btn-icon" data-bs-toggle="dropdown" aria-expanded="false" title="Mais"><i class="bi bi-three-dots-vertical"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><button class="dropdown-item text-danger" data-del="${esc(e['ID Evento'])}"><i class="bi bi-trash"></i> Excluir</button></li>
+              </ul>
+            </div>
+          </div></td>
         </tr>`).join('')}</tbody>
     </table>`;
-  el.querySelectorAll('tr.clickable').forEach(row => {
-    row.addEventListener('click', () => {
-      const ev = eventos.find(e => String(e['ID Evento']) === row.dataset.id);
-      abrirDetalheColetivo(ev['ID Evento']);
-    });
-  });
+  el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => abrirDetalheColetivo(b.dataset.view)));
+  el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    const ev = eventos.find(e => String(e['ID Evento']) === b.dataset.del);
+    if (ev) excluirEventoColetivoComConfirmacao(ev);
+  }));
 }
 
 function abrirFormEventoColetivo(evento){
