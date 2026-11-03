@@ -7,10 +7,21 @@
 
 /* ============ CUSTOS ============ */
 let custoEditandoId = null;
+/* Receita de um evento coletivo = soma do contratado (previsto − desconto) de cada
+   participante, não o "Valor pacote" do cabeçalho (que é só o valor por pessoa). */
+function receitaEventoColetivo(idEvento){
+  return participantesDoEvento(idEvento).reduce((s, p) => {
+    const c = contasDoParticipante(idEvento, p['ID Cliente']);
+    return s + (c.previsto - c.desconto);
+  }, 0);
+}
 function agruparReceitaCusto(){
   const porEvento = {};
   eventos.forEach(e => {
-    porEvento[e['ID Evento']] = { idEvento: e['ID Evento'], cliente: e['Cliente / Responsável'], receita: Number(e['Valor final']||0), custo: 0 };
+    const idEvento = e['ID Evento'];
+    const coletivo = String(e['Coletivo']) === 'Sim';
+    const receita = coletivo ? receitaEventoColetivo(idEvento) : Number(e['Valor final']||0);
+    porEvento[idEvento] = { idEvento, cliente: coletivo ? (e['Organizador']||e['Cliente / Responsável']) : e['Cliente / Responsável'], receita, custo: 0 };
   });
   custos.forEach(c => {
     const g = porEvento[c['ID Evento']];
