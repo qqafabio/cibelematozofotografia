@@ -236,11 +236,12 @@ function renderDashboard(main){
   // Clientes/Eventos contam no período; com fallback para o total quando o
   // backend ainda não carimbou as datas (senão o card mostraria 0). Receita
   // soma o período. "A receber" é saldo pendente global (não depende do período).
-  const evNaoColetivos = eventos.filter(e => String(e['Coletivo']) !== 'Sim');
+  // Todos os eventos contam, inclusive coletivos (1 por evento); os participantes entram em Clientes.
+  const evKpi = eventos;
   const cCli = contarNoPeriodo(clientes, 'Data de cadastro', inicio);
   const nClientes = cCli.comData ? cCli.noPeriodo : clientes.length;
-  const cEv = contarNoPeriodo(evNaoColetivos, 'Data do evento', inicio);
-  const totalEventos = cEv.comData ? cEv.noPeriodo : evNaoColetivos.length;
+  const cEv = contarNoPeriodo(evKpi, 'Data do evento', inicio);
+  const totalEventos = cEv.comData ? cEv.noPeriodo : evKpi.length;
   const receitaPeriodo = somarNoPeriodo(financeiro, 'Data pagamento', p => p['Valor pago'], inicio);
 
   let previsto = 0, pago = 0, descontoTot = 0;
@@ -254,7 +255,7 @@ function renderDashboard(main){
 
   // --- Tendências mês-a-mês (contexto secundário; independem do período) ---
   const tClientes = tendenciaMes(clientes, 'Data de cadastro');
-  const tEventos  = tendenciaMes(evNaoColetivos, 'Data de cadastro');
+  const tEventos  = tendenciaMes(evKpi, 'Data de cadastro');
   const receitaMes = agregarMes(financeiro, 'Data pagamento', p => p['Valor pago']);
 
   // --- Últimos clientes: recorte do período (fallback = todos), recentes 1º ---
@@ -273,7 +274,7 @@ function renderDashboard(main){
 
   // --- Séries mensais para os gráficos (janela do período selecionado) ---
   const receitaMensal = serieMensal(financeiro, 'Data pagamento', p => p['Valor pago'], nMeses);
-  const eventosMensal = serieMensal(evNaoColetivos, 'Data do evento', null, nMeses);
+  const eventosMensal = serieMensal(evKpi, 'Data do evento', null, nMeses);
   const custoMensal   = serieMensal(custos, 'Data', c => c['Valor'], nMeses);
 
   main.innerHTML = `

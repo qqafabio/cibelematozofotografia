@@ -11,6 +11,11 @@
    ============================================================ */
 
 /* ---- Tradução de campos (contrato do resto do app) ---- */
+// Clientes criados sem data_cadastro usam a data de criação do registro no PB ("2026-10-26 20:45:42.123Z").
+function dataBRDoCriado_(created){
+  const d = created ? new Date(String(created).replace(' ', 'T')) : null;
+  return d && !isNaN(d) ? d.toLocaleDateString('pt-BR') : '';
+}
 // PB record → objeto com as chaves rotuladas que clientes.js/eventos.js consomem.
 function pbRecordToCliente(rec){
   return {
@@ -24,7 +29,7 @@ function pbRecordToCliente(rec){
     'Canal de origem': rec.canal || '',
     'Observações': rec.observacoes || '',
     'Qtd. eventos': contarEventosDoCliente(rec.id_cliente),
-    'Data de cadastro': rec.data_cadastro || '',
+    'Data de cadastro': rec.data_cadastro || dataBRDoCriado_(rec.created),
     __pbId: rec.id,                           // id nativo do PB (p/ update/delete)
   };
 }
@@ -68,7 +73,7 @@ async function pbCriarCliente(dados){
     const topo = await PB.collection('clientes').getList(1, 1, { sort: '-id_cliente' });
     if (topo.items.length) proximo = Number(topo.items[0].id_cliente) + 1;
   } catch(e){ /* coleção vazia → mantém 1 */ }
-  const rec = await PB.collection('clientes').create(Object.assign({ id_cliente: proximo }, clienteFormToPb(dados)));
+  const rec = await PB.collection('clientes').create(Object.assign({ id_cliente: proximo, data_cadastro: hojeBR_() }, clienteFormToPb(dados)));
   return { idCliente: proximo, cliente: pbRecordToCliente(rec) }; // shape só por contrato; salvarCliente ignora
 }
 // O nome do cliente é copiado em leads, financeiro, participantes, eventos individuais e produção.
