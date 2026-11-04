@@ -71,10 +71,38 @@ async function pbCriarCliente(dados){
   const rec = await PB.collection('clientes').create(Object.assign({ id_cliente: proximo }, clienteFormToPb(dados)));
   return { idCliente: proximo, cliente: pbRecordToCliente(rec) }; // shape só por contrato; salvarCliente ignora
 }
+// O nome do cliente é copiado em leads, financeiro, participantes, eventos individuais e produção.
+// Reaplica o nome atual onde estiver diferente (idempotente, fail-soft por coleção).
+async function pbPropagarNomeCliente_(idCliente, nome){
+  const id = Number(idCliente);
+  const alinhar = async (colecao, filtro, campo, extra) => {
+    try {
+      const regs = await PB.collection(colecao).getFullList({ filter: filtro });
+      const alvos = regs.filter(r => String(r[campo] || '') !== nome && (!extra || extra(r)));
+      for (const r of alvos){ await PB.collection(colecao).update(r.id, { [campo]: nome }); }
+      return alvos;
+    } catch (e){
+      console.error('atualizarCliente: propagar nome em ' + colecao + ' falhou (segue): ' + e);
+      return [];
+    }
+  };
+  await alinhar('leads', 'id_cliente=' + id, 'cliente');
+  await alinhar('financeiro', 'id_cliente=' + id, 'cliente');
+  await alinhar('participantes', 'id_cliente=' + id, 'nome_participante');
+  // Coletivo tem como responsável o organizador, não o cliente.
+  const evs = await alinhar('eventos', 'id_cliente=' + id, 'cliente_responsavel', r => String(r.coletivo) !== 'Sim');
+  for (const ev of evs){
+    try {
+      const prod = await PB.collection('producao').getFirstListItem('id_evento=' + Number(ev.id_evento));
+      if (String(prod.cliente || '') !== nome) await PB.collection('producao').update(prod.id, { cliente: nome });
+    } catch (e){ /* produção pode não existir */ }
+  }
+}
 async function pbAtualizarCliente(dados){
   await pbAuthGarantir();
   const rec = await pbAcharPorIdCliente(dados.idCliente);
   const atualizado = await PB.collection('clientes').update(rec.id, clienteFormToPb(dados));
+  if (atualizado.nome) await pbPropagarNomeCliente_(dados.idCliente, atualizado.nome);
   return { cliente: pbRecordToCliente(atualizado) };
 }
 async function pbExcluirCliente(dados){

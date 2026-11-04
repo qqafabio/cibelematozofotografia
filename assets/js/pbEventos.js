@@ -128,6 +128,9 @@ async function pbAtualizarEvento(dados){
     }
   }
 
+  // Coletivo: valor_final acompanha o valor do pacote por participante (como na criação).
+  if (String(atual.coletivo) === 'Sim' && patch.valor_pacote !== undefined) patch.valor_final = patch.valor_pacote;
+
   const atualizado = await PB.collection('eventos').update(atual.id, patch);
 
   // Agenda (fail-soft): sincroniza o compromisso e grava id_calendar.

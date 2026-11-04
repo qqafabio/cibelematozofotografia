@@ -174,7 +174,8 @@ function atualizarSaldoEventoInfo(){
   const evento = eventos.find(e => String(e['ID Evento']) === String(idEvento));
   const info = document.getElementById('saldoEventoInfo');
   if (!evento){ info.textContent = ''; return; }
-  const valorFinal = Number(evento['Valor final'] || 0);
+  // Coletivo: a conta é por participante, então vale o valor do pacote atual (o "Valor final" pode estar defasado).
+  const valorFinal = String(evento['Coletivo']) === 'Sim' ? Number(evento['Valor pacote'] || 0) : Number(evento['Valor final'] || 0);
   const entrada = Number(document.getElementById('f_entradaValor').value || 0);
   const somaParcelas = Array.from(document.querySelectorAll('.p-valor')).reduce((s, inp) => s + (Number(inp.value) || 0), 0);
   const descEl = document.getElementById('f_descontoValor');
