@@ -120,13 +120,27 @@ function pillStatusEvento(status){
   // "Em andamento" e demais → pílula âmbar (base).
   return `<span class="status-pill ${cls}">${esc(status || '—')}</span>`;
 }
-// Status derivado do cliente: tem evento vinculado → "Ativo"; senão → "Lead".
-function statusCliente(cli){
+// Eventos do cliente: inclui tanto os que ele é o Cliente/Responsável direto
+// quanto os eventos coletivos em que ele é participante (ligado via a
+// coleção `participantes` — id_evento/id_cliente — não via eventos.id_cliente,
+// que nesses casos pertence ao organizador do coletivo, não ao participante).
+function eventosDoCliente_(cli){
   const id = cli['ID Cliente'], nome = cli['Nome / Responsável'];
-  const temEvento = (eventos || []).some(e =>
+  const diretos = (eventos || []).filter(e =>
     (id != null && id !== '' && String(e['ID Cliente']) === String(id)) ||
     (nome && e['Cliente / Responsável'] === nome));
-  return temEvento ? 'Ativo' : 'Lead';
+  const idsEventosColetivos = (participantes || [])
+    .filter(p => id != null && id !== '' && String(p['ID Cliente']) === String(id))
+    .map(p => String(p['ID Evento']));
+  const viaColetivo = idsEventosColetivos.length
+    ? (eventos || []).filter(e => idsEventosColetivos.includes(String(e['ID Evento'])))
+    : [];
+  return diretos.concat(viaColetivo);
+}
+// Status derivado do cliente: tem evento vinculado (direto ou como
+// participante de um coletivo) → "Ativo"; senão → "Lead".
+function statusCliente(cli){
+  return eventosDoCliente_(cli).length ? 'Ativo' : 'Lead';
 }
 function pillStatusCliente(cli){
   const st = statusCliente(cli);
@@ -134,10 +148,7 @@ function pillStatusCliente(cli){
 }
 // Tipo do evento mais recente do cliente (coluna "Evento" em Últimos clientes).
 function eventoRecenteDoCliente(cli){
-  const id = cli['ID Cliente'], nome = cli['Nome / Responsável'];
-  const evs = (eventos || []).filter(e =>
-    (id != null && id !== '' && String(e['ID Cliente']) === String(id)) ||
-    (nome && e['Cliente / Responsável'] === nome));
+  const evs = eventosDoCliente_(cli);
   if (!evs.length) return '';
   evs.sort((a,b) => {
     const da = parseDataBR(a['Data do evento']), db = parseDataBR(b['Data do evento']);

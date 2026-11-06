@@ -18,6 +18,7 @@ A cada versão implantada:
 |---|---|---|---|
 | v3.20.9 | 2026-11-06 | Vitrine de Fotos: "Baixar todas as fotos" empacota em .zip (corrige downloads que sumiam em galerias grandes) e ganha o mesmo recurso na Entrega Final | [2.43](#243-vitrine-de-fotos--download-em-massa-empacotado-em-zip-v3209) |
 | v3.20.10 | 2026-11-06 | Vitrine de Fotos: capa do header bloqueia "Salvar imagem como…"/arrastar | [2.44](#244-vitrine-de-fotos--proteção-casual-da-foto-de-capa-v32010) |
+| v3.20.11 | 2026-11-06 | Dashboard: coluna "Evento" e status de clientes de evento coletivo passam a ser reconhecidos em "Últimos clientes" | [2.45](#245-dashboard--clientes-de-evento-coletivo-sem-evento-no-últimos-clientes-v32011) |
 | v3.20.8 | 2026-11-03 | Evento coletivo: editar Valor pacote não soma mais em cima de contas já parceladas, e remover parcela na tela Financeiro agora exclui de verdade | [2.42](#242-evento-coletivo--valor-pacote-duplicando-cobrança-e-parcela-removida-não-excluída-v3208) |
 | v3.20.7 | 2026-11-03 | Custos: receita de evento coletivo passa a somar o contratado de todos os participantes, não só 1 pacote | [2.41](#241-custos--receita-de-evento-coletivo-soma-todos-os-participantes-v3207) |
 | v3.20.6 | 2026-11-03 | Eventos Coletivos: corrige dropdown de Excluir cortado pelo overflow da tabela | [2.40](#240-eventos-coletivos--ícones-de-ação-na-listagem-v3205) |
@@ -1425,3 +1426,11 @@ A foto de capa do header (a que aparece inteira ao lado do título, desde o rede
 Com o usuário, optamos pelo nível de proteção mais simples: um overlay transparente por cima da imagem (`.header-capa-protecao`) bloqueia o menu de botão direito e o "toque longo pra salvar" do celular, além de `draggable="false"` pra não dar pra arrastar a imagem pra fora da página — mesmo nível de proteção "casual" já usado no resto da vitrine (não impede alguém mais técnico que abra o DevTools ou tire print da tela, mas cobre o caminho mais comum). A opção alternativa (marcar d'água a capa quando a URL for do Drive) foi descartada por estampar a primeira impressão da vitrine com o carimbo diagonal, o que pesou mais do que a proteção adicional.
 
 Não exige migration. Arquivos: `vitrine.html`.
+
+### 2.45 Dashboard — clientes de evento coletivo sem evento no "Últimos clientes" (v3.20.11)
+
+A coluna "Evento" da lista "Últimos clientes" (Dashboard) mostrava "—" para clientes que participam de um evento coletivo (ex.: sessão de formatura de uma turma de escola), mesmo quando o evento existia e o cliente estava corretamente cadastrado como participante. Causa: `eventoRecenteDoCliente` (e também `statusCliente`, que decide o "Lead"/"Ativo" da pílula de status) só procuravam em `eventos` filtrando por `ID Cliente`/`Cliente / Responsável` — mas num evento coletivo, esses dois campos pertencem ao **organizador** (ex.: a escola), não a cada participante. O vínculo de cada participante com o evento vive numa coleção separada, `participantes` (`ID Evento` + `ID Cliente`), que essas duas funções nunca olhavam.
+
+Corrigido com uma nova função compartilhada `eventosDoCliente_(cli)`: junta os eventos onde o cliente é o responsável direto (comportamento de sempre) com os eventos coletivos em que ele aparece como participante (via `participantes`, resolvendo `ID Evento` até a linha de `eventos` correspondente para pegar o `Tipo de evento`/`Data do evento`). `eventoRecenteDoCliente` e `statusCliente` passam a usar essa função em vez de cada uma repetir a mesma busca incompleta.
+
+Testado via Node (sem DOM): cliente com evento individual direto, cliente participante de um coletivo (confirma que acha o tipo/data do evento coletivo e vira "Ativo"), e lead sem nenhum evento vinculado (continua "—"/"Lead"). Não exige migration. Arquivos: `modules/dashboard.js`, `crm.html`.
