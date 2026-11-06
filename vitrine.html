@@ -31,8 +31,15 @@
   .header-info h1{font-size:clamp(26px,3.6vw,40px);margin:4px 0 0;line-height:1.15;}
   .header-data{font-size:14px;opacity:.7;margin:8px 0 0;}
   .header-btn{width:auto !important;align-self:flex-start;margin-top:20px;}
-  .header-capa{flex:1 1 50%;overflow:hidden;background:rgba(128,128,128,.08);}
+  .header-capa{position:relative;flex:1 1 50%;overflow:hidden;background:rgba(128,128,128,.08);}
   .header-capa img{width:100%;height:100%;object-fit:contain;display:block;}
+  /* v3.20.10 — a capa vem de uma URL qualquer (Drive, Unsplash, etc.), não é
+     uma foto da galeria em si, então não dá pra marcar d'água de forma
+     confiável em todos os casos. Overlay transparente por cima da imagem
+     bloqueia "Salvar imagem como…"/arrastar (botão direito e touch longo) —
+     mesmo nível de proteção "casual" do resto da vitrine, não impede alguém
+     mais técnico (devtools, print da tela). */
+  .header-capa-protecao{position:absolute;inset:0;}
   @media (max-width:760px){
     .header{flex-direction:column;height:auto;}
     .header-info{padding:32px 20px 20px;}
@@ -453,7 +460,7 @@ function montarCabecalho_(vitrine){
         ${vitrine.data_exibicao ? `<p class="header-data">${escV(vitrine.data_exibicao)}</p>` : ''}
         <button type="button" class="btn-primary header-btn" id="btnVerGaleria">Ver galeria</button>
       </div>
-      ${capaUrl ? `<div class="header-capa"><img src="${escV(capaUrl)}" alt=""></div>` : ''}
+      ${capaUrl ? `<div class="header-capa"><img src="${escV(capaUrl)}" alt="" draggable="false" oncontextmenu="return false"><div class="header-capa-protecao" oncontextmenu="return false"></div></div>` : ''}
     </div>
   `;
 }

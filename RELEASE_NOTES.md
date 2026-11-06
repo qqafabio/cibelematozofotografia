@@ -17,6 +17,7 @@ A cada versão implantada:
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
 | v3.20.9 | 2026-11-06 | Vitrine de Fotos: "Baixar todas as fotos" empacota em .zip (corrige downloads que sumiam em galerias grandes) e ganha o mesmo recurso na Entrega Final | [2.43](#243-vitrine-de-fotos--download-em-massa-empacotado-em-zip-v3209) |
+| v3.20.10 | 2026-11-06 | Vitrine de Fotos: capa do header bloqueia "Salvar imagem como…"/arrastar | [2.44](#244-vitrine-de-fotos--proteção-casual-da-foto-de-capa-v32010) |
 | v3.20.8 | 2026-11-03 | Evento coletivo: editar Valor pacote não soma mais em cima de contas já parceladas, e remover parcela na tela Financeiro agora exclui de verdade | [2.42](#242-evento-coletivo--valor-pacote-duplicando-cobrança-e-parcela-removida-não-excluída-v3208) |
 | v3.20.7 | 2026-11-03 | Custos: receita de evento coletivo passa a somar o contratado de todos os participantes, não só 1 pacote | [2.41](#241-custos--receita-de-evento-coletivo-soma-todos-os-participantes-v3207) |
 | v3.20.6 | 2026-11-03 | Eventos Coletivos: corrige dropdown de Excluir cortado pelo overflow da tabela | [2.40](#240-eventos-coletivos--ícones-de-ação-na-listagem-v3205) |
@@ -1414,5 +1415,13 @@ Função nova e reaproveitável (`baixarComoZip_`) usada nos **dois** lugares de
 Para fotos do Google Drive, o zip busca sempre pelo endpoint confiável (`lh3.googleusercontent.com/d/ID=s0`, resolução original) em vez do link antigo `uc?export=download` (que pode devolver uma página de aviso em vez do arquivo em alguns casos) — mesma correção de endpoint já aplicada à marca d'água em v3.20.3, agora também usada aqui. Quando a marca d'água do Drive já foi aplicada numa foto (vira uma URL `blob:` local), o zip reaproveita esse mesmo blob em vez de buscar de novo.
 
 Testado via Node (sem navegador, stub de `fetch`/`JSZip`/DOM): decisão de URL por foto (blob já marcado / Drive sem marca / upload_proprio) em todos os cenários; divisão em lotes com 182 fotos (10 partes) e 12 fotos (1 parte, sem "parte X de Y"); sanitização do nome do arquivo; fail-soft com falha parcial (3 de 5) e falha total (0 de 2); contagem de download da entrega final disparada só para fotos que deram certo; trava de clique duplo no botão. `node --check` OK no bloco `<script>` extraído de `vitrine.html`. Não foi possível testar o empacotamento de verdade num navegador real nesta sessão — vale conferir visualmente (abrir o `.zip` baixado e conferir as fotos dentro) nas duas fontes antes de confiar de olhos fechados.
+
+Não exige migration. Arquivos: `vitrine.html`.
+
+### 2.44 Vitrine de Fotos — proteção casual da foto de capa (v3.20.10)
+
+A foto de capa do header (a que aparece inteira ao lado do título, desde o redesign v3.19.12) é só um `<img>` normal — o cliente conseguia clicar com o botão direito e "Salvar imagem como…" pra levar a foto sem passar pela galeria nem pela marca d'água. Diferente das fotos da galeria, a capa vem de uma URL qualquer colada no formulário (link do Drive, Unsplash, etc.) — não é uma das `vitrine_fotos`, então não dá pra aplicar o mesmo sistema de marca d'água de forma confiável em todos os casos (só funcionaria via `fetch()`/canvas quando a URL for do Drive; uma URL de terceiro como o Unsplash pode não liberar CORS, "sujando" o canvas).
+
+Com o usuário, optamos pelo nível de proteção mais simples: um overlay transparente por cima da imagem (`.header-capa-protecao`) bloqueia o menu de botão direito e o "toque longo pra salvar" do celular, além de `draggable="false"` pra não dar pra arrastar a imagem pra fora da página — mesmo nível de proteção "casual" já usado no resto da vitrine (não impede alguém mais técnico que abra o DevTools ou tire print da tela, mas cobre o caminho mais comum). A opção alternativa (marcar d'água a capa quando a URL for do Drive) foi descartada por estampar a primeira impressão da vitrine com o carimbo diagonal, o que pesou mais do que a proteção adicional.
 
 Não exige migration. Arquivos: `vitrine.html`.
