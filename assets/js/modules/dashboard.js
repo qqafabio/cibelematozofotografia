@@ -235,9 +235,9 @@ function renderDashboard(main){
   const inicio = periodoInicio();
   const nMeses = periodoMeses();
 
-  // --- Próximos eventos (sempre prospectivo; coletivos têm tela própria) ---
+  // --- Próximos eventos (sempre prospectivo; inclui coletivos — v3.20.12) ---
   const proximos = eventos
-    .filter(e => e['Data do evento'] && String(e['Coletivo']) !== 'Sim')
+    .filter(e => e['Data do evento'])
     .map(e => ({ ...e, _data: parseDataBR(e['Data do evento']) }))
     .filter(e => e._data && e._data >= hoje)
     .sort((a,b) => a._data - b._data)
@@ -339,7 +339,7 @@ function renderDashboard(main){
             <tbody>${proximos.map(e => `
               <tr>
                 <td data-label="Data">${esc(e['Data do evento'])}</td>
-                <td data-label="Cliente">${esc(e['Cliente / Responsável'])}</td>
+                <td data-label="Cliente">${esc(e['Cliente / Responsável'])}${String(e['Coletivo']) === 'Sim' ? ' <small class="text-muted">(coletivo)</small>' : ''}</td>
                 <td data-label="Evento">${esc(e['Tipo de evento'])}</td>
                 <td data-label="Status">${pillStatusEvento(e.Status)}</td>
               </tr>`).join('')}</tbody></table>`
