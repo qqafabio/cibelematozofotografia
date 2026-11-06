@@ -98,6 +98,10 @@
 <!-- Reaproveita a config/instância do PocketBase já usada no CRM (sem login:
      esta página nunca chama pbAuthGarantir — o acesso é só pelo token público). -->
 <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.5/dist/pocketbase.umd.js"></script>
+<!-- JSZip (v3.20.9): agrupa várias fotos num único .zip pra baixar de uma vez
+     só — evita o bloqueio do navegador pra >10 downloads automáticos seguidos
+     (ver "Baixar todas as fotos"/"Baixar tudo em alta resolução" mais abaixo). -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="assets/js/config.js?v=3.19.0"></script>
 <script src="assets/js/pbCore.js?v=3.15.1"></script>
 <script>
@@ -192,7 +196,10 @@ async function marcaDaguaCanvas_(origem){
 // 'cors' se a resposta do 302 não tiver o cabeçalho, mesmo a URL final tendo
 // (o endpoint direto já manda 'Access-Control-Allow-Origin: *' sempre).
 function driveUrlDireta_(id, tamanho){
-  return 'https://lh3.googleusercontent.com/d/' + id + '=w' + tamanho;
+  // tamanho=0 (ou omitido) → original sem redimensionar (=s0), usado pelo zip
+  // de "Baixar todas"/"Baixar tudo em alta resolução"; qualquer outro valor é
+  // o lado maior em pixels (=w<tamanho>, usado pela marca d'água).
+  return 'https://lh3.googleusercontent.com/d/' + id + (tamanho ? '=w' + tamanho : '=s0');
 }
 
 // Baixa a foto original do Drive e devolve uma URL local (blob:) já com a
@@ -255,6 +262,119 @@ async function aplicarMarcaDaguaDriveNaGrade_(fotos){
     return processarProximo();
   }
   await Promise.all(Array.from({ length: Math.min(CONCORRENCIA, fotos.length) }, processarProximo));
+}
+
+/* ---- "Baixar todas as fotos" / "Baixar tudo em alta resolução" (v3.20.9) ----
+   Empacota as fotos num .zip e dispara UM download por arquivo gerado, em vez
+   de um download por foto — o jeito antigo (um clique sintético de <a
+   download> por foto, espaçados por setTimeout) faz o navegador bloquear
+   silenciosamente depois de ~10 downloads automáticos em sequência sem um
+   gesto novo do usuário a cada um, então galerias com mais de ~10 fotos
+   perdiam parte dos arquivos sem avisar ninguém. Usado pelos dois botões de
+   download em massa da vitrine (galeria principal e entrega final). */
+
+// Pro zip, NÃO confia cegamente no campo de origem quando a fonte é o Drive:
+// se a marca d'água ainda não foi aplicada a esta foto específica (switch
+// desligado, ou as 3 tentativas falharam e liberarCard_ seguiu em frente sem
+// marca), o campo ainda aponta pro link antigo (uc?export=download), que não
+// é confiável via fetch() (pode devolver página de aviso em vez do arquivo).
+// Nesse caso, ignora e usa o endpoint direto (=s0, sem redimensionar).
+function urlParaZip_(f, vitrine){
+  if (String(f.baixar).startsWith('blob:')) return f.baixar; // já marcado, local, fetch trivial
+  if (vitrine.fonte_imagens === 'google_drive') return driveUrlDireta_(f.id, 0);
+  return f.baixar; // upload_proprio: já é URL do PocketBase (CORS ok)
+}
+
+const ZIP_LOTE_TAMANHO = 20; // fotos por parte do zip — ver nota de memória/qtd de downloads abaixo
+const ZIP_CONCORRENCIA = 3;  // mesmo valor de aplicarMarcaDaguaDriveNaGrade_
+const ZIP_TENTATIVAS = 3;
+
+function esperarMs_(ms){ return new Promise((r) => setTimeout(r, ms)); }
+
+function nomeArquivoVitrine_(vitrine){
+  const base = String(vitrine.nome_exibicao || 'fotos').replace(/[\\/:*?"<>|]+/g, ' ').trim();
+  return base || 'fotos';
+}
+
+// itens: lista normalizada [{id, nome, baixar}, ...] — a galeria principal já
+// tem esse formato (array `fotos`); a entrega final mapeia `baixarLimpo` pra
+// `baixar` antes de chamar. opts.sufixo entra no nome do arquivo (ex.:
+// 'entrega'); opts.aoConcluirFoto(f), se passado, roda (fire-and-forget) a
+// cada foto incluída com sucesso — usado pela entrega final pra contar o
+// download.
+//
+// Risco aceito conscientemente: pra galerias muito grandes (~200+ fotos), o
+// nº de partes do zip pode chegar perto do limite de bloqueio automático do
+// navegador (~10), e o pico de memória por lote é +- ZIP_LOTE_TAMANHO ×
+// tamanho médio da foto × 2 (bytes de origem + buffer do zip sendo montado).
+// Os dois ajustam só mexendo em ZIP_LOTE_TAMANHO — revisitar se uma galeria
+// real passar muito do maior caso já visto em produção (182 fotos).
+async function baixarComoZip_(itens, vitrine, btn, opts){
+  opts = opts || {};
+  const rotuloOriginal = btn.textContent;
+  const nomeBase = nomeArquivoVitrine_(vitrine) + (opts.sufixo ? '-' + opts.sufixo : '');
+  const totalPartes = Math.ceil(itens.length / ZIP_LOTE_TAMANHO);
+  let concluidas = 0, falhas = 0;
+
+  for (let parte = 0; parte < totalPartes; parte++){
+    const inicio = parte * ZIP_LOTE_TAMANHO;
+    const itensDaParte = itens.slice(inicio, inicio + ZIP_LOTE_TAMANHO);
+    const zip = new JSZip();
+    let indice = 0;
+
+    async function processarProximo(){
+      const i = indice++;
+      if (i >= itensDaParte.length) return;
+      const f = itensDaParte[i];
+      let blob = null;
+      for (let t = 0; t < ZIP_TENTATIVAS && !blob; t++){
+        try {
+          const res = await fetch(urlParaZip_(f, vitrine));
+          if (res.ok) blob = await res.blob();
+        } catch (err){ /* tenta de novo */ }
+      }
+      if (blob){
+        // Prefixo numérico garante nome único dentro do zip (duas fotos
+        // podem ter o mesmo nome original) e preserva a ordem da galeria.
+        const numero = String(inicio + i + 1).padStart(4, '0');
+        zip.file(numero + '-' + (f.nome || ('foto-' + (inicio + i))), blob);
+        concluidas++;
+        if (opts.aoConcluirFoto) opts.aoConcluirFoto(f);
+      } else {
+        falhas++;
+      }
+      btn.textContent = 'Preparando fotos… (' + (concluidas + falhas) + '/' + itens.length + ')';
+      return processarProximo();
+    }
+    await Promise.all(Array.from({ length: Math.min(ZIP_CONCORRENCIA, itensDaParte.length) }, processarProximo));
+
+    if (Object.keys(zip.files).length){ // pelo menos 1 foto da parte deu certo
+      btn.textContent = totalPartes > 1
+        ? ('Gerando parte ' + (parte + 1) + ' de ' + totalPartes + '…')
+        : 'Gerando arquivo…';
+      const blobZip = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+      const nomeZip = totalPartes > 1
+        ? nomeBase + '-parte' + (parte + 1) + '-de-' + totalPartes + '.zip'
+        : nomeBase + '.zip';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blobZip);
+      a.download = nomeZip;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      // Espaçamento mínimo entre partes: cada parte já é, ela mesma, um
+      // download disparado automaticamente — mesmo risco do bug original,
+      // só que em escala bem menor (nº de partes, não nº de fotos).
+      if (parte < totalPartes - 1) await esperarMs_(1200);
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = rotuloOriginal;
+  if (falhas && concluidas){
+    await avisarVitrine_(concluidas + ' de ' + itens.length + ' fotos baixadas — ' + falhas + ' falharam, tente novamente para essas.');
+  } else if (falhas && !concluidas){
+    await avisarVitrine_('Não foi possível baixar nenhuma foto — verifique sua conexão e tente novamente.');
+  }
 }
 
 /* ---- Seleção de fotos (v3.19 Fase 2) ---- */
@@ -622,11 +742,13 @@ async function renderGaleria_(vitrine, senhaHash){
 
   const btnTodas = document.getElementById('baixarTodas');
   if (btnTodas) btnTodas.addEventListener('click', () => {
-    fotos.forEach((f, i) => setTimeout(() => {
-      const a = document.createElement('a');
-      a.href = f.baixar; a.download = f.nome || ('foto-' + i);
-      document.body.appendChild(a); a.click(); a.remove();
-    }, i * 400)); // espaçado: navegador costuma bloquear downloads simultâneos demais
+    if (btnTodas.disabled) return; // já em andamento, ou no gate de marca d'água do Drive
+    btnTodas.disabled = true;
+    baixarComoZip_(fotos, vitrine, btnTodas).catch((err) => {
+      btnTodas.disabled = false;
+      btnTodas.textContent = 'Baixar todas as fotos';
+      avisarVitrine_('Não foi possível preparar o download: ' + (err.message || err));
+    });
   });
 
   // Clique em "baixar" na entrega final CONTA (fire-and-forget: não atrasa
@@ -644,6 +766,32 @@ async function renderGaleria_(vitrine, senhaHash){
     downloadsFeitos++;
     criarDownloadEvento_(vitrine.id, a.dataset.ref, TOKEN, senhaHash).catch(() => {});
   }));
+
+  // "Baixar tudo em alta resolução": mesmo empacotamento em .zip usado em
+  // "Baixar todas as fotos" (ver baixarComoZip_), mas sempre com os arquivos
+  // limpos (baixarLimpo, nunca a versão marcada) e contando 1 download por
+  // foto incluída — mesmo peso que um clique individual em ".entrega-baixar".
+  const btnTudoEntrega = document.getElementById('baixarTudoEntrega');
+  if (btnTudoEntrega) btnTudoEntrega.addEventListener('click', () => {
+    if (btnTudoEntrega.disabled) return;
+    if (maxDownloads && downloadsFeitos >= maxDownloads){
+      avisarVitrine_('O limite de downloads desta entrega já foi atingido.');
+      return;
+    }
+    btnTudoEntrega.disabled = true;
+    const itensEntrega = (entregaInfo.itens || []).map(f => ({ id: f.id, nome: f.nome, baixar: f.baixarLimpo }));
+    baixarComoZip_(itensEntrega, vitrine, btnTudoEntrega, {
+      sufixo: 'entrega',
+      aoConcluirFoto: (f) => {
+        downloadsFeitos++;
+        criarDownloadEvento_(vitrine.id, f.id, TOKEN, senhaHash).catch(() => {});
+      },
+    }).catch((err) => {
+      btnTudoEntrega.disabled = false;
+      btnTudoEntrega.textContent = 'Baixar tudo em alta resolução';
+      avisarVitrine_('Não foi possível preparar o download: ' + (err.message || err));
+    });
+  });
 }
 
 // Decide o que (e se) mostrar na seção de entrega final, a partir do estado
@@ -681,6 +829,7 @@ function montarSecaoEntrega_(info, vitrine){
     <div class="entrega">
       <h2>📦 Entrega final</h2>
       <p class="entrega-sub">Fotos em alta resolução, sem marca d'água.${max ? ' Limite de ' + max + ' downloads' + (esgotado ? ' — já atingido.' : '.') : ''}</p>
+      ${!esgotado && info.itens.length ? `<button id="baixarTudoEntrega" style="margin-bottom:14px;">Baixar tudo em alta resolução</button>` : ''}
       ${esgotado ? `<div class="painel"><p style="margin:0;">Limite de downloads atingido. Fale com a fotógrafa se precisar de mais.</p></div>` : grupos.map(g => `
         ${g.nome ? `<p class="album-titulo">${escV(g.nome)}</p>` : ''}
         <div class="grid">
