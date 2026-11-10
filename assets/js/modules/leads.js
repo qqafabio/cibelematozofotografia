@@ -7,6 +7,8 @@
 
 /* ============ LEADS / CRM · ORÇAMENTOS ============ */
 let leadEditandoId = null;
+let leadsPagina = 1;
+const LEADS_POR_PAGINA = 10;
 function renderLeads(main){
   main.innerHTML = `
     <div class="view-header">
@@ -22,11 +24,16 @@ function desenharTabelaLeads(){
   const el = document.getElementById('tabelaLeads');
   if (!leads.length){ el.innerHTML = `<div class="empty-state">Nenhum lead cadastrado ainda.</div>`; return; }
   const ordenados = [...leads].sort((a,b) => Number(b['ID Lead']) - Number(a['ID Lead']));
+  const totalPaginas = Math.max(1, Math.ceil(ordenados.length / LEADS_POR_PAGINA));
+  if (leadsPagina > totalPaginas) leadsPagina = totalPaginas;
+  const ini = (leadsPagina - 1) * LEADS_POR_PAGINA;
+  const pagina = ordenados.slice(ini, ini + LEADS_POR_PAGINA);
   el.innerHTML = `
     <table class="responsive-table">
       <thead><tr><th>Cliente</th><th>Tipo</th><th>Etapa</th><th>Valor estimado</th><th>Orçamento</th><th>Próximo contato</th><th>Ações</th></tr></thead>
-      <tbody>${ordenados.map(l => linhaLead(l)).join('')}</tbody>
-    </table>`;
+      <tbody>${pagina.map(l => linhaLead(l)).join('')}</tbody>
+    </table>
+    ${htmlPaginacao(leadsPagina, totalPaginas)}`;
   wireTabelaLeads(el);
 }
 

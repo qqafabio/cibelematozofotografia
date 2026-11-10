@@ -178,6 +178,8 @@ function derivarResumoCobrancasLocal_(contas){
 
 /* ============ CONTAS EM ATRASO / COBRANÇAS ============ */
 
+let atrasoPagina = 1;
+const ATRASO_POR_PAGINA = 10;
 async function renderContasEmAtraso(main) {
   // v3.5: usa o snapshot do PocketBase já em memória (sem round-trip ao Apps Script).
   // contasEmAtraso já vem com diasEmAtraso e ordenado por derivarContasEmAtrasoPB_.
@@ -206,6 +208,10 @@ function desenharTabelaAtraso() {
   }
 
   const ordenados = [...contasEmAtraso].sort((a, b) => b.diasEmAtraso - a.diasEmAtraso);
+  const totalPaginas = Math.max(1, Math.ceil(ordenados.length / ATRASO_POR_PAGINA));
+  if (atrasoPagina > totalPaginas) atrasoPagina = totalPaginas;
+  const iniPg = (atrasoPagina - 1) * ATRASO_POR_PAGINA;
+  const paginaAtual = ordenados.slice(iniPg, iniPg + ATRASO_POR_PAGINA);
   el.innerHTML = `
     <table class="responsive-table">
       <thead>
@@ -218,7 +224,8 @@ function desenharTabelaAtraso() {
         </tr>
       </thead>
       <tbody>
-        ${ordenados.map((c, idx) => {
+        ${paginaAtual.map((c) => {
+          const idx = contasEmAtraso.indexOf(c);
           const saldo = Number(c['Valor previsto'] || 0) - Number(c['Valor pago'] || 0);
           return `
           <tr>
@@ -235,7 +242,12 @@ function desenharTabelaAtraso() {
         }).join('')}
       </tbody>
     </table>
+    ${htmlPaginacao(atrasoPagina, totalPaginas)}
   `;
+  el.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => {
+    const p = Number(b.dataset.pg);
+    if (p >= 1){ atrasoPagina = p; desenharTabelaAtraso(); }
+  }));
 }
 
 async function renderDashboardCobrancas(main) {

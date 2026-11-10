@@ -7,6 +7,8 @@
 
 /* ============ CUSTOS ============ */
 let custoEditandoId = null;
+let custosPagina = 1;
+const CUSTOS_POR_PAGINA = 10;
 /* Receita de um evento coletivo = soma do contratado (previsto − desconto) de cada
    participante, não o "Valor pacote" do cabeçalho (que é só o valor por pessoa). */
 function receitaEventoColetivo(idEvento){
@@ -64,11 +66,16 @@ function desenharTabelaCustos(){
   const el = document.getElementById('tabelaCustos');
   if (!custos.length){ el.innerHTML = `<div class="empty-state">Nenhum custo lançado ainda.</div>`; return; }
   const ordenados = [...custos].sort((a,b) => Number(b['ID Custo']) - Number(a['ID Custo']));
+  const totalPaginas = Math.max(1, Math.ceil(ordenados.length / CUSTOS_POR_PAGINA));
+  if (custosPagina > totalPaginas) custosPagina = totalPaginas;
+  const ini = (custosPagina - 1) * CUSTOS_POR_PAGINA;
+  const pagina = ordenados.slice(ini, ini + CUSTOS_POR_PAGINA);
   el.innerHTML = `
     <table class="responsive-table">
       <thead><tr><th>Evento</th><th>Categoria</th><th>Fornecedor</th><th>Valor</th><th>Pago?</th><th>Ações</th></tr></thead>
-      <tbody>${ordenados.map(c => linhaCusto(c)).join('')}</tbody>
-    </table>`;
+      <tbody>${pagina.map(c => linhaCusto(c)).join('')}</tbody>
+    </table>
+    ${htmlPaginacao(custosPagina, totalPaginas)}`;
   wireTabelaCustos(el);
 }
 
@@ -107,6 +114,10 @@ function linhaCusto(c){
 }
 
 function wireTabelaCustos(el){
+  el.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => {
+    const p = Number(b.dataset.pg);
+    if (p >= 1){ custosPagina = p; desenharTabelaCustos(); }
+  }));
   el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () =>
     abrirFormCusto(custos.find(c => String(c['ID Custo']) === b.dataset.view))));
   el.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {

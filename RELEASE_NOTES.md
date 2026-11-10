@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.21.0 | 2026-11-10 | Paginação (10/pág.) em Orçamentos, Eventos Coletivos, Produção, Financeiro, Cobranças, Custos, Pacotes, Produtos e Freelance; Clientes ordena por nome; busca em Eventos Coletivos e Financeiro; Produção ordena por data; seletor de cliente com busca no modal de evento | [2.47](#247-paginação-ordenação-busca-e-seletor-de-cliente-com-busca-v3210) |
 | v3.20.9 | 2026-11-06 | Vitrine de Fotos: "Baixar todas as fotos" empacota em .zip (corrige downloads que sumiam em galerias grandes) e ganha o mesmo recurso na Entrega Final | [2.43](#243-vitrine-de-fotos--download-em-massa-empacotado-em-zip-v3209) |
 | v3.20.10 | 2026-11-06 | Vitrine de Fotos: capa do header bloqueia "Salvar imagem como…"/arrastar | [2.44](#244-vitrine-de-fotos--proteção-casual-da-foto-de-capa-v32010) |
 | v3.20.11 | 2026-11-06 | Dashboard: coluna "Evento" e status de clientes de evento coletivo passam a ser reconhecidos em "Últimos clientes" | [2.45](#245-dashboard--clientes-de-evento-coletivo-sem-evento-no-últimos-clientes-v32011) |
@@ -1441,3 +1442,16 @@ Testado via Node (sem DOM): cliente com evento individual direto, cliente partic
 O quadro "Próximos eventos" do Dashboard excluía deliberadamente todo evento marcado como coletivo (`eventos.coletivo = 'Sim'`) — uma sessão de formatura de uma turma inteira com data futura simplesmente não aparecia ali. Era uma decisão consciente de quando a tela própria de Eventos Coletivos foi criada ("coletivos têm tela própria"), mas levantada pelo usuário ao revisar os quadros do Dashboard: faz mais sentido aparecer, já que é um evento futuro como qualquer outro. Removido o filtro que excluía; a linha do coletivo mostra o nome do organizador (ex.: "Escola X") com um "(coletivo)" ao lado pra não confundir com um cliente individual.
 
 Confirmado nesta mesma revisão que nenhum outro quadro do Dashboard tem o mesmo tipo de problema: os quadros de receita somam a partir do `financeiro` (já lançado por participante em eventos coletivos, não do campo de valor do evento coletivo "container" — que é onde o bug equivalente da Custos/Financeiro, corrigido em v3.20.7/v3.20.8, vivia). Testado via Node: evento coletivo futuro aparece na lista com o indicador, evento individual passado continua de fora. Não exige migration. Arquivos: `modules/dashboard.js`, `crm.html`.
+
+### 2.47 Paginação, ordenação, busca e seletor de cliente com busca (v3.21.0)
+
+Lote de melhorias de usabilidade nas telas de listagem, pedidas pelo usuário ao perceber que a base de dados estava crescendo:
+
+- **Paginação (10 itens/página)** nas telas que ainda carregavam a lista inteira de uma vez: CRM · Orçamentos, Eventos Coletivos, Produção, Financeiro, Cobranças, Custos, Pacotes, Produtos e Freelance. Reaproveita o mesmo mecanismo já usado em Clientes/Eventos (`htmlPaginacao`, definida em `clientes.js`): estado de página por módulo, reset ao buscar/filtrar, fatiamento da lista já ordenada/filtrada. `Eventos` já tinha paginação desde a v3.10 e não foi alterado.
+- **Clientes**: ordem alfabética (`localeCompare`, pt-BR) passa a ser o default da listagem, em vez da ordem crua de cadastro.
+- **Eventos Coletivos**: ganhou campo de busca por organizador/cliente ou tipo de evento, igual ao que já existia em Eventos (a tela não tinha nenhuma busca até então).
+- **Produção**: lista passa a ordenar pela data do evento, mais recentes primeiro (antes saía na ordem crua de criação do registro).
+- **Financeiro**: novo campo de busca por nome do cliente, para achar uma conta sem precisar rolar a lista inteira.
+- **Seleção de cliente no modal de evento**: o `<select>` com todos os clientes (que ficava enorme e difícil de usar conforme a base cresce) foi trocado por um campo de busca com lista paginada, embutido no próprio formulário (sem abrir uma tela nova nem perder os outros campos já preenchidos). Além disso, o cadastro do cliente ganhou um atalho "+ Novo evento", que abre o formulário de evento com o cliente já selecionado, sem precisar buscar. Pesquisamos como outros CRMs (Salesforce, HubSpot, Pipedrive) resolvem esse mesmo problema de campo de relação com muitos registros antes de decidir por essa combinação.
+
+Sem migration do PocketBase — mudanças só de front-end. Arquivos: `modules/leads.js`, `modules/eventosColetivos.js`, `modules/producao.js`, `modules/financeiro.js`, `modules/cobrancas.js`, `modules/custos.js`, `modules/pacotes.js`, `modules/produtos.js`, `modules/freelance.js`, `modules/clientes.js`, `modules/eventos.js`, `crm.css`, `crm.html`.

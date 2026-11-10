@@ -8,6 +8,8 @@
 /* ============ PRODUÇÃO ============ */
 const ETAPAS_PRODUCAO = ['Não iniciado','Em andamento','Concluído'];
 const ETAPAS_PRODUCAO_OPCIONAIS = [...ETAPAS_PRODUCAO, 'Não se aplica'];
+let producaoPagina = 1;
+const PRODUCAO_POR_PAGINA = 10;
 function renderProducao(main){
   main.innerHTML = `
     <div class="view-header"><div><h1>Produção</h1><p>Uma linha por evento — criada automaticamente ao cadastrar o evento.</p></div></div>
@@ -18,10 +20,15 @@ function renderProducao(main){
 function desenharTabelaProducao(){
   const el = document.getElementById('tabelaProducao');
   if (!producao.length){ el.innerHTML = `<div class="empty-state">Nenhum evento com produção em aberto ainda.</div>`; return; }
+  const ordenados = [...producao].sort((a,b) => (parseDataBR(b['Data evento'])||0) - (parseDataBR(a['Data evento'])||0));
+  const totalPaginas = Math.max(1, Math.ceil(ordenados.length / PRODUCAO_POR_PAGINA));
+  if (producaoPagina > totalPaginas) producaoPagina = totalPaginas;
+  const ini = (producaoPagina - 1) * PRODUCAO_POR_PAGINA;
+  const pagina = ordenados.slice(ini, ini + PRODUCAO_POR_PAGINA);
   el.innerHTML = `
     <table class="responsive-table">
       <thead><tr><th>Cliente</th><th>Tipo</th><th>Data evento</th><th>Edição foto</th><th>Edição vídeo</th><th>Entrega</th><th>NFS-e</th><th>Ações</th></tr></thead>
-      <tbody>${producao.map(p => `
+      <tbody>${pagina.map(p => `
         <tr data-id="${esc(p['ID Evento'])}">
           <td data-label="Cliente">${esc(p['Cliente'])}</td><td data-label="Tipo">${esc(p['Tipo de evento'])}</td><td data-label="Data evento">${esc(p['Data evento'])}</td>
           <td data-label="Edição foto"><span class="status-pill ${String(p['Edição foto']).toLowerCase()==='concluído'?'confirmado':''}">${esc(p['Edição foto'])}</span></td>
@@ -32,9 +39,14 @@ function desenharTabelaProducao(){
             <button class="btn-icon" data-view="${esc(p['ID Evento'])}" title="Abrir produção"><i class="bi bi-eye"></i></button>
           </div></td>
         </tr>`).join('')}</tbody>
-    </table>`;
+    </table>
+    ${htmlPaginacao(producaoPagina, totalPaginas)}`;
   el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () =>
     abrirFormProducao(producao.find(p => String(p['ID Evento']) === b.dataset.view))));
+  el.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => {
+    const p = Number(b.dataset.pg);
+    if (p >= 1){ producaoPagina = p; desenharTabelaProducao(); }
+  }));
 }
 function abrirFormProducao(p){
   const campoEtapa = (label, campo) => `

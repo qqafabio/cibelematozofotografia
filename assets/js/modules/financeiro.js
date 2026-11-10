@@ -28,6 +28,9 @@ async function excluirContaComConfirmacao(conta){
   }
 }
 /* ============ FINANCEIRO ============ */
+let financeiroBusca = '';
+let financeiroPagina = 1;
+const FINANCEIRO_POR_PAGINA = 10;
 function agruparContas(){
   const grupos = {};
   const eventoPorId = {};
@@ -70,20 +73,29 @@ function renderFinanceiro(main){
       <div class="kpi-card"><div class="kpi-label">Total previsto</div><div class="kpi-value">${formatBRL(totalPrevisto)}</div></div>
       <div class="kpi-card"><div class="kpi-label">Total recebido</div><div class="kpi-value">${formatBRL(totalPago)}</div></div>
     </div>
+    <div class="search-box"><input type="text" id="buscaFinanceiro" placeholder="Buscar por cliente…" value="${esc(financeiroBusca)}"></div>
     <div class="panel panel-list"><div id="tabelaFinanceiro"></div></div>
   `;
   document.getElementById('novaContaBtn').addEventListener('click', () => abrirFormConta(null));
+  document.getElementById('buscaFinanceiro').addEventListener('input', e => { financeiroBusca = e.target.value; financeiroPagina = 1; desenharTabelaFinanceiro(); });
   desenharTabelaFinanceiro();
 }
 function desenharTabelaFinanceiro(){
   const el = document.getElementById('tabelaFinanceiro');
   const contas = agruparContas();
   if (!contas.length){ el.innerHTML = `<div class="empty-state">Nenhuma conta lançada ainda.</div>`; return; }
-  const ordenados = [...contas].sort((a,b) => Number(b.idEvento) - Number(a.idEvento));
+  const f = financeiroBusca.trim().toLowerCase();
+  const filtradas = f ? contas.filter(c => String(c.cliente||'').toLowerCase().includes(f)) : contas;
+  if (!filtradas.length){ el.innerHTML = `<div class="empty-state">Nenhuma conta encontrada com esse filtro.</div>`; return; }
+  const ordenados = [...filtradas].sort((a,b) => Number(b.idEvento) - Number(a.idEvento));
+  const totalPaginas = Math.max(1, Math.ceil(ordenados.length / FINANCEIRO_POR_PAGINA));
+  if (financeiroPagina > totalPaginas) financeiroPagina = totalPaginas;
+  const ini = (financeiroPagina - 1) * FINANCEIRO_POR_PAGINA;
+  const pagina = ordenados.slice(ini, ini + FINANCEIRO_POR_PAGINA);
   el.innerHTML = `
     <table class="responsive-table">
       <thead><tr><th>Cliente</th><th>Parcelas</th><th>Total previsto</th><th>Recebido</th><th>Desconto</th><th>Saldo</th><th>Status</th><th>Ações</th></tr></thead>
-      <tbody>${ordenados.map(c => `
+      <tbody>${pagina.map(c => `
         <tr data-id="${esc(c.key)}">
           <td data-label="Cliente">${esc(c.cliente)}</td><td data-label="Parcelas">${c.parcelasReais.length}</td>
           <td data-label="Total previsto">${formatBRL(c.totalPrevisto)}</td><td data-label="Recebido">${formatBRL(c.totalPago)}</td>
@@ -100,12 +112,17 @@ function desenharTabelaFinanceiro(){
             </div>
           </div></td>
         </tr>`).join('')}</tbody>
-    </table>`;
+    </table>
+    ${htmlPaginacao(financeiroPagina, totalPaginas)}`;
   el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () =>
     abrirFormConta(contas.find(c => String(c.key) === b.dataset.view))));
   el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
     const conta = contas.find(c => String(c.key) === b.dataset.del);
     if (conta) excluirContaComConfirmacao(conta);
+  }));
+  el.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => {
+    const p = Number(b.dataset.pg);
+    if (p >= 1){ financeiroPagina = p; desenharTabelaFinanceiro(); }
   }));
 }
 function abrirFormConta(conta){

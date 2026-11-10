@@ -29,6 +29,8 @@ function lerChecksTiposEvento_(prefixo){
 }
 
 /* ============ PRODUTOS ============ */
+let produtosPagina = 1;
+const PRODUTOS_POR_PAGINA = 10;
 function renderProdutos(main){
   main.innerHTML = `
     <div class="view-header">
@@ -39,7 +41,7 @@ function renderProdutos(main){
     <div class="panel panel-list"><div id="tabelaProdutos"></div></div>
   `;
   document.getElementById('novoProdutoBtn').addEventListener('click', () => abrirFormProduto(null));
-  document.getElementById('buscaProduto').addEventListener('input', e => desenharTabelaProdutos(e.target.value));
+  document.getElementById('buscaProduto').addEventListener('input', e => { produtosPagina = 1; desenharTabelaProdutos(e.target.value); });
   desenharTabelaProdutos('');
 }
 function desenharTabelaProdutos(filtro){
@@ -47,10 +49,14 @@ function desenharTabelaProdutos(filtro){
   const lista = produtos.filter(p => !f || String(p['Nome']||'').toLowerCase().includes(f));
   const el = document.getElementById('tabelaProdutos');
   if (!lista.length){ el.innerHTML = `<div class="empty-state">Nenhum produto encontrado.</div>`; return; }
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / PRODUTOS_POR_PAGINA));
+  if (produtosPagina > totalPaginas) produtosPagina = totalPaginas;
+  const ini = (produtosPagina - 1) * PRODUTOS_POR_PAGINA;
+  const pagina = lista.slice(ini, ini + PRODUTOS_POR_PAGINA);
   el.innerHTML = `
     <table class="responsive-table">
       <thead><tr><th>Nome</th><th>Valor</th><th>Cobrança</th><th>Eventos</th><th>Ativo</th><th>Ações</th></tr></thead>
-      <tbody>${lista.map(p => `
+      <tbody>${pagina.map(p => `
         <tr data-id="${esc(p['ID'])}">
           <td data-label="Nome">${esc(p['Nome'])}</td>
           <td data-label="Valor">${formatBRL(p['Valor'])}</td>
@@ -67,7 +73,8 @@ function desenharTabelaProdutos(filtro){
             </div>
           </div></td>
         </tr>`).join('')}</tbody>
-    </table>`;
+    </table>
+    ${htmlPaginacao(produtosPagina, totalPaginas)}`;
   el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () =>
     abrirFormProduto(produtos.find(p => String(p['ID']) === b.dataset.view))));
   el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
@@ -76,6 +83,10 @@ function desenharTabelaProdutos(filtro){
       `Excluir o produto "${p ? p['Nome'] : ''}"? Isso não pode ser desfeito.`,
       'deletarProduto', { id: b.dataset.del }, null, null
     );
+  }));
+  el.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => {
+    const p = Number(b.dataset.pg);
+    if (p >= 1){ produtosPagina = p; desenharTabelaProdutos(filtro); }
   }));
 }
 function abrirFormProduto(produto){

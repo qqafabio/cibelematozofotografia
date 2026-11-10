@@ -12,6 +12,9 @@
    conta no Financeiro com o valor do pacote. */
 
 const PARTICIPANTE_STATUS = ['Sem contato', 'Interessado', 'Comprou', 'Recebido', 'Não quis'];
+let coletivosBusca = '';
+let coletivosPagina = 1;
+const COLETIVOS_POR_PAGINA = 10;
 
 function eventosColetivosLista(){
   return eventos.filter(e => String(e['Coletivo']) === 'Sim');
@@ -52,20 +55,32 @@ function renderEventosColetivos(main){
       <div><h1>Eventos Coletivos</h1><p>${lista.length} evento${lista.length===1?'':'s'} com muitos participantes (formatura, crisma, investidura…).</p></div>
       <button class="btn-primary" id="novoColetivoBtn">+ Novo evento coletivo</button>
     </div>
+    <div class="search-box"><input type="text" id="buscaColetivo" placeholder="Buscar por cliente ou evento…" value="${esc(coletivosBusca)}"></div>
     <div class="panel panel-list"><div id="tabelaColetivos"></div></div>
   `;
   document.getElementById('novoColetivoBtn').addEventListener('click', () => abrirFormEventoColetivo(null));
+  document.getElementById('buscaColetivo').addEventListener('input', e => { coletivosBusca = e.target.value; coletivosPagina = 1; desenharTabelaColetivos(); });
   desenharTabelaColetivos();
 }
 function desenharTabelaColetivos(){
   const el = document.getElementById('tabelaColetivos');
   const lista = eventosColetivosLista();
   if (!lista.length){ el.innerHTML = `<div class="empty-state">Nenhum evento coletivo cadastrado ainda.</div>`; return; }
-  const ordenados = [...lista].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
+  const termo = coletivosBusca.trim().toLowerCase();
+  const filtrados = termo ? lista.filter(e => {
+    const alvo = `${e['Organizador']||e['Cliente / Responsável']||''} ${e['Tipo de evento']||''}`.toLowerCase();
+    return alvo.includes(termo);
+  }) : lista;
+  if (!filtrados.length){ el.innerHTML = `<div class="empty-state">Nenhum evento coletivo encontrado com esse filtro.</div>`; return; }
+  const ordenados = [...filtrados].sort((a,b) => (parseDataBR(b['Data do evento'])||0) - (parseDataBR(a['Data do evento'])||0));
+  const totalPaginas = Math.max(1, Math.ceil(ordenados.length / COLETIVOS_POR_PAGINA));
+  if (coletivosPagina > totalPaginas) coletivosPagina = totalPaginas;
+  const ini = (coletivosPagina - 1) * COLETIVOS_POR_PAGINA;
+  const pagina = ordenados.slice(ini, ini + COLETIVOS_POR_PAGINA);
   el.innerHTML = `
     <table class="responsive-table">
       <thead><tr><th>Data</th><th>Tipo</th><th>Organizador</th><th>Local</th><th>Participantes</th><th>Pacote</th><th>Ações</th></tr></thead>
-      <tbody>${ordenados.map(e => `
+      <tbody>${pagina.map(e => `
         <tr data-id="${esc(e['ID Evento'])}">
           <td data-label="Data">${esc(e['Data do evento'])}</td>
           <td data-label="Tipo">${esc(e['Tipo de evento'])}</td>
@@ -83,11 +98,16 @@ function desenharTabelaColetivos(){
             </div>
           </div></td>
         </tr>`).join('')}</tbody>
-    </table>`;
+    </table>
+    ${htmlPaginacao(coletivosPagina, totalPaginas)}`;
   el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => abrirDetalheColetivo(b.dataset.view)));
   el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
     const ev = eventos.find(e => String(e['ID Evento']) === b.dataset.del);
     if (ev) excluirEventoColetivoComConfirmacao(ev);
+  }));
+  el.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => {
+    const p = Number(b.dataset.pg);
+    if (p >= 1){ coletivosPagina = p; desenharTabelaColetivos(); }
   }));
 }
 

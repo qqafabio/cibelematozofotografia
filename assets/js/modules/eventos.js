@@ -11,6 +11,12 @@
 let eventosPagina = 1;
 const EVENTOS_POR_PAGINA = 10;
 
+/* Seletor de cliente do form de evento (v3.21.5): busca + lista paginada
+   embutida no modal, no lugar do <select> com todos os clientes. */
+let clientePickerBusca = '';
+let clientePickerPagina = 1;
+const CLIENTE_PICKER_POR_PAGINA = 10;
+
 /* Cliente vinculado ao evento (por ID Cliente, com fallback pelo nome). */
 function clienteDoEvento(ev){
   const id = ev['ID Cliente'], nome = ev['Cliente / Responsável'];
@@ -126,17 +132,27 @@ function desenharTabelaEventos(){
     if (p >= 1){ eventosPagina = p; desenharTabelaEventos(); }
   }));
 }
-function abrirFormEvento(evento){
+function abrirFormEvento(evento, preSelecaoCliente){
   const editando = !!evento;
   const root = document.getElementById('overlayRoot');
-  const opcoesClientes = clientes.map(c => `<option value="${esc(c['ID Cliente'])}" ${editando && String(evento['ID Cliente'])===String(c['ID Cliente'])?'selected':''}>${esc(c['Nome / Responsável'])}</option>`).join('');
+  const idClienteInicial = editando ? evento['ID Cliente'] : (preSelecaoCliente ? preSelecaoCliente.idCliente : '');
+  const nomeClienteInicial = editando ? evento['Cliente / Responsável'] : (preSelecaoCliente ? preSelecaoCliente.nomeCliente : '');
   root.innerHTML = `
     <div class="form-overlay" id="overlay">
       <div class="form-panel">
         <h2>${editando ? 'Editar evento' : 'Novo evento'}</h2>
         <div class="form-err" id="eventoErr" style="display:none;"></div>
-        <div class="field"><label>Cliente</label>
-          <select id="f_idCliente">${clientes.length ? opcoesClientes : '<option value="">Cadastre um cliente primeiro</option>'}</select>
+        <div class="field cliente-picker-field">
+          <label>Cliente</label>
+          <input type="hidden" id="f_idCliente" value="${esc(idClienteInicial)}">
+          <button type="button" class="cliente-picker-trigger" id="clientePickerTrigger" ${clientes.length ? '' : 'disabled'}>
+            <span id="clientePickerTexto">${nomeClienteInicial ? esc(nomeClienteInicial) : (clientes.length ? 'Selecionar cliente…' : 'Cadastre um cliente primeiro')}</span>
+            <i class="bi bi-search"></i>
+          </button>
+          <div class="cliente-picker-panel" id="clientePickerPanel" style="display:none;">
+            <input type="text" id="clientePickerBusca" placeholder="Buscar por nome, telefone ou e-mail…">
+            <div id="clientePickerLista"></div>
+          </div>
         </div>
         <div class="row3">
           <div class="field"><label>Status</label>
@@ -172,6 +188,7 @@ function abrirFormEvento(evento){
   if (editando){
     document.getElementById('excluirEvento').addEventListener('click', () => excluirEventoComConfirmacao(evento));
   }
+  wireClientePicker();
   vincularAutoValorPacote('f_pacote', 'f_valorPacote');
   // Valor final = Valor pacote − Desconto, recalculado ao vivo (campo segue editável).
   const recalcularValorFinal = () => {
@@ -182,6 +199,65 @@ function abrirFormEvento(evento){
   document.getElementById('f_pacote').addEventListener('change', recalcularValorFinal);
   document.getElementById('f_valorPacote').addEventListener('input', recalcularValorFinal);
   document.getElementById('f_desconto').addEventListener('input', recalcularValorFinal);
+}
+/* Abre/fecha o painel de busca do cliente e liga a busca+paginação.
+   Chamada toda vez que o form de evento é (re)montado. */
+function wireClientePicker(){
+  clientePickerBusca = '';
+  clientePickerPagina = 1;
+  const trigger = document.getElementById('clientePickerTrigger');
+  const painel = document.getElementById('clientePickerPanel');
+  const busca = document.getElementById('clientePickerBusca');
+  if (!trigger || !painel || !busca) return;
+  trigger.addEventListener('click', () => {
+    const abrindo = painel.style.display === 'none';
+    painel.style.display = abrindo ? 'block' : 'none';
+    if (abrindo){
+      clientePickerBusca = '';
+      clientePickerPagina = 1;
+      busca.value = '';
+      desenharClientePickerLista();
+      busca.focus();
+    }
+  });
+  busca.addEventListener('input', e => {
+    clientePickerBusca = e.target.value;
+    clientePickerPagina = 1;
+    desenharClientePickerLista();
+  });
+}
+function desenharClientePickerLista(){
+  const el = document.getElementById('clientePickerLista');
+  if (!el) return;
+  const f = clientePickerBusca.trim().toLowerCase();
+  const lista = clientes.filter(c => !f ||
+    String(c['Nome / Responsável']||'').toLowerCase().includes(f) ||
+    String(c['WhatsApp']||'').toLowerCase().includes(f) ||
+    String(c['E-mail']||'').toLowerCase().includes(f))
+    .sort((a,b) => String(a['Nome / Responsável']||'').localeCompare(String(b['Nome / Responsável']||''), 'pt-BR', {sensitivity:'base'}));
+  if (!lista.length){ el.innerHTML = `<div class="empty-state">Nenhum cliente encontrado.</div>`; return; }
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / CLIENTE_PICKER_POR_PAGINA));
+  if (clientePickerPagina > totalPaginas) clientePickerPagina = totalPaginas;
+  const ini = (clientePickerPagina - 1) * CLIENTE_PICKER_POR_PAGINA;
+  const pagina = lista.slice(ini, ini + CLIENTE_PICKER_POR_PAGINA);
+  el.innerHTML = `
+    <ul class="cliente-picker-opcoes">${pagina.map(c => `
+      <li data-id="${esc(c['ID Cliente'])}">${esc(c['Nome / Responsável'])}${c['WhatsApp'] ? ` <span class="hint-soft">${esc(c['WhatsApp'])}</span>` : ''}</li>`).join('')}
+    </ul>
+    ${htmlPaginacao(clientePickerPagina, totalPaginas)}`;
+  el.querySelectorAll('[data-id]').forEach(li => li.addEventListener('click', () => escolherClientePicker(li.dataset.id)));
+  el.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const p = Number(b.dataset.pg);
+    if (p >= 1){ clientePickerPagina = p; desenharClientePickerLista(); }
+  }));
+}
+function escolherClientePicker(idCliente){
+  const c = clientes.find(x => String(x['ID Cliente']) === String(idCliente));
+  if (!c) return;
+  document.getElementById('f_idCliente').value = c['ID Cliente'];
+  document.getElementById('clientePickerTexto').textContent = c['Nome / Responsável'];
+  document.getElementById('clientePickerPanel').style.display = 'none';
 }
 async function salvarEvento(idEvento){
   const idCliente = document.getElementById('f_idCliente').value;

@@ -6,6 +6,8 @@
    ============================================================ */
 
 /* ============ PACOTES ============ */
+let pacotesPagina = 1;
+const PACOTES_POR_PAGINA = 10;
 function renderPacotes(main){
   main.innerHTML = `
     <div class="view-header">
@@ -16,7 +18,7 @@ function renderPacotes(main){
     <div class="panel panel-list"><div id="tabelaPacotes"></div></div>
   `;
   document.getElementById('novoPacoteBtn').addEventListener('click', () => abrirFormPacote(null));
-  document.getElementById('buscaPacote').addEventListener('input', e => desenharTabelaPacotes(e.target.value));
+  document.getElementById('buscaPacote').addEventListener('input', e => { pacotesPagina = 1; desenharTabelaPacotes(e.target.value); });
   desenharTabelaPacotes('');
 }
 function desenharTabelaPacotes(filtro){
@@ -24,10 +26,14 @@ function desenharTabelaPacotes(filtro){
   const lista = pacotes.filter(p => !f || String(p['Nome']||'').toLowerCase().includes(f));
   const el = document.getElementById('tabelaPacotes');
   if (!lista.length){ el.innerHTML = `<div class="empty-state">Nenhum pacote encontrado.</div>`; return; }
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / PACOTES_POR_PAGINA));
+  if (pacotesPagina > totalPaginas) pacotesPagina = totalPaginas;
+  const ini = (pacotesPagina - 1) * PACOTES_POR_PAGINA;
+  const pagina = lista.slice(ini, ini + PACOTES_POR_PAGINA);
   el.innerHTML = `
     <table class="responsive-table">
       <thead><tr><th>Nome</th><th>Descrição</th><th>Valor pacote</th><th>Fotos incluídas</th><th>Valor foto extra</th><th>Ações</th></tr></thead>
-      <tbody>${lista.map(p => `
+      <tbody>${pagina.map(p => `
         <tr data-id="${esc(p['ID'])}">
           <td data-label="Nome">${esc(p['Nome'])}</td>
           <td data-label="Descrição">${esc(p['Descrição'])}</td>
@@ -44,7 +50,8 @@ function desenharTabelaPacotes(filtro){
             </div>
           </div></td>
         </tr>`).join('')}</tbody>
-    </table>`;
+    </table>
+    ${htmlPaginacao(pacotesPagina, totalPaginas)}`;
   el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () =>
     abrirFormPacote(pacotes.find(p => String(p['ID']) === b.dataset.view))));
   el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
@@ -53,6 +60,10 @@ function desenharTabelaPacotes(filtro){
       `Excluir o pacote "${p ? p['Nome'] : ''}"? Isso não pode ser desfeito.`,
       'deletarPacote', { id: b.dataset.del }, null, null
     );
+  }));
+  el.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => {
+    const p = Number(b.dataset.pg);
+    if (p >= 1){ pacotesPagina = p; desenharTabelaPacotes(filtro); }
   }));
 }
 function abrirFormPacote(pacote){

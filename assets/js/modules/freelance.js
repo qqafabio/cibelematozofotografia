@@ -7,6 +7,8 @@
 
 /* ============ FREELANCE ============ */
 let freelanceOrdemData = 'desc';
+let freelancePagina = 1;
+const FREELANCE_POR_PAGINA = 10;
 const SERVICO_ICONES = {
   'Fotografia': '📷', 'Edição de foto': '🖼️', 'Foto e edição': '📷🖼️',
   'Filmagem': '🎥', 'Edição de vídeo': '🎬', 'Filmagem e edição': '🎥🎬',
@@ -70,11 +72,15 @@ function desenharTabelaFreelance(){
     const db = b._data ? b._data.getTime() : -Infinity;
     return freelanceOrdemData === 'desc' ? db - da : da - db;
   });
+  const totalPaginas = Math.max(1, Math.ceil(ordenados.length / FREELANCE_POR_PAGINA));
+  if (freelancePagina > totalPaginas) freelancePagina = totalPaginas;
+  const ini = (freelancePagina - 1) * FREELANCE_POR_PAGINA;
+  const pagina = ordenados.slice(ini, ini + FREELANCE_POR_PAGINA);
   const seta = freelanceOrdemData === 'desc' ? '↓' : '↑';
   el.innerHTML = `
     <table class="responsive-table">
       <thead><tr><th id="thDataFreelance" class="th-sort">Data ${seta}</th><th>Nome do evento</th><th>Fotografia</th><th>Total</th><th>Trabalho</th><th>Pagamento</th><th>Pendente</th><th>Ações</th></tr></thead>
-      <tbody>${ordenados.map(ev => `
+      <tbody>${pagina.map(ev => `
         <tr data-id="${esc(ev['ID Evento'])}">
           <td data-label="Data">${esc(ev['Data'])}</td><td data-label="Nome do evento">${esc(ev['Nome do evento'])}</td>
           <td data-label="Fotografia">${badgeServico(ev['Serviço'])}</td>
@@ -92,11 +98,17 @@ function desenharTabelaFreelance(){
             </div>
           </div></td>
         </tr>`).join('')}</tbody>
-    </table>`;
+    </table>
+    ${htmlPaginacao(freelancePagina, totalPaginas)}`;
   document.getElementById('thDataFreelance').addEventListener('click', () => {
     freelanceOrdemData = freelanceOrdemData === 'desc' ? 'asc' : 'desc';
+    freelancePagina = 1;
     desenharTabelaFreelance();
   });
+  el.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => {
+    const p = Number(b.dataset.pg);
+    if (p >= 1){ freelancePagina = p; desenharTabelaFreelance(); }
+  }));
   el.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () =>
     abrirFormFreelance(freelanceEventos.find(e => String(e['ID Evento']) === b.dataset.view))));
   el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {

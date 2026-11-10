@@ -59,6 +59,7 @@ function desenharTabelaClientes(){
     String(c['WhatsApp'] || '').toLowerCase().includes(f) ||
     String(c['E-mail'] || '').toLowerCase().includes(f));
   if (clientesStatusFiltro) lista = lista.filter(c => statusCliente(c) === clientesStatusFiltro);
+  lista = [...lista].sort((a,b) => String(a['Nome / Responsável']||'').localeCompare(String(b['Nome / Responsável']||''), 'pt-BR', {sensitivity:'base'}));
 
   const el = document.getElementById('tabelaClientes');
   if (!lista.length){ el.innerHTML = `<div class="empty-state">Nenhum cliente encontrado.</div>`; return; }
@@ -185,6 +186,7 @@ function abrirFormCliente(cliente){
         </div>
         <div class="field"><label>Observações</label><textarea id="f_obs" rows="3">${esc(editando?cliente['Observações']:'')}</textarea></div>
         <div class="form-actions">
+          ${editando ? `<button class="btn-ghost" id="novoEventoCliente" type="button">+ Novo evento</button>` : ''}
           ${editando ? `<button class="btn-danger" id="excluirCliente" type="button">Excluir</button>` : ''}
           <button class="btn-ghost" id="cancelarCliente">Cancelar</button>
           <button class="btn-primary" id="salvarCliente">${editando?'Salvar alterações':'Criar cliente'}</button>
@@ -198,6 +200,9 @@ function abrirFormCliente(cliente){
       `Excluir o cliente "${cliente['Nome / Responsável']}"? Isso não pode ser desfeito.`,
       'excluirCliente', { idCliente: cliente['ID Cliente'] }, 'excluirCliente', 'clienteErr'
     ));
+    document.getElementById('novoEventoCliente').addEventListener('click', () => abrirFormEvento(null, {
+      idCliente: cliente['ID Cliente'], nomeCliente: cliente['Nome / Responsável']
+    }));
   }
   aplicarMascara('f_whatsapp', maskWhatsapp);
 }
