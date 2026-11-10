@@ -68,9 +68,6 @@ function renderLeadForm(main){
     <div class="lf-card">
       <h3><i class="bi bi-receipt"></i> Orçamento</h3>
       <div id="lfPacotes"></div>
-      <div class="row g-3">
-        <div class="col-md-4 field"><label>Desconto (R$)</label><input id="f_desconto" type="number" step="0.01" min="0" value="${v('Desconto')}"></div>
-      </div>
       <div id="lfDinamico"></div>
       <div class="lf-resumo" id="lfResumo"></div>
     </div>
@@ -120,7 +117,7 @@ function renderLeadForm(main){
     lfDesenharPacotes_();
     lfDesenharDinamico_();
   });
-  ['f_desconto', 'f_dataDesejada', 'f_instituicao', 'f_nome'].forEach(id => {
+  ['f_dataDesejada', 'f_instituicao', 'f_nome'].forEach(id => {
     const el = document.getElementById(id);
     if (el){ el.addEventListener('input', lfAtualizarResumo_); el.addEventListener('change', lfAtualizarResumo_); }
   });
@@ -129,11 +126,14 @@ function renderLeadForm(main){
 
 /* Lista de pacotes do orçamento (v3.20): 1+ blocos, cada um com pacote do
    catálogo (auto-preenche valor/itens) + valor + itens, todos editáveis.
-   Estado vivo em lfEst.cfg.pacotes — os listeners escrevem direto nele,
-   igual ao padrão já usado para extras/produtos em lfDesenharDinamico_. */
+   v3.22: desconto e ensaio pré-evento também moraram para dentro de cada
+   pacote (nem todo pacote tem ensaio pré-evento, e o desconto pode valer só
+   para um deles). Estado vivo em lfEst.cfg.pacotes — os listeners escrevem
+   direto nele, igual ao padrão já usado para extras/produtos em lfDesenharDinamico_. */
 function lfDesenharPacotes_(){
   const cont = document.getElementById('lfPacotes');
   const tipo = document.getElementById('f_tipo').value;
+  const regras = orcRegrasDoTipo_(tipo);
   const cfg = lfEst.cfg;
   if (!cfg.pacotes.length) cfg.pacotes.push(orcPacoteVazio_());
 
@@ -149,6 +149,10 @@ function lfDesenharPacotes_(){
       </div>
       <div class="field mt-2"><label>Itens inclusos neste orçamento <small class="text-muted">(um por linha · só deste lead, não altera o pacote)</small></label>
         <textarea rows="4" data-pac-itens="${i}" placeholder="Selecione um pacote para preencher, ou escreva os itens">${esc(p.itens != null ? p.itens : orcItensDoPacote_(p.nome))}</textarea></div>
+      <div class="row g-3 mt-1">
+        <div class="col-md-5 field"><label>Desconto neste pacote (R$)</label><input type="number" step="0.01" min="0" data-pac-desconto="${i}" value="${p.desconto == null ? '' : esc(p.desconto)}"></div>
+        ${regras.ensaioPre ? `<div class="col-md-7 field d-flex align-items-end"><label class="lf-check" style="margin:0 0 10px;"><input type="checkbox" data-pac-ensaio="${i}" ${p.ensaioPre ? 'checked' : ''}> Ensaio pré-evento</label></div>` : ''}
+      </div>
     </div>`).join('')
     + `<button type="button" class="btn-ghost" id="lfAdicionarPacote"><i class="bi bi-plus-lg"></i> Adicionar outro pacote</button>`;
 
@@ -174,6 +178,16 @@ function lfDesenharPacotes_(){
     cfg.pacotes[i].itens = ta.value;
     lfAtualizarResumo_();
   })));
+  cont.querySelectorAll('[data-pac-desconto]').forEach(inp => inp.addEventListener('input', () => {
+    const i = Number(inp.dataset.pacDesconto);
+    cfg.pacotes[i].desconto = inp.value === '' ? null : Number(inp.value);
+    lfAtualizarResumo_();
+  }));
+  cont.querySelectorAll('[data-pac-ensaio]').forEach(chk => chk.addEventListener('change', () => {
+    const i = Number(chk.dataset.pacEnsaio);
+    cfg.pacotes[i].ensaioPre = chk.checked;
+    lfAtualizarResumo_();
+  }));
   cont.querySelectorAll('[data-pac-remover]').forEach(btn => btn.addEventListener('click', () => {
     cfg.pacotes.splice(Number(btn.dataset.pacRemover), 1);
     lfDesenharPacotes_();
@@ -205,7 +219,9 @@ function lfAtualizarPacoteFechado_(){
   sel.innerHTML = nomes.map(n => `<option value="${esc(n)}" ${n === atual ? 'selected' : ''}>${esc(n)}</option>`).join('');
 }
 
-/* Opcionais da regra do tipo + produtos do catálogo aplicáveis. */
+/* Opcionais da regra do tipo + produtos do catálogo aplicáveis. v3.22: "Ensaio
+   pré-evento" saiu daqui — agora é escolhido dentro de cada pacote (lfDesenharPacotes_),
+   já que nem todo pacote do orçamento inclui ensaio pré-evento. */
 function lfDesenharDinamico_(){
   const cont = document.getElementById('lfDinamico');
   const tipo = document.getElementById('f_tipo').value;
@@ -216,12 +232,10 @@ function lfDesenharDinamico_(){
     || (String(p['Ativo'] || 'Sim') !== 'Não' && aplicaAoTipoEvento_(p['Tipos de evento'], tipo)));
 
   let html = '';
-  if (regras.becaCanudo || regras.ensaioPre){
+  if (regras.becaCanudo){
     html += `<div class="lf-checks">
-      ${regras.becaCanudo ? `
       <label class="lf-check"><input type="checkbox" data-extra="becaCapelo" ${cfg.extras.becaCapelo ? 'checked' : ''}> Beca com capelo</label>
-      <label class="lf-check"><input type="checkbox" data-extra="canudo" ${cfg.extras.canudo ? 'checked' : ''}> Canudo</label>` : ''}
-      ${regras.ensaioPre ? `<label class="lf-check"><input type="checkbox" data-extra="ensaioPre" ${cfg.extras.ensaioPre ? 'checked' : ''}> Ensaio pré-evento</label>` : ''}
+      <label class="lf-check"><input type="checkbox" data-extra="canudo" ${cfg.extras.canudo ? 'checked' : ''}> Canudo</label>
     </div>`;
   }
   if (catalogo.length){
@@ -263,7 +277,9 @@ function lfDesenharDinamico_(){
   lfAtualizarResumo_();
 }
 
-/* Lê o formulário inteiro (inclui o estado vivo de pacotes/extras/produtos). */
+/* Lê o formulário inteiro (inclui o estado vivo de pacotes/extras/produtos).
+   v3.22: desconto não é mais um campo único do formulário — vive em cada
+   cfg.pacotes[i].desconto (editado direto em lfDesenharPacotes_). */
 function lfLer_(){
   const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   const lead = lfEst.lead;
@@ -273,13 +289,13 @@ function lfLer_(){
     email: lead ? lead['E-mail'] : g('f_email'),
     tipoEvento: g('f_tipo'), dataDesejada: g('f_dataDesejada'), instituicao: g('f_instituicao'),
     servico: g('f_servico'), origem: g('f_origem'),
-    desconto: Number(g('f_desconto') || 0), etapa: document.getElementById('f_etapa').value,
+    etapa: document.getElementById('f_etapa').value,
     proximoContato: g('f_proximoContato'), observacoes: g('f_obs'), cfg: lfEst.cfg,
   };
 }
 function lfHash_(c, nomeCliente){
   return orcHash_({ cliente: nomeCliente == null ? c.nome : nomeCliente, tipoEvento: c.tipoEvento, dataDesejada: c.dataDesejada,
-    instituicao: c.instituicao, desconto: c.desconto, cfg: c.cfg });
+    instituicao: c.instituicao, cfg: c.cfg });
 }
 function lfPrecisaGerar_(c){
   const mudou = lfHash_(c) !== lfEst.hashAtual;
@@ -290,13 +306,13 @@ function lfPrecisaGerar_(c){
 function lfAtualizarResumo_(){
   if (!document.getElementById('lfResumo')) return;
   const c = lfLer_();
-  const totaisPorPacote = orcTotaisPacotes_(c.cfg, c.desconto);
+  const totaisPorPacote = orcTotaisPacotes_(c.cfg);
   const multi = totaisPorPacote.length > 1;
   document.getElementById('lfResumo').innerHTML = `
     ${c.cfg.pacotes.map((p, i) => `<div class="lf-linha"><span>Pacote${p.nome ? ' ' + esc(p.nome) : ' ' + (i + 1)}</span><span>${formatBRL(totaisPorPacote[i] ? totaisPorPacote[i].pacote : 0)}</span></div>`).join('')}
     ${c.cfg.produtos.map(p => `<div class="lf-linha"><span>${esc(p.nome)}${p.cobranca === 'fixo' ? '' : ` (${p.qtd} × ${formatBRL(p.valor)})`}</span><span>${formatBRL(orcSubtotalProduto_(p))}</span></div>`).join('')}
-    ${c.desconto > 0 ? `<div class="lf-linha"><span>Desconto</span><span>− ${formatBRL(c.desconto)}</span></div>` : ''}
-    ${totaisPorPacote.map((t, i) => `<div class="lf-linha ${multi ? 'lf-total-pacote' : 'lf-total'}"><span>Total${multi ? ' com ' + esc(c.cfg.pacotes[i].nome || 'Pacote ' + (i + 1)) : ''}</span><span>${formatBRL(t.total)}</span></div>`).join('')}`;
+    ${totaisPorPacote.map((t, i) => (t.desconto > 0 ? `<div class="lf-linha"><span>Desconto${multi ? ' — ' + esc(c.cfg.pacotes[i].nome || 'Pacote ' + (i + 1)) : ''}</span><span>− ${formatBRL(t.desconto)}</span></div>` : '')).join('')}
+    ${totaisPorPacote.map((t, i) => `<div class="lf-linha ${multi ? 'lf-total-pacote' : 'lf-total'}"><span>${multi ? esc(c.cfg.pacotes[i].nome || 'Pacote ' + (i + 1)) : 'Total'}</span><span>${formatBRL(t.total)}</span></div>`).join('')}`;
   c.cfg.produtos.forEach(p => {
     const el = document.querySelector(`[data-prod-sub="${p.id}"]`);
     if (el) el.textContent = formatBRL(orcSubtotalProduto_(p));
@@ -372,7 +388,7 @@ async function orcEnviarWhatsApp_(snap){
 async function lfSalvar_(){
   const c = lfLer_();
   if (!lfEst.lead && !c.nome){ mostrarErro('leadErr', 'Informe o nome.'); window.scrollTo(0, 0); return; }
-  const totaisPorPacote = orcTotaisPacotes_(c.cfg, c.desconto);
+  const totaisPorPacote = orcTotaisPacotes_(c.cfg);
   const nomesPacotes = c.cfg.pacotes.map(p => String(p.nome || '').trim()).filter(Boolean);
   const wrapFechado = document.getElementById('lfPacoteFechadoWrap');
   const pacoteFechadoVisivel = wrapFechado && wrapFechado.style.display !== 'none';
@@ -388,19 +404,22 @@ async function lfSalvar_(){
   const rotulo = btn.textContent;
   btn.disabled = true; btn.textContent = 'Salvando…';
   const valorEstimadoMedio = orcMedia_(totaisPorPacote, 'valorEstimado');
+  // leads.desconto (DB) é único: com 2+ pacotes guarda a média, igual a valorEstimado.
+  const descontoMedio = orcMedia_(totaisPorPacote, 'desconto');
   const dados = {
     tipoEvento: c.tipoEvento, dataDesejada: c.dataDesejada, servico: c.servico, pacote: nomesPacotes.join('; '), origem: c.origem,
-    etapa: c.etapa, valorEstimado: valorEstimadoMedio, desconto: c.desconto, proximoContato: c.proximoContato,
+    etapa: c.etapa, valorEstimado: valorEstimadoMedio, desconto: descontoMedio, proximoContato: c.proximoContato,
     observacoes: c.observacoes, instituicao: c.instituicao, orcDados: orcSerializarDados_(c.cfg),
   };
   // Lead "Fechado" cria um evento automaticamente (pbLeads.js) — com 1 pacote só,
-  // herda leads.pacote/valor_estimado normalmente; com 2+, o pacote realmente
-  // fechado (escolhido acima) é quem define o que vai para o evento.
+  // herda leads.pacote/valor_estimado/desconto normalmente; com 2+, o pacote
+  // realmente fechado (escolhido acima) é quem define o que vai para o evento.
   if (pacoteFechadoVisivel){
     const nome = document.getElementById('f_pacoteFechado').value;
     const i = c.cfg.pacotes.findIndex(p => String(p.nome || '').trim() === nome);
     dados.pacoteFechadoNome = nome;
     dados.pacoteFechadoValor = i !== -1 ? totaisPorPacote[i].valorEstimado : valorEstimadoMedio;
+    dados.pacoteFechadoDesconto = i !== -1 ? totaisPorPacote[i].desconto : descontoMedio;
   }
   let pdfErro = null;
   try {
@@ -417,7 +436,7 @@ async function lfSalvar_(){
       const versao = lfEst.versaoAtual + 1;
       const hash = lfHash_(c, cliente.nome);
       const snap = orcMontarSnapshot_({ idLead, versao, cliente, tipoEvento: c.tipoEvento, dataDesejada: c.dataDesejada,
-        instituicao: c.instituicao, desconto: c.desconto, cfg: c.cfg });
+        instituicao: c.instituicao, cfg: c.cfg });
       await apiCall('criarOrcamento', { idLead, versao, hash, snapshot: snap });
       // Só marca a versão/hash no lead depois que o orçamento foi gravado: se algo falhar
       // antes, o lead continua "desatualizado" e o orçamento é exigido de novo.

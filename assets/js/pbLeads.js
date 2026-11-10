@@ -111,7 +111,10 @@ async function pbAtualizarLead(dados){
         : (dados.pacote !== undefined ? dados.pacote : rec.pacote);
       const estimadoFechar = dados.pacoteFechadoValor !== undefined ? Number(dados.pacoteFechadoValor)
         : (dados.valorEstimado !== undefined ? Number(dados.valorEstimado) : Number(rec.valor_estimado || 0));
-      const descontoFechar = dados.desconto !== undefined ? Number(dados.desconto) : Number(rec.desconto || 0);
+      // Com 2+ pacotes, dados.desconto guarda a MÉDIA (leads.desconto); o evento
+      // precisa do desconto do pacote realmente fechado (v3.22), não da média.
+      const descontoFechar = dados.pacoteFechadoDesconto !== undefined ? Number(dados.pacoteFechadoDesconto)
+        : (dados.desconto !== undefined ? Number(dados.desconto) : Number(rec.desconto || 0));
       const evCriado = await pbCriarEvento({
         idCliente: rec.id_cliente,
         status: 'Aguardando aprovação',

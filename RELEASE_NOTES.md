@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.22.0 | 2026-11-10 | Orçamento: desconto e ensaio pré-evento passam a ser por pacote (não mais únicos pro orçamento inteiro); PDF troca "Total com [pacote]" por só o nome do pacote | [2.49](#249-orçamento--desconto-e-ensaio-pré-evento-por-pacote-v3220) |
 | v3.21.1 | 2026-11-10 | Pacotes: listagem passa a ordenar por nome em ordem alfabética | [2.48](#248-pacotes--ordenação-alfabética-v3211) |
 | v3.21.0 | 2026-11-10 | Paginação (10/pág.) em Orçamentos, Eventos Coletivos, Produção, Financeiro, Cobranças, Custos, Pacotes, Produtos e Freelance; Clientes ordena por nome; busca em Eventos Coletivos e Financeiro; Produção ordena por data; seletor de cliente com busca no modal de evento | [2.47](#247-paginação-ordenação-busca-e-seletor-de-cliente-com-busca-v3210) |
 | v3.20.9 | 2026-11-06 | Vitrine de Fotos: "Baixar todas as fotos" empacota em .zip (corrige downloads que sumiam em galerias grandes) e ganha o mesmo recurso na Entrega Final | [2.43](#243-vitrine-de-fotos--download-em-massa-empacotado-em-zip-v3209) |
@@ -1456,6 +1457,18 @@ Lote de melhorias de usabilidade nas telas de listagem, pedidas pelo usuário ao
 - **Seleção de cliente no modal de evento**: o `<select>` com todos os clientes (que ficava enorme e difícil de usar conforme a base cresce) foi trocado por um campo de busca com lista paginada, embutido no próprio formulário (sem abrir uma tela nova nem perder os outros campos já preenchidos). Além disso, o cadastro do cliente ganhou um atalho "+ Novo evento", que abre o formulário de evento com o cliente já selecionado, sem precisar buscar. Pesquisamos como outros CRMs (Salesforce, HubSpot, Pipedrive) resolvem esse mesmo problema de campo de relação com muitos registros antes de decidir por essa combinação.
 
 Sem migration do PocketBase — mudanças só de front-end. Arquivos: `modules/leads.js`, `modules/eventosColetivos.js`, `modules/producao.js`, `modules/financeiro.js`, `modules/cobrancas.js`, `modules/custos.js`, `modules/pacotes.js`, `modules/produtos.js`, `modules/freelance.js`, `modules/clientes.js`, `modules/eventos.js`, `crm.css`, `crm.html`.
+
+### 2.49 Orçamento — desconto e ensaio pré-evento por pacote (v3.22.0)
+
+O usuário percebeu, usando o sistema, que "Desconto" e "Ensaio pré-evento" eram únicos para o orçamento inteiro (campos fora da lista de pacotes), mas na prática ele queria aplicar desconto só a um pacote específico e nem todo pacote inclui ensaio pré-evento. Os dois campos foram remanejados para dentro da div de cada pacote (`lfDesenharPacotes_`, `modules/leadForm.js`):
+
+- **Desconto (R$)** e o checkbox **Ensaio pré-evento** (quando o tipo de evento o admite — regra já existente) agora moram em cada bloco de pacote, não mais numa linha única acima deles.
+- `cfg.pacotes[i]` ganhou `desconto` e `ensaioPre`; `cfg.extras` perdeu `ensaioPre` (becaCapelo/canudo continuam únicos — não foram pedidos por pacote). `orcTotaisPacotes_` não recebe mais um desconto global: cada pacote usa o seu.
+- **leads.desconto** (campo único no banco, usado no Dashboard/Agenda) passa a gravar a MÉDIA dos descontos por pacote quando há 2+ (mesmo critério já usado para `valor_estimado`). Ao fechar um lead com múltiplos pacotes, o evento criado usa o desconto do pacote efetivamente escolhido (`pacoteFechadoDesconto`), não a média — `pbLeads.js`.
+- **PDF do orçamento**: o rótulo "Total com [pacote]" virou só o nome do pacote (o cliente não deve interpretar como "pacote + algo"); o desconto, quando houver, aparece junto ao total de cada pacote ("Desconto aplicado: R$ X" como subtítulo da linha), em vez de uma única linha agregada na seção Investimento.
+- **Compatibilidade**: orçamentos salvos antes desta versão (desconto/ensaio pré-evento únicos) continuam calculando igual — `orcConfigDoLead_` completa o desconto/ensaio pré-evento de cada pacote com o valor único que já existia, até o usuário editar e gerar uma nova versão.
+
+Sem migration do PocketBase (o formato já era um JSON livre em `leads.orc_dados`). Arquivos: `orcamentoRegras.js`, `orcamentoPdf.js`, `modules/leadForm.js`, `pbLeads.js`, `crm.html`.
 
 ### 2.48 Pacotes — ordenação alfabética (v3.21.1)
 

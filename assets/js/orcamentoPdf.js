@@ -40,7 +40,6 @@ function orcGerarPdf_(snap){
 
   function fundo(){ fill(C.paper); doc.rect(0, 0, W, H, 'F'); }
 
-  // Logo: a câmera do CRM (vetor) + wordmark.
   function logo(x, yy){
     stroke(C.ink); doc.setLineWidth(0.35);
     doc.roundedRect(x, yy + 2.2, 7, 5, 0.6, 0.6, 'S');
@@ -120,7 +119,6 @@ function orcGerarPdf_(snap){
   for (const ln of doc.splitTextToSize(tituloEvento, CW)){ doc.text(ln, M, y); y += 10; }
   y += 2;
 
-  // Quadro de identificação
   const info = [
     ['Cliente', snap.cliente.nome],
     snap.dataDesejada ? ['Data prevista', snap.dataDesejada] : null,
@@ -137,10 +135,11 @@ function orcGerarPdf_(snap){
   y += 4;
 
   // v3.20: snapshots antigos (pré multi-pacote) trazem snap.pacote singular —
-  // normaliza para o mesmo formato de lista usado daqui pra baixo.
+  // normaliza para o mesmo formato de lista usado daqui pra baixo. v3.22:
+  // snapshots pré-desconto-por-pacote caem no fallback do desconto agregado.
   const snapPacotes = Array.isArray(snap.pacotes) ? snap.pacotes
     : [Object.assign({ nome: '', descricao: '', itens: [], extras: [], prazoEntrega: '' }, snap.pacote || {},
-        { valor: (snap.totais || {}).pacote || 0, total: (snap.totais || {}).total || 0 })];
+        { valor: (snap.totais || {}).pacote || 0, desconto: (snap.totais || {}).desconto || 0, total: (snap.totais || {}).total || 0 })];
 
   let n = 1;
   secao(n++, 'Apresentação');
@@ -161,7 +160,7 @@ function orcGerarPdf_(snap){
     secao(n++, 'Investimento');
     linhaValor(p.nome ? `Pacote ${p.nome}` : 'Cobertura fotográfica', '', orcBRL_(p.valor));
     snap.produtos.forEach(pr => linhaValor(rotuloProduto(pr), pr.descricao, orcBRL_(pr.subtotal)));
-    if (snap.totais.desconto > 0) linhaValor('Desconto', '', '- ' + orcBRL_(snap.totais.desconto));
+    if (p.desconto > 0) linhaValor('Desconto', '', '- ' + orcBRL_(p.desconto));
     y += 2;
     linhaValor('TOTAL', '', orcBRL_(p.total), true);
     y += 3;
@@ -185,8 +184,7 @@ function orcGerarPdf_(snap){
     }
 
     secao(n++, 'Investimento');
-    if (snap.totais.desconto > 0) paragrafo(`Desconto aplicado: ${orcBRL_(snap.totais.desconto)}`, { cor: C.soft });
-    snapPacotes.forEach(p => linhaValor(`Total com ${p.nome || 'este pacote'}`, '', orcBRL_(p.total)));
+    snapPacotes.forEach(p => linhaValor(p.nome || 'Pacote', p.desconto > 0 ? `Desconto aplicado: ${orcBRL_(p.desconto)}` : '', orcBRL_(p.total)));
     y += 3;
   }
 
