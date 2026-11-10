@@ -23,7 +23,8 @@ function renderPacotes(main){
 }
 function desenharTabelaPacotes(filtro){
   const f = (filtro||'').trim().toLowerCase();
-  const lista = pacotes.filter(p => !f || String(p['Nome']||'').toLowerCase().includes(f));
+  const lista = pacotes.filter(p => !f || String(p['Nome']||'').toLowerCase().includes(f))
+    .sort((a,b) => String(a['Nome']||'').localeCompare(String(b['Nome']||''), 'pt-BR', {sensitivity:'base'}));
   const el = document.getElementById('tabelaPacotes');
   if (!lista.length){ el.innerHTML = `<div class="empty-state">Nenhum pacote encontrado.</div>`; return; }
   const totalPaginas = Math.max(1, Math.ceil(lista.length / PACOTES_POR_PAGINA));

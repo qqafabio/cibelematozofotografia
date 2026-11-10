@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.21.1 | 2026-11-10 | Pacotes: listagem passa a ordenar por nome em ordem alfabética | [2.48](#248-pacotes--ordenação-alfabética-v3211) |
 | v3.21.0 | 2026-11-10 | Paginação (10/pág.) em Orçamentos, Eventos Coletivos, Produção, Financeiro, Cobranças, Custos, Pacotes, Produtos e Freelance; Clientes ordena por nome; busca em Eventos Coletivos e Financeiro; Produção ordena por data; seletor de cliente com busca no modal de evento | [2.47](#247-paginação-ordenação-busca-e-seletor-de-cliente-com-busca-v3210) |
 | v3.20.9 | 2026-11-06 | Vitrine de Fotos: "Baixar todas as fotos" empacota em .zip (corrige downloads que sumiam em galerias grandes) e ganha o mesmo recurso na Entrega Final | [2.43](#243-vitrine-de-fotos--download-em-massa-empacotado-em-zip-v3209) |
 | v3.20.10 | 2026-11-06 | Vitrine de Fotos: capa do header bloqueia "Salvar imagem como…"/arrastar | [2.44](#244-vitrine-de-fotos--proteção-casual-da-foto-de-capa-v32010) |
@@ -1455,3 +1456,9 @@ Lote de melhorias de usabilidade nas telas de listagem, pedidas pelo usuário ao
 - **Seleção de cliente no modal de evento**: o `<select>` com todos os clientes (que ficava enorme e difícil de usar conforme a base cresce) foi trocado por um campo de busca com lista paginada, embutido no próprio formulário (sem abrir uma tela nova nem perder os outros campos já preenchidos). Além disso, o cadastro do cliente ganhou um atalho "+ Novo evento", que abre o formulário de evento com o cliente já selecionado, sem precisar buscar. Pesquisamos como outros CRMs (Salesforce, HubSpot, Pipedrive) resolvem esse mesmo problema de campo de relação com muitos registros antes de decidir por essa combinação.
 
 Sem migration do PocketBase — mudanças só de front-end. Arquivos: `modules/leads.js`, `modules/eventosColetivos.js`, `modules/producao.js`, `modules/financeiro.js`, `modules/cobrancas.js`, `modules/custos.js`, `modules/pacotes.js`, `modules/produtos.js`, `modules/freelance.js`, `modules/clientes.js`, `modules/eventos.js`, `crm.css`, `crm.html`.
+
+### 2.48 Pacotes — ordenação alfabética (v3.21.1)
+
+A listagem de Pacotes saía na ordem crua de cadastro (ordem de criação), sem nenhuma ordenação. Como a busca por nome (v3.18) já existia mas a ordem continuava arbitrária, ficava mais difícil localizar um pacote visualmente ao rolar a lista. Adicionado `.sort()` por `Nome` (`localeCompare`, pt-BR) em `desenharTabelaPacotes`, mesmo padrão já usado em Clientes (v3.21.0) — roda sobre a lista já filtrada pela busca, antes da paginação.
+
+Sem migration do PocketBase. Arquivos: `modules/pacotes.js`, `crm.html`.
