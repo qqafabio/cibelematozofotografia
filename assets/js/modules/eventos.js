@@ -174,6 +174,10 @@ function abrirFormEvento(evento, preSelecaoCliente){
           <div class="field"><label>Valor pacote</label><input id="f_valorPacote" type="number" step="0.01" value="${esc(editando?evento['Valor pacote']:'')}"></div>
           <div class="field"><label>Desconto (R$)</label><input id="f_desconto" type="number" step="0.01" min="0" value="${esc(editando?evento['Desconto']:'')}"></div>
         </div>
+        <div class="row2">
+          <div class="field"><label>Serviço contratado</label><select id="f_servicoContratado">${opcoesSelect(listas['Serviço'], editando?evento['Serviço contratado']:'')}</select></div>
+          <div class="field"><label>Forma de pagamento combinada</label><select id="f_formaPagamentoCombinada">${opcoesSelect(listas['Forma pagamento'], editando?evento['Forma de pagamento combinada']:'')}</select></div>
+        </div>
         <div class="field"><label>Valor final</label><input id="f_valorFinal" type="number" step="0.01" value="${esc(editando?evento['Valor final']:'')}"></div>
         <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">Calculado como Valor pacote − Desconto. Você pode ajustar manualmente.</p>
         <div class="form-actions">
@@ -277,6 +281,8 @@ async function salvarEvento(idEvento){
     valorPacote: Number(document.getElementById('f_valorPacote').value || 0),
     desconto: Number(document.getElementById('f_desconto').value || 0),
     valorFinal: Number(document.getElementById('f_valorFinal').value || 0),
+    servicoContratado: document.getElementById('f_servicoContratado').value.trim(),
+    formaPagamentoCombinada: document.getElementById('f_formaPagamentoCombinada').value.trim(),
     observacoes: evAtual ? (evAtual['Observações'] || '') : '',
   };
   const btn = document.getElementById('salvarEvento'); btn.disabled = true; btn.textContent = 'Salvando…';
@@ -462,6 +468,8 @@ function htmlAbaResumo(ev){
             ${fato('Evento', esc(ev['Tipo de evento']||'—'))}
             ${fato('Status', `<span class="status-pill ${confirmado?'confirmado':''}">${esc(ev.Status||'—')}</span>`)}
             ${fato('Pacote', esc(ev['Pacote']||'—'))}
+            ${fato('Serviço contratado', esc(ev['Serviço contratado']||'—'))}
+            ${fato('Forma de pagamento', esc(ev['Forma de pagamento combinada']||'—'))}
           </div>
         </div>
       </div>

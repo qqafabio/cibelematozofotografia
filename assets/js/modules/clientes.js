@@ -180,6 +180,15 @@ function abrirFormCliente(cliente){
           <div class="field"><label>CPF/CNPJ</label><input id="f_cpf" value="${esc(editando?cliente['CPF/CNPJ']:'')}"></div>
           <div class="field"><label>Cidade</label><input id="f_cidade" value="${esc(editando?cliente['Cidade']:'')}"></div>
         </div>
+        <div class="row3">
+          <div class="field"><label>Rua</label><input id="f_rua" value="${esc(editando?cliente['Rua']:'')}"></div>
+          <div class="field"><label>Número</label><input id="f_numero" value="${esc(editando?cliente['Número']:'')}"></div>
+          <div class="field"><label>Complemento</label><input id="f_complemento" value="${esc(editando?cliente['Complemento']:'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Bairro</label><input id="f_bairro" value="${esc(editando?cliente['Bairro']:'')}"></div>
+          <div class="field"><label>UF</label><input id="f_uf" maxlength="2" value="${esc(editando?cliente['UF']:'')}"></div>
+        </div>
         <div class="row2">
           <div class="field"><label>Instagram</label><input id="f_instagram" value="${esc(editando?cliente['Instagram']:'')}"></div>
           <div class="field"><label>Canal de origem</label><input id="f_canal" value="${esc(editando?cliente['Canal de origem']:'')}"></div>
@@ -213,6 +222,11 @@ async function salvarCliente(idCliente){
     email: document.getElementById('f_email').value.trim(),
     cpf: document.getElementById('f_cpf').value.trim(),
     cidade: document.getElementById('f_cidade').value.trim(),
+    rua: document.getElementById('f_rua').value.trim(),
+    numero: document.getElementById('f_numero').value.trim(),
+    complemento: document.getElementById('f_complemento').value.trim(),
+    bairro: document.getElementById('f_bairro').value.trim(),
+    uf: document.getElementById('f_uf').value.trim().toUpperCase(),
     instagram: document.getElementById('f_instagram').value.trim(),
     canal: document.getElementById('f_canal').value.trim(),
     observacoes: document.getElementById('f_obs').value.trim(),

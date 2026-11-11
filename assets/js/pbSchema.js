@@ -61,6 +61,7 @@ const PB_SCHEMA = {
       ['Desconto', 'desconto', 'number'],
       ['Valor final', 'valor_final', 'number'],
       ['Prazo entrega', 'prazo_entrega', 'text'],
+      ['Forma de pagamento combinada', 'forma_pagamento_combinada', 'text'], // v3.23: combinada no fechamento do lead (Contrato Digital) — distinta de financeiro.forma_pagamento (por parcela, só após o recebimento)
       ['Contrato', 'contrato', 'text'],
       ['Link contrato', 'link_contrato', 'text'],
       ['Link briefing', 'link_briefing', 'text'],
@@ -453,6 +454,41 @@ const PB_SCHEMA = {
       ['ID Vitrine', 'id_vitrine', 'relation:vitrines'],
       ['Arquivo ref', 'arquivo_ref', 'text'],
       ['Data', 'data', 'text'],
+    ],
+  },
+
+  /* Contratos (v3.23 — Fase 2 da integração CRM↔Contrato Digital) — 1 linha por
+     contrato gerado a partir de um evento (lead "Fechado"). 'dados_snapshot'
+     congela contratante+evento+pacote+parcelas no momento da geração (mesmo
+     princípio do 'orc_dados'/'orcamentos.snapshot' do Orçamento): editar o
+     cadastro depois não altera um contrato já gerado. 'ID Lead' é denormalizado
+     (igual 'orcamentos') para achar o contrato do lead sem precisar de
+     eventos.id_lead (que fica fora do payload do app de propósito).
+     Acesso público (Fase 3, página do contrato) por token, mesmo padrão da
+     Vitrine de Fotos — sem o gate "status = Ativa" das vitrines porque aqui o
+     status é de NEGÓCIO (Pendente/Assinado), não de acesso. */
+  contratos: {
+    collection: 'contratos',
+    migrationTs: 1793000500,
+    somentePB: true,
+    id: { label: 'ID Contrato', pb: 'id_contrato' },
+    rules: {
+      listRule: `@request.auth.id != ""`,
+      viewRule: `@request.auth.id != "" || (token != "" && token = @request.query.token && status != "Cancelado")`,
+      createRule: `@request.auth.id != ""`,
+      updateRule: `@request.auth.id != ""`,
+      deleteRule: `@request.auth.id != ""`,
+    },
+    fields: [
+      ['ID Lead', 'id_lead', 'fk'],
+      ['ID Evento', 'id_evento', 'fk'],
+      ['ID Cliente', 'id_cliente', 'fk'],
+      ['Token', 'token', 'text'],
+      ['Status', 'status', 'text'],                    // 'Pendente' | 'Assinado' | 'Cancelado'
+      ['Dados snapshot', 'dados_snapshot', 'text'],     // JSON congelado no momento da geração
+      ['Link PDF', 'link_pdf', 'text'],                 // preenchido na Fase 4 (pb_hook + Apps Script)
+      ['Data criação', 'data_criacao', 'text'],
+      ['Data assinatura', 'data_assinatura', 'text'],
     ],
   },
 };

@@ -104,6 +104,7 @@ async function pbCarregarTudoPB(){
   const [
     clientesR, eventosR, leadsR, financeiroR, producaoR, custosR,
     participantesR, templatesR, pacotesR, freEvR, frePgR, listasR, produtosR, orcamentosR, vitrinesR,
+    contratosR,
   ] = await Promise.all([
     perfTime('PB clientes',      pbCarregarClientes(),                 a => a.length),
     perfTime('PB eventos',       pbCarregarColecao(S.eventos),         a => a.length),
@@ -120,6 +121,7 @@ async function pbCarregarTudoPB(){
     perfTime('PB produtos',      pbCarregarColecao(S.produtos).catch(() => []), a => a.length), // tolera VM sem a migration v3.18
     perfTime('PB orcamentos',    pbCarregarColecao(S.orcamentos).catch(() => []), a => a.length),
     perfTime('PB vitrines',      pbCarregarColecao(S.vitrines).catch(() => []), a => a.length), // tolera VM sem a migration v3.19
+    perfTime('PB contratos',     pbCarregarColecao(S.contratos).catch(() => []), a => a.length), // tolera VM sem a migration v3.23
   ]);
 
   marcarVencidasPB_(financeiroR);
@@ -141,5 +143,6 @@ async function pbCarregarTudoPB(){
     orcamentos: orcamentosR,
     participantes: participantesR,
     vitrines: vitrinesR,
+    contratos: contratosR,
   };
 }

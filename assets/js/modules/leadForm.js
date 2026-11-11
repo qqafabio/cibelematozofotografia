@@ -78,11 +78,14 @@ function renderLeadForm(main){
         <div class="col-md-6 field"><label>Etapa comercial</label><select id="f_etapa">${opcoesSelect(listas['Etapa comercial'], editando ? lead['Etapa comercial'] : '')}</select></div>
         <div class="col-md-6 field"><label>Próximo contato</label><input id="f_proximoContato" data-picker="date" placeholder="DD/MM/AAAA" value="${v('Próximo contato')}"><small class="text-muted">Cria um lembrete de dia inteiro na Google Agenda.</small></div>
         <div class="col-12 field" id="lfPacoteFechadoWrap" style="display:none;"><label>Qual pacote foi fechado? <small class="text-muted">(o evento criado a partir deste lead usa este pacote)</small></label><select id="f_pacoteFechado"></select></div>
+        <div class="col-md-6 field" id="lfFormaPagamentoWrap" style="display:none;"><label>Forma de pagamento combinada <small class="text-muted">(vai para o Contrato Digital)</small></label><select id="f_formaPagamentoCombinada">${opcoesSelect(listas['Forma pagamento'], '')}</select></div>
         <div class="col-12 field"><label>Observações</label><textarea id="f_obs" rows="3">${v('Observações')}</textarea></div>
       </div>
     </div>
 
     ${editando ? `<div class="lf-card"><h3><i class="bi bi-clock-history"></i> Histórico de orçamentos</h3><div id="lfHist"></div></div>` : ''}
+
+    ${editando ? `<div class="lf-card" id="lfContratoCard" style="display:none;"><h3><i class="bi bi-file-earmark-text"></i> Contrato</h3><div id="lfContratoBody"></div></div>` : ''}
 
     <div class="lf-bar">
       <span class="lf-bar-info" id="lfBarInfo"></span>
@@ -101,6 +104,7 @@ function renderLeadForm(main){
       'excluirLead', { idLead: lead['ID Lead'] }, 'lfExcluir', 'leadErr'
     ));
     lfDesenharHistorico_();
+    lfDesenharContrato_();
   }
   if (!editando) aplicarMascara('f_whatsapp', maskWhatsapp);
 
@@ -207,11 +211,16 @@ function lfDesenharPacotes_(){
    "Nome A; Nome B") nem leads.valor_estimado (vira a média) — por isso só
    aparece quando faz sentido, pedindo qual dos pacotes foi o escolhido. */
 function lfAtualizarPacoteFechado_(){
+  const etapa = document.getElementById('f_etapa');
+  const fechando = !!(etapa && etapa.value === 'Fechado');
+
+  const wrapForma = document.getElementById('lfFormaPagamentoWrap');
+  if (wrapForma) wrapForma.style.display = fechando ? '' : 'none';
+
   const wrap = document.getElementById('lfPacoteFechadoWrap');
   if (!wrap) return;
   const nomes = lfEst.cfg.pacotes.map(p => String(p.nome || '').trim()).filter(Boolean);
-  const etapa = document.getElementById('f_etapa');
-  const mostrar = nomes.length > 1 && etapa && etapa.value === 'Fechado';
+  const mostrar = nomes.length > 1 && fechando;
   wrap.style.display = mostrar ? '' : 'none';
   if (!mostrar) return;
   const sel = document.getElementById('f_pacoteFechado');
@@ -350,6 +359,66 @@ function orcamentosDoLead_(idLead){
   return (orcamentos || []).filter(o => String(o['ID Lead']) === String(idLead))
     .sort((a, b) => Number(b['Versão']) - Number(a['Versão']));
 }
+
+/* Contrato Digital (v3.23 — Fase 2): "Gerar contrato" só aparece com o lead em
+   "Fechado" (o evento já existe, criado pela cascata de pbLeads.js). Idempotente
+   do lado do servidor (pbGerarContrato_) — aqui só decide o que mostrar: botão
+   de gerar (sem contrato ainda) ou status + link (já gerado). */
+function contratoDoLead_(idLead){
+  return (typeof contratos !== 'undefined' ? contratos : [])
+    .find(c => Number(c['ID Lead']) === Number(idLead));
+}
+function contratoLinkPublico_(token){
+  const base = String(typeof CONTRATO_PUBLIC_BASE_URL !== 'undefined' ? CONTRATO_PUBLIC_BASE_URL : '').replace(/\/?$/, '/');
+  return base + '?token=' + token;
+}
+function lfDesenharContrato_(){
+  const card = document.getElementById('lfContratoCard');
+  if (!card) return;
+  const lead = lfEst.lead;
+  const fechado = !!(lead && String(lead['Etapa comercial']) === 'Fechado');
+  card.style.display = fechado ? '' : 'none';
+  if (!fechado) return;
+  const body = document.getElementById('lfContratoBody');
+  const c = contratoDoLead_(leadFormId);
+  if (!c){
+    body.innerHTML = `<p class="text-muted" style="font-size:13px;">Nenhum contrato gerado ainda.</p>
+      <button class="btn-primary" id="btnGerarContrato" type="button">Gerar contrato</button>`;
+    document.getElementById('btnGerarContrato').addEventListener('click', lfGerarContrato_);
+    return;
+  }
+  const link = contratoLinkPublico_(c['Token']);
+  body.innerHTML = `
+    <p style="font-size:13px;">Status: <span class="status-pill ${c['Status'] === 'Assinado' ? 'confirmado' : ''}">${esc(c['Status'])}</span></p>
+    <div class="lf-hist-acoes">
+      <button class="btn-ghost" type="button" id="btnCopiarContrato"><i class="bi bi-link-45deg"></i> Copiar link</button>
+      <button class="btn-ghost" type="button" id="btnWaContrato"><i class="bi bi-whatsapp"></i> WhatsApp</button>
+    </div>`;
+  document.getElementById('btnCopiarContrato').addEventListener('click', () => {
+    navigator.clipboard.writeText(link);
+    showToast('Link do contrato copiado.');
+  });
+  document.getElementById('btnWaContrato').addEventListener('click', () => {
+    let tel = String(lead['WhatsApp'] || '').replace(/\D/g, '');
+    if (!tel){ showToast('Cliente sem WhatsApp cadastrado. Copie o link manualmente.'); return; }
+    if (tel.length <= 11) tel = '55' + tel;
+    const msg = `Olá, ${String(lead['Cliente'] || '').split(' ')[0]}! Segue o link do seu contrato: ${link}`;
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+  });
+}
+async function lfGerarContrato_(){
+  const btn = document.getElementById('btnGerarContrato');
+  if (btn){ btn.disabled = true; btn.textContent = 'Gerando…'; }
+  try {
+    await apiCall('gerarContrato', { idLead: leadFormId });
+    loaded = false;
+    await renderMain();
+    showToast('Contrato gerado.');
+  } catch (err){
+    showToast('❌ ' + err.message);
+    if (btn){ btn.disabled = false; btn.textContent = 'Gerar contrato'; }
+  }
+}
 async function orcAcaoHistorico_(idOrc, whatsapp){
   const o = orcamentos.find(x => String(x['ID Orçamento']) === String(idOrc));
   if (!o) return;
@@ -399,6 +468,9 @@ async function lfSalvar_(){
   if (pacoteFechadoVisivel && vaiFechar && !document.getElementById('f_pacoteFechado').value){
     mostrarErro('leadErr', 'Selecione qual pacote foi fechado.'); window.scrollTo(0, 0); return;
   }
+  if (vaiFechar && !document.getElementById('f_formaPagamentoCombinada').value){
+    mostrarErro('leadErr', 'Selecione a forma de pagamento combinada.'); window.scrollTo(0, 0); return;
+  }
   const precisa = lfPrecisaGerar_(c);
   const btn = document.getElementById('lfSalvar');
   const rotulo = btn.textContent;
@@ -420,6 +492,9 @@ async function lfSalvar_(){
     dados.pacoteFechadoNome = nome;
     dados.pacoteFechadoValor = i !== -1 ? totaisPorPacote[i].valorEstimado : valorEstimadoMedio;
     dados.pacoteFechadoDesconto = i !== -1 ? totaisPorPacote[i].desconto : descontoMedio;
+  }
+  if (vaiFechar){
+    dados.formaPagamentoCombinada = document.getElementById('f_formaPagamentoCombinada').value;
   }
   let pdfErro = null;
   try {

@@ -120,6 +120,8 @@ async function pbAtualizarLead(dados){
         status: 'Aguardando aprovação',
         dataEvento: dados.dataDesejada !== undefined ? dados.dataDesejada : rec.data_desejada,
         tipoEvento: dados.tipoEvento !== undefined ? dados.tipoEvento : rec.tipo_evento,
+        servicoContratado: dados.servico !== undefined ? dados.servico : rec.servico_interesse,
+        formaPagamentoCombinada: dados.formaPagamentoCombinada || '',
         pacote: pacoteFechar,
         valorPacote: estimadoFechar,
         desconto: descontoFechar,

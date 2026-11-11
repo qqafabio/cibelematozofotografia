@@ -20,7 +20,8 @@ const MAPA_EVENTO = {
   status: 'status', dataEvento: 'data_evento', horaInicio: 'hora_inicio', horaFim: 'hora_fim',
   tipoEvento: 'tipo_evento', servicoContratado: 'servico_contratado', local: 'local', cidade: 'cidade',
   pacote: 'pacote', valorPacote: 'valor_pacote', valorFotoExtra: 'valor_foto_extra', desconto: 'desconto',
-  valorFinal: 'valor_final', prazoEntrega: 'prazo_entrega', contrato: 'contrato', linkContrato: 'link_contrato',
+  valorFinal: 'valor_final', prazoEntrega: 'prazo_entrega', formaPagamentoCombinada: 'forma_pagamento_combinada',
+  contrato: 'contrato', linkContrato: 'link_contrato',
   linkBriefing: 'link_briefing', linkPasta: 'link_pasta_drive', equipe: 'equipe', observacoes: 'observacoes',
   organizador: 'organizador',
 };
@@ -87,6 +88,7 @@ async function pbCriarEvento(dados){
     desconto: Number(dados.desconto || 0),
     valor_final: Number(dados.valorFinal || dados.valorPacote || 0),
     prazo_entrega: dados.prazoEntrega || '',
+    forma_pagamento_combinada: dados.formaPagamentoCombinada || '',
     contrato: dados.contrato || 'Não',
     link_contrato: dados.linkContrato || '',
     link_briefing: dados.linkBriefing || '',

@@ -16,6 +16,12 @@ const CRM_API_URL = 'https://script.google.com/macros/s/AKfycbyFy5w3fdEQ6t4lwVPM
    pela planilha em paralelo (o "próximo ID" divergiria). Ver RELEASE_NOTES (2.13). */
 const USE_POCKETBASE_CLIENTES = false;             // v3.2 cutover: escrita de cliente volta ao Apps Script (leitura vem do PB abaixo)
 const PB_URL = 'https://cibelecrm.duckdns.org';    // VM Oracle (PocketBase 0.22.55, auto-TLS)
+
+/* ============ Contrato Digital (v3.23 — Fase 2) ============
+   Base pública (GitHub Pages) do Contrato Digital (index.html). Usada para
+   montar o link "?token=..." que o botão "Gerar contrato" (CRM · Orçamentos)
+   copia/envia por WhatsApp. Mesma URL que já está salva no gerador-de-link.html. */
+const CONTRATO_PUBLIC_BASE_URL = 'https://qqafabio.github.io/cibelematozofotografia/';
 const PB_EMAIL = 'app@cibelecrm.duckdns.org';      // usuário de app neutro (a senha é pedida no 1º acesso)
 
 /* ============ v3.2 — Leitura total no PocketBase ============

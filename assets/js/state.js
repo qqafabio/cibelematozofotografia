@@ -18,6 +18,7 @@ let pacotes = [];
 let produtos = [];
 let orcamentos = [];
 let vitrines = [];
+let contratos = [];
 let leadFormId = null;
 let participantes = [];
 let listas = {};
