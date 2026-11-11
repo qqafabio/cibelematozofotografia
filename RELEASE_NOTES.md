@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.26.1 | 2026-11-11 | Fase 4 — correção: notificação por e-mail passa a ser via Gmail/Apps Script (CRM_API_URL já existente) em vez da Resend, por falta de domínio próprio para verificar | [2.53](#253-fase-4-da-integração-crmcontrato-digital-v3260) |
 | v3.26.0 | 2026-11-11 | Fase 4 da integração CRM↔Contrato Digital: PDF do contrato gerado no navegador do cliente ao assinar (anexado + baixado automaticamente) e notificação por e-mail (Resend) para cliente e fotógrafa — ⚠️ migration + pb_hook | [2.53](#253-fase-4-da-integração-crmcontrato-digital-v3260) |
 | v3.25.0 | 2026-11-11 | Fase 3 da integração CRM↔Contrato Digital: `index.html` reescrito como página pública data-driven (lê `?token=`, sem formulário de dados — só ensaio/vídeo/imagem/declarações/assinatura) — ⚠️ migration + pb_hook | [2.52](#252-fase-3-da-integração-crmcontrato-digital-v3250) |
 | v3.24.0 | 2026-11-11 | Fase 2 da integração CRM↔Contrato Digital: nova coleção `contratos` + botão "Gerar contrato" em CRM · Orçamentos (lead "Fechado") — ⚠️ migration + pb_hook | [2.51](#251-fase-2-da-integração-crmcontrato-digital-v3240) |
@@ -1525,3 +1526,5 @@ Terceira fase: `index.html` deixou de ser um formulário fixo para aniversário 
 - Link do PDF não exige token (arquivos do PocketBase nesta versão não são protegidos por regra de acesso — mesmo nível de confiança que a Vitrine de Fotos já aceita para fotos/downloads).
 
 Com isso, as 4 fases do plano original estão implementadas. Arquivos: `pbSchema.js`, `index.html`, `crm.html`, `pb_migrations/1793000502_add_pdf_arquivo_contrato_assinaturas.js`, `pb_hooks/assinar_contrato.pb.js`.
+
+**Correção (v3.26.1):** a Resend exige verificar um domínio próprio para enviar a destinatários arbitrários (sem isso, só entrega no próprio e-mail de quem criou a conta) — como o projeto não tem domínio próprio, o envio de e-mail foi trocado para o **Gmail via Apps Script**, reaproveitando o `CRM_API_URL` que o `index.html` já carrega (mesmo back-end que já cuida da Google Agenda). `assinar_contrato.pb.js` voltou a só marcar o status (sem Resend); o `onSubmit` do `index.html` gera o PDF **uma única vez** (antes eram duas gerações redundantes), anexa em `contrato_assinaturas.pdf_arquivo`, baixa localmente para o cliente e chama a nova ação `enviarContratoAssinado` do Apps Script do CRM (`GmailApp.sendEmail` com o PDF em anexo, para a fotógrafa e para o cliente). Essa ação não está neste repositório porque o `backend.txt`/`Código.gs` é intencionalmente fora do versionamento (`.gitignore`) — o código foi entregue diretamente para colar no editor do Apps Script e criar uma nova implantação.

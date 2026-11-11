@@ -675,12 +675,7 @@ function contratoGerarPdf_(clauses, protocolo){
 function contratoNomeArquivoPdf_(){
   return `Contrato-${contratoSlug_(SNAP.contratante.nome)}-${new Date().getFullYear()}.pdf`;
 }
-function contratoBaixarPdf_(clauses, protocolo){
-  contratoGerarPdf_(clauses, protocolo).save(contratoNomeArquivoPdf_());
-}
-function contratoArquivoPdf_(clauses, protocolo){
-  return new File([contratoGerarPdf_(clauses, protocolo).output('blob')], contratoNomeArquivoPdf_(), { type: 'application/pdf' });
-}
+
 async function dataUrlParaBlob_(dataUrl){
   const res = await fetch(dataUrl);
   return res.blob();
@@ -708,9 +703,24 @@ async function onSubmit(){
       payload.assinatura_arquivo = await dataUrlParaBlob_(state.assinaturaPNG);
     }
     const clauses = buildClauses();
-    payload.pdf_arquivo = contratoArquivoPdf_(clauses, protocolo);
+    const doc = contratoGerarPdf_(clauses, protocolo);
+    const nomeArquivoPdf = contratoNomeArquivoPdf_();
+    payload.pdf_arquivo = new File([doc.output('blob')], nomeArquivoPdf, { type: 'application/pdf' });
     await PB.collection('contrato_assinaturas').create(payload, { token: TOKEN });
-    try { contratoBaixarPdf_(clauses, protocolo); } catch(e){ /* upload já aconteceu; download local é só conveniência */ }
+    try { doc.save(nomeArquivoPdf); } catch(e){ /* upload já aconteceu; download local é só conveniência */ }
+    try {
+      const datauri = doc.output('datauristring');
+      const pdfBase64 = datauri.substring(datauri.indexOf(',') + 1);
+      await fetch(CRM_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'enviarContratoAssinado', dados: {
+          emailCliente: SNAP.contratante.email,
+          nomeCliente: SNAP.contratante.nome,
+          tituloEvento: `${SNAP.evento.tipoEvento} · ${SNAP.evento.dataEvento}`,
+          pdfBase64, nomeArquivo: nomeArquivoPdf,
+        }}),
+      });
+    } catch(e){ /* e-mail é melhor esforço — a assinatura já foi registrada mesmo se isso falhar */ }
     showResult(protocolo);
   } catch(err){
     showResult(null, (err && err.message) || String(err));
