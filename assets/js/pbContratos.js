@@ -110,7 +110,12 @@ async function pbGerarContrato_(dados){
     throw new Error('Complete o local e o horário (início/fim) do evento antes de gerar o contrato — no Orçamento ("Instituição / local" + Hora início/fim) ou direto na tela Eventos.');
   }
 
-  const existentes = await PB.collection('contratos').getList(1, 1, { filter: 'id_evento=' + Number(evento.id_evento) });
+  // Só reaproveita um contrato já existente enquanto ele ainda está "Pendente"
+  // (evita duplicar um link que o cliente ainda não assinou). Se o contrato
+  // anterior já foi "Assinado" (ou "Cancelado"), gera um novo — útil quando o
+  // evento foi corrigido depois (local/horário, por exemplo) ou precisa
+  // recontratar; o contrato antigo continua no histórico, não é apagado.
+  const existentes = await PB.collection('contratos').getList(1, 1, { filter: 'id_evento=' + Number(evento.id_evento) + ' && status="Pendente"' });
   if (existentes.items.length) return existentes.items[0];
 
   const cli = await pbAcharPorIdCliente(evento.id_cliente);

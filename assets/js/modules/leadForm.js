@@ -367,9 +367,14 @@ function orcamentosDoLead_(idLead){
    "Fechado" (o evento já existe, criado pela cascata de pbLeads.js). Idempotente
    do lado do servidor (pbGerarContrato_) — aqui só decide o que mostrar: botão
    de gerar (sem contrato ainda) ou status + link (já gerado). */
+// Pode existir mais de um contrato por lead (ex.: um antigo já "Assinado" +
+// um novo "Pendente" gerado depois de corrigir o evento) — mostra sempre o
+// mais recente (maior ID Contrato), o histórico anterior fica só no banco.
 function contratoDoLead_(idLead){
-  return (typeof contratos !== 'undefined' ? contratos : [])
-    .find(c => Number(c['ID Lead']) === Number(idLead));
+  const lista = (typeof contratos !== 'undefined' ? contratos : [])
+    .filter(c => Number(c['ID Lead']) === Number(idLead));
+  if (!lista.length) return null;
+  return lista.reduce((mais, atual) => Number(atual['ID Contrato']) > Number(mais['ID Contrato']) ? atual : mais);
 }
 // contratoLinkPublico_ vem de pbContratos.js (carregado antes neste crm.html) — reaproveitado aqui.
 function lfDesenharContrato_(){

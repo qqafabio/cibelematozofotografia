@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.29.0 | 2026-11-11 | Contrato Digital — "Gerar contrato" só reaproveita um contrato existente enquanto ele está "Pendente"; se já foi "Assinado", gera um novo (link/token novos) em vez de devolver o antigo | [2.56](#256-contrato-digital--gerar-contrato-novo-após-assinado-v3290) |
 | v3.28.0 | 2026-11-11 | Orçamento: card "Evento" ganha Hora início/fim ao lado de Data desejada — reaproveita "Instituição / local" já existente como Local do evento, em vez de campos novos só na hora de fechar | [2.55](#255-orçamento--hora-no-card-evento-v3280) |
 | v3.27.0 | 2026-11-11 | Contrato Digital — 3 correções pós-teste: e-mail do cliente com fallback pro Orçamento, Local/Hora início/fim exigidos ao fechar o lead (iam em branco pro contrato), e exclusão de lead agora remove o evento órfão (evitava colisão de contrato "já assinado" por reaproveitamento de ID) | [2.54](#254-contrato-digital--correções-pós-teste-v3270) |
 | v3.26.1 | 2026-11-11 | Fase 4 — correção: notificação por e-mail passa a ser via Gmail/Apps Script (CRM_API_URL já existente) em vez da Resend, por falta de domínio próprio para verificar | [2.53](#253-fase-4-da-integração-crmcontrato-digital-v3260) |
@@ -1550,3 +1551,12 @@ Ajuste de usabilidade pedido pelo usuário: os campos de hora do ajuste anterior
 - Validação de obrigatório (ao marcar "Fechado") continua existindo, só que agora lê os campos persistentes (`c.instituicao`, `c.horaInicio`, `c.horaFim`) em vez dos campos transitórios da versão anterior.
 
 ⚠️ Exige aplicar a migration `1793000503_add_hora_leads.js` na VM antes do deploy do front (já aplicada). Arquivos: `pbSchema.js`, `pbLeads.js`, `pbContratos.js` (mensagem de erro ajustada), `modules/leadForm.js`, `crm.html`, `pb_migrations/1793000503_add_hora_leads.js`.
+
+### 2.56 Contrato Digital — "Gerar contrato" após assinado (v3.29.0)
+
+O usuário reportou que, mesmo criando um orçamento novo, o link gerado continuava abrindo um contrato antigo já assinado — confirmado pelo token na URL, idêntico ao de um teste anterior. Causa: a checagem de idempotência (`pbGerarContrato_`) reaproveitava **qualquer** contrato já existente para aquele evento, sem olhar o status — fazia sentido para não duplicar um link ainda pendente, mas devolvia o contrato antigo mesmo já "Assinado".
+
+- A checagem agora só reaproveita um contrato existente se o status dele for **"Pendente"**. Se já está "Assinado" (ou "Cancelado"), o clique gera um contrato novo — token e link novos —, útil depois de corrigir o evento (local/horário, por exemplo) ou para recontratar. O contrato antigo não é apagado, continua no histórico.
+- Como agora um lead pode ter mais de um contrato ao longo do tempo, o card "Contrato" em CRM · Orçamentos (`contratoDoLead_`) passa a mostrar sempre o **mais recente** (maior ID Contrato), em vez do primeiro que encontrasse.
+
+Sem migration — ajuste só de lógica (`pbContratos.js`, `modules/leadForm.js`, `crm.html`).
