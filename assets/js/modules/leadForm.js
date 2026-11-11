@@ -79,6 +79,9 @@ function renderLeadForm(main){
         <div class="col-md-6 field"><label>Próximo contato</label><input id="f_proximoContato" data-picker="date" placeholder="DD/MM/AAAA" value="${v('Próximo contato')}"><small class="text-muted">Cria um lembrete de dia inteiro na Google Agenda.</small></div>
         <div class="col-12 field" id="lfPacoteFechadoWrap" style="display:none;"><label>Qual pacote foi fechado? <small class="text-muted">(o evento criado a partir deste lead usa este pacote)</small></label><select id="f_pacoteFechado"></select></div>
         <div class="col-md-6 field" id="lfFormaPagamentoWrap" style="display:none;"><label>Forma de pagamento combinada <small class="text-muted">(vai para o Contrato Digital)</small></label><select id="f_formaPagamentoCombinada">${opcoesSelect(listas['Forma pagamento'], '')}</select></div>
+        <div class="col-md-4 field" id="lfLocalWrap" style="display:none;"><label>Local do evento <small class="text-muted">(vai para o Contrato Digital)</small></label><input id="f_localFechado"></div>
+        <div class="col-md-4 field" id="lfHoraIniWrap" style="display:none;"><label>Hora início</label><input id="f_horaIniFechado" data-picker="time" placeholder="HH:MM"></div>
+        <div class="col-md-4 field" id="lfHoraFimWrap" style="display:none;"><label>Hora fim</label><input id="f_horaFimFechado" data-picker="time" placeholder="HH:MM"></div>
         <div class="col-12 field"><label>Observações</label><textarea id="f_obs" rows="3">${v('Observações')}</textarea></div>
       </div>
     </div>
@@ -216,6 +219,10 @@ function lfAtualizarPacoteFechado_(){
 
   const wrapForma = document.getElementById('lfFormaPagamentoWrap');
   if (wrapForma) wrapForma.style.display = fechando ? '' : 'none';
+  ['lfLocalWrap', 'lfHoraIniWrap', 'lfHoraFimWrap'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = fechando ? '' : 'none';
+  });
 
   const wrap = document.getElementById('lfPacoteFechadoWrap');
   if (!wrap) return;
@@ -468,6 +475,12 @@ async function lfSalvar_(){
   if (vaiFechar && !document.getElementById('f_formaPagamentoCombinada').value){
     mostrarErro('leadErr', 'Selecione a forma de pagamento combinada.'); window.scrollTo(0, 0); return;
   }
+  if (vaiFechar && !document.getElementById('f_localFechado').value.trim()){
+    mostrarErro('leadErr', 'Informe o local do evento.'); window.scrollTo(0, 0); return;
+  }
+  if (vaiFechar && (!document.getElementById('f_horaIniFechado').value.trim() || !document.getElementById('f_horaFimFechado').value.trim())){
+    mostrarErro('leadErr', 'Informe o horário de início e fim do evento.'); window.scrollTo(0, 0); return;
+  }
   const precisa = lfPrecisaGerar_(c);
   const btn = document.getElementById('lfSalvar');
   const rotulo = btn.textContent;
@@ -492,6 +505,9 @@ async function lfSalvar_(){
   }
   if (vaiFechar){
     dados.formaPagamentoCombinada = document.getElementById('f_formaPagamentoCombinada').value;
+    dados.localFechado = document.getElementById('f_localFechado').value.trim();
+    dados.horaInicioFechado = document.getElementById('f_horaIniFechado').value.trim();
+    dados.horaFimFechado = document.getElementById('f_horaFimFechado').value.trim();
   }
   let pdfErro = null;
   try {

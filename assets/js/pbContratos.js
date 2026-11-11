@@ -1,6 +1,8 @@
 /* ============================================================
    CRM · Cibele Matozo Fotografia — Adapter PocketBase · Contratos (v3.23 — Fase 2
-   + v3.25 — Fase 3: snapshot completo para a página pública)
+   + v3.25 — Fase 3: snapshot completo para a página pública
+   + v3.27 — Fase 4 ajustes: e-mail do cliente com fallback pro Orçamento,
+   exige local/horário do evento preenchidos antes de gerar)
    <script> clássico (escopo global compartilhado). Depende de pbCore.js
    (PB/pbAuthGarantir/perfTime), pbEscrita.js (hojeBR_/PB_ACTIONS),
    pbClientes.js (pbAcharPorIdCliente) e orcamentoRegras.js
@@ -37,11 +39,9 @@ function contratoLinkPublico_(token){
 // propósito, mas o registro RAW do PB aqui tem a coluna). Fail-soft: sem
 // lead/orc_dados (evento criado manualmente, fora do fluxo de orçamento),
 // assume que não há ensaio incluso — a fotógrafa ajusta via Observações.
-async function pbResolverEnsaioPreIncluido_(evento){
+function pbEnsaioPreIncluidoDoLead_(evento, lead){
   try {
-    if (!evento.id_lead) return false;
-    const lead = await PB.collection('leads').getFirstListItem('id_lead=' + Number(evento.id_lead));
-    if (typeof orcParseDados_ !== 'function' || typeof orcRegrasDoTipo_ !== 'function') return false;
+    if (!lead || typeof orcParseDados_ !== 'function' || typeof orcRegrasDoTipo_ !== 'function') return false;
     const regras = orcRegrasDoTipo_(evento.tipo_evento);
     if (!regras.ensaioPre) return false;
     const cfg = orcParseDados_(lead.orc_dados);
@@ -53,7 +53,7 @@ async function pbResolverEnsaioPreIncluido_(evento){
 // Snapshot congelado: contratante (cadastro do cliente) + evento + pacote do
 // catálogo (itens inclusos/descrição) + parcelas já lançadas no Financeiro +
 // flags resolvidas (quais serviços/cláusulas se aplicam).
-async function pbMontarSnapshotContrato_(evento, cliente){
+async function pbMontarSnapshotContrato_(evento, cliente, lead){
   const pacoteCatalogo = (typeof pacotes !== 'undefined' ? pacotes : [])
     .find(p => String(p['Nome']) === String(evento.pacote));
   const parcelas = await PB.collection('financeiro')
@@ -62,13 +62,14 @@ async function pbMontarSnapshotContrato_(evento, cliente){
   const temFoto = /foto/i.test(servicoStr);
   const temVideo = /v[ií]deo/i.test(servicoStr);
   const temStorymaker = /storymaker/i.test(servicoStr);
-  const ensaioPreIncluido = temFoto && await pbResolverEnsaioPreIncluido_(evento);
+  const ensaioPreIncluido = temFoto && pbEnsaioPreIncluidoDoLead_(evento, lead);
 
   return {
     geradoEm: hojeBR_(),
     temFoto, temVideo, temStorymaker, ensaioPreIncluido,
     contratante: {
-      nome: cliente.nome || '', cpf: cliente.cpf || '', whatsapp: cliente.whatsapp || '', email: cliente.email || '',
+      nome: cliente.nome || '', cpf: cliente.cpf || '', whatsapp: cliente.whatsapp || '',
+      email: cliente.email || (lead && lead.email) || '',
       rua: cliente.endereco_rua || '', numero: cliente.endereco_numero || '', complemento: cliente.endereco_complemento || '',
       bairro: cliente.endereco_bairro || '', cidade: cliente.cidade || '', uf: cliente.endereco_uf || '',
     },
@@ -105,14 +106,18 @@ async function pbGerarContrato_(dados){
 
   const evento = await PB.collection('eventos').getFirstListItem('id_lead=' + idLead).catch(() => null);
   if (!evento) throw new Error('Nenhum evento encontrado para este lead — confirme que ele já foi fechado.');
+  if (!String(evento.local || '').trim() || !String(evento.hora_inicio || '').trim() || !String(evento.hora_fim || '').trim()){
+    throw new Error('Complete o local e o horário (início/fim) do evento antes de gerar o contrato — tela Eventos.');
+  }
 
   const existentes = await PB.collection('contratos').getList(1, 1, { filter: 'id_evento=' + Number(evento.id_evento) });
   if (existentes.items.length) return existentes.items[0];
 
   const cli = await pbAcharPorIdCliente(evento.id_cliente);
   if (!cli) throw new Error('Cliente do evento não encontrado.');
+  const lead = await PB.collection('leads').getFirstListItem('id_lead=' + idLead).catch(() => null);
 
-  const snapshot = await pbMontarSnapshotContrato_(evento, cli);
+  const snapshot = await pbMontarSnapshotContrato_(evento, cli, lead);
 
   return PB.collection('contratos').create({
     id_lead: idLead,

@@ -208,6 +208,13 @@ async function pbExcluirEvento(dados){
     for (const pt of parts){ await PB.collection('participantes').delete(pt.id); }
   } catch (e){ /* coleção pode não existir em bases antigas */ }
 
+  // Contrato Digital (v3.27): remove o contrato gerado para este evento, se
+  // houver — contrato_assinaturas vai junto (relation cascadeDelete:true).
+  try {
+    const contrato = await PB.collection('contratos').getFirstListItem('id_evento=' + idEv);
+    await PB.collection('contratos').delete(contrato.id);
+  } catch (e){ /* sem contrato gerado para este evento, ou coleção ausente em bases antigas */ }
+
   await PB.collection('eventos').delete(evento.id);
   return { idEvento: dados.idEvento, excluido: true };
 }

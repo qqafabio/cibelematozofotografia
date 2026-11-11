@@ -122,6 +122,9 @@ async function pbAtualizarLead(dados){
         tipoEvento: dados.tipoEvento !== undefined ? dados.tipoEvento : rec.tipo_evento,
         servicoContratado: dados.servico !== undefined ? dados.servico : rec.servico_interesse,
         formaPagamentoCombinada: dados.formaPagamentoCombinada || '',
+        local: dados.localFechado || '',
+        horaInicio: dados.horaInicioFechado || '',
+        horaFim: dados.horaFimFechado || '',
         pacote: pacoteFechar,
         valorPacote: estimadoFechar,
         desconto: descontoFechar,
@@ -145,6 +148,16 @@ async function pbExcluirLead(dados){
   await pbAuthGarantir();
   const rec = await pbAchar_('leads', 'id_lead', dados.idLead);
   if (typeof excluirAgenda === 'function') await excluirAgenda(rec.id_calendar);
+  // v3.27: remove também o evento que este lead gerou ao ser "Fechado" (se
+  // ainda não tiver valor pago — mesma guarda de pbExcluirEvento). Sem isso,
+  // o evento fica órfão com este id_lead; se um lead NOVO reaproveitar o
+  // mesmo id_lead (hook de ID é MAX(id_lead)+1, pode repetir após exclusão),
+  // leadJaGerouEvento_ casava com o evento órfão e pbGerarContrato_ achava o
+  // contrato antigo (às vezes já "Assinado") em vez de gerar um novo.
+  try {
+    const eventoOrfao = await PB.collection('eventos').getFirstListItem('id_lead=' + Number(dados.idLead));
+    if (typeof pbExcluirEvento === 'function') await pbExcluirEvento({ idEvento: eventoOrfao.id_evento });
+  } catch (e){ /* sem evento vinculado, ou tem valor pago (guarda de pbExcluirEvento) -> mantém como está */ }
   await PB.collection('leads').delete(rec.id);
   // Histórico de orçamentos do lead vai junto (fail-soft: o lead já foi removido).
   if (typeof pbExcluirOrcamentosDoLead === 'function'){
