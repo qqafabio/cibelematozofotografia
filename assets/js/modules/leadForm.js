@@ -60,6 +60,8 @@ function renderLeadForm(main){
         <div class="col-md-4 field"><label>Tipo de evento</label><select id="f_tipo">${opcoesSelect(listas['Tipo de evento'], editando ? lead['Tipo de evento'] : '')}</select></div>
         <div class="col-md-4 field"><label>Data desejada</label><input id="f_dataDesejada" data-picker="date" placeholder="DD/MM/AAAA" value="${v('Data desejada')}"></div>
         <div class="col-md-4 field"><label>Instituição / local</label><input id="f_instituicao" placeholder="Ex: Colégio Fazenda Rio Grande" value="${v('Instituição')}"></div>
+        <div class="col-md-3 field"><label>Hora início</label><input id="f_horaInicio" data-picker="time" placeholder="HH:MM" value="${v('Hora início')}"></div>
+        <div class="col-md-3 field"><label>Hora fim</label><input id="f_horaFim" data-picker="time" placeholder="HH:MM" value="${v('Hora fim')}"></div>
         <div class="col-md-6 field"><label>Serviço de interesse</label><select id="f_servico">${opcoesSelect(listas['Serviço'], editando ? lead['Serviço de interesse'] : '')}</select></div>
         <div class="col-md-6 field"><label>Origem</label><select id="f_origem">${opcoesSelect(listas['Canal'], editando ? lead['Origem'] : '')}</select></div>
       </div>
@@ -79,9 +81,6 @@ function renderLeadForm(main){
         <div class="col-md-6 field"><label>Próximo contato</label><input id="f_proximoContato" data-picker="date" placeholder="DD/MM/AAAA" value="${v('Próximo contato')}"><small class="text-muted">Cria um lembrete de dia inteiro na Google Agenda.</small></div>
         <div class="col-12 field" id="lfPacoteFechadoWrap" style="display:none;"><label>Qual pacote foi fechado? <small class="text-muted">(o evento criado a partir deste lead usa este pacote)</small></label><select id="f_pacoteFechado"></select></div>
         <div class="col-md-6 field" id="lfFormaPagamentoWrap" style="display:none;"><label>Forma de pagamento combinada <small class="text-muted">(vai para o Contrato Digital)</small></label><select id="f_formaPagamentoCombinada">${opcoesSelect(listas['Forma pagamento'], '')}</select></div>
-        <div class="col-md-4 field" id="lfLocalWrap" style="display:none;"><label>Local do evento <small class="text-muted">(vai para o Contrato Digital)</small></label><input id="f_localFechado"></div>
-        <div class="col-md-4 field" id="lfHoraIniWrap" style="display:none;"><label>Hora início</label><input id="f_horaIniFechado" data-picker="time" placeholder="HH:MM"></div>
-        <div class="col-md-4 field" id="lfHoraFimWrap" style="display:none;"><label>Hora fim</label><input id="f_horaFimFechado" data-picker="time" placeholder="HH:MM"></div>
         <div class="col-12 field"><label>Observações</label><textarea id="f_obs" rows="3">${v('Observações')}</textarea></div>
       </div>
     </div>
@@ -219,10 +218,6 @@ function lfAtualizarPacoteFechado_(){
 
   const wrapForma = document.getElementById('lfFormaPagamentoWrap');
   if (wrapForma) wrapForma.style.display = fechando ? '' : 'none';
-  ['lfLocalWrap', 'lfHoraIniWrap', 'lfHoraFimWrap'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = fechando ? '' : 'none';
-  });
 
   const wrap = document.getElementById('lfPacoteFechadoWrap');
   if (!wrap) return;
@@ -304,6 +299,7 @@ function lfLer_(){
     whatsapp: lead ? lead['WhatsApp'] : g('f_whatsapp'),
     email: lead ? lead['E-mail'] : g('f_email'),
     tipoEvento: g('f_tipo'), dataDesejada: g('f_dataDesejada'), instituicao: g('f_instituicao'),
+    horaInicio: g('f_horaInicio'), horaFim: g('f_horaFim'),
     servico: g('f_servico'), origem: g('f_origem'),
     etapa: document.getElementById('f_etapa').value,
     proximoContato: g('f_proximoContato'), observacoes: g('f_obs'), cfg: lfEst.cfg,
@@ -475,10 +471,10 @@ async function lfSalvar_(){
   if (vaiFechar && !document.getElementById('f_formaPagamentoCombinada').value){
     mostrarErro('leadErr', 'Selecione a forma de pagamento combinada.'); window.scrollTo(0, 0); return;
   }
-  if (vaiFechar && !document.getElementById('f_localFechado').value.trim()){
-    mostrarErro('leadErr', 'Informe o local do evento.'); window.scrollTo(0, 0); return;
+  if (vaiFechar && !c.instituicao.trim()){
+    mostrarErro('leadErr', 'Informe o local do evento (campo "Instituição / local").'); window.scrollTo(0, 0); return;
   }
-  if (vaiFechar && (!document.getElementById('f_horaIniFechado').value.trim() || !document.getElementById('f_horaFimFechado').value.trim())){
+  if (vaiFechar && (!c.horaInicio.trim() || !c.horaFim.trim())){
     mostrarErro('leadErr', 'Informe o horário de início e fim do evento.'); window.scrollTo(0, 0); return;
   }
   const precisa = lfPrecisaGerar_(c);
@@ -492,6 +488,7 @@ async function lfSalvar_(){
     tipoEvento: c.tipoEvento, dataDesejada: c.dataDesejada, servico: c.servico, pacote: nomesPacotes.join('; '), origem: c.origem,
     etapa: c.etapa, valorEstimado: valorEstimadoMedio, desconto: descontoMedio, proximoContato: c.proximoContato,
     observacoes: c.observacoes, instituicao: c.instituicao, orcDados: orcSerializarDados_(c.cfg),
+    horaInicio: c.horaInicio, horaFim: c.horaFim,
   };
   // Lead "Fechado" cria um evento automaticamente (pbLeads.js) — com 1 pacote só,
   // herda leads.pacote/valor_estimado/desconto normalmente; com 2+, o pacote
@@ -505,9 +502,7 @@ async function lfSalvar_(){
   }
   if (vaiFechar){
     dados.formaPagamentoCombinada = document.getElementById('f_formaPagamentoCombinada').value;
-    dados.localFechado = document.getElementById('f_localFechado').value.trim();
-    dados.horaInicioFechado = document.getElementById('f_horaIniFechado').value.trim();
-    dados.horaFimFechado = document.getElementById('f_horaFimFechado').value.trim();
+
   }
   let pdfErro = null;
   try {

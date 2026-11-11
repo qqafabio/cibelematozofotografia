@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.28.0 | 2026-11-11 | Orçamento: card "Evento" ganha Hora início/fim ao lado de Data desejada — reaproveita "Instituição / local" já existente como Local do evento, em vez de campos novos só na hora de fechar | [2.55](#255-orçamento--hora-no-card-evento-v3280) |
 | v3.27.0 | 2026-11-11 | Contrato Digital — 3 correções pós-teste: e-mail do cliente com fallback pro Orçamento, Local/Hora início/fim exigidos ao fechar o lead (iam em branco pro contrato), e exclusão de lead agora remove o evento órfão (evitava colisão de contrato "já assinado" por reaproveitamento de ID) | [2.54](#254-contrato-digital--correções-pós-teste-v3270) |
 | v3.26.1 | 2026-11-11 | Fase 4 — correção: notificação por e-mail passa a ser via Gmail/Apps Script (CRM_API_URL já existente) em vez da Resend, por falta de domínio próprio para verificar | [2.53](#253-fase-4-da-integração-crmcontrato-digital-v3260) |
 | v3.26.0 | 2026-11-11 | Fase 4 da integração CRM↔Contrato Digital: PDF do contrato gerado no navegador do cliente ao assinar (anexado + baixado automaticamente) e notificação por e-mail (Resend) para cliente e fotógrafa — ⚠️ migration + pb_hook | [2.53](#253-fase-4-da-integração-crmcontrato-digital-v3260) |
@@ -1539,3 +1540,13 @@ Depois do primeiro teste de ponta a ponta, 3 ajustes:
 - **Exclusão de lead não deixava o evento órfão**: excluir um lead removia só a linha do lead, nunca o evento que a cascata do "Fechado" tinha criado para ele. Como o `id_lead` é atribuído por `MAX(id_lead)+1`, um lead novo podia reaproveitar o mesmo número de um lead excluído — e a checagem de "esse lead já gerou evento" (`leadJaGerouEvento_`, por `id_lead`) casava com o evento órfão antigo, inclusive com um contrato já "Assinado" de um teste anterior. `pbExcluirLead` agora também remove o evento vinculado (mesma guarda de valor pago de `pbExcluirEvento` — não exclui se já tiver recebimento lançado). Aproveitei para fechar outro buraco relacionado: `pbExcluirEvento` não limpava o `contrato` do evento (ficava órfão igual); agora remove também (o `contrato_assinaturas` some junto, por já ser uma relation com `cascadeDelete`).
 
 Sem migration — os 3 ajustes são só de front-end (`pbContratos.js`, `pbEventos.js`, `pbLeads.js`, `modules/leadForm.js`, `crm.html`). Dado real de teste (lead "Teste"/evento #7, sem local/horário) precisa ser limpo manualmente pela tela de Eventos antes de gerar um novo contrato para aquele lead.
+
+### 2.55 Orçamento — Hora no card "Evento" (v3.28.0)
+
+Ajuste de usabilidade pedido pelo usuário: os campos de hora do ajuste anterior (2.54) ficavam escondidos no card "Acompanhamento", só visíveis ao marcar o lead como "Fechado" — e duplicavam o conceito de "local", que já existia como "Instituição / local" no card "Evento". Reorganizado:
+
+- **"Hora início"/"Hora fim"** agora moram no card **"Evento"**, ao lado de "Data desejada" — campos persistentes do lead (`leads.hora_inicio`/`hora_fim`, novos), visíveis e editáveis a qualquer momento, não só ao fechar.
+- **Local do evento** não ganhou campo novo — a cascata do "Fechado" (`pbLeads.js`) passa a reaproveitar o `instituicao` que já existia ("Instituição / local"), em vez de pedir de novo.
+- Validação de obrigatório (ao marcar "Fechado") continua existindo, só que agora lê os campos persistentes (`c.instituicao`, `c.horaInicio`, `c.horaFim`) em vez dos campos transitórios da versão anterior.
+
+⚠️ Exige aplicar a migration `1793000503_add_hora_leads.js` na VM antes do deploy do front (já aplicada). Arquivos: `pbSchema.js`, `pbLeads.js`, `pbContratos.js` (mensagem de erro ajustada), `modules/leadForm.js`, `crm.html`, `pb_migrations/1793000503_add_hora_leads.js`.

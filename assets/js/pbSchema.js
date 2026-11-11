@@ -105,6 +105,8 @@ const PB_SCHEMA = {
       ['E-mail', 'email', 'text'],
       ['Tipo de evento', 'tipo_evento', 'text'],
       ['Data desejada', 'data_desejada', 'text'],
+      ['Hora início', 'hora_inicio', 'text'],   // v3.28: junto do card "Evento" do Orçamento — vai para eventos.hora_inicio ao fechar
+      ['Hora fim', 'hora_fim', 'text'],
       ['Serviço de interesse', 'servico_interesse', 'text'],
       ['Pacote', 'pacote', 'text'],
       ['Origem', 'origem', 'text'],

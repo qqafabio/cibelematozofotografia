@@ -107,7 +107,7 @@ async function pbGerarContrato_(dados){
   const evento = await PB.collection('eventos').getFirstListItem('id_lead=' + idLead).catch(() => null);
   if (!evento) throw new Error('Nenhum evento encontrado para este lead — confirme que ele já foi fechado.');
   if (!String(evento.local || '').trim() || !String(evento.hora_inicio || '').trim() || !String(evento.hora_fim || '').trim()){
-    throw new Error('Complete o local e o horário (início/fim) do evento antes de gerar o contrato — tela Eventos.');
+    throw new Error('Complete o local e o horário (início/fim) do evento antes de gerar o contrato — no Orçamento ("Instituição / local" + Hora início/fim) ou direto na tela Eventos.');
   }
 
   const existentes = await PB.collection('contratos').getList(1, 1, { filter: 'id_evento=' + Number(evento.id_evento) });
