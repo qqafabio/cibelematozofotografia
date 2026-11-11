@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.30.0 | 2026-11-11 | Orçamento: CPF e endereço completo ganham campos no card "Cliente" — gravam direto no cadastro do cliente (corrige esses dados saindo em branco no Contrato Digital para leads criados direto pela tela de Orçamentos) | [2.57](#257-orçamento--cpf-e-endereço-completo-no-card-cliente-v3300) |
 | v3.29.0 | 2026-11-11 | Contrato Digital — "Gerar contrato" só reaproveita um contrato existente enquanto ele está "Pendente"; se já foi "Assinado", gera um novo (link/token novos) em vez de devolver o antigo | [2.56](#256-contrato-digital--gerar-contrato-novo-após-assinado-v3290) |
 | v3.28.0 | 2026-11-11 | Orçamento: card "Evento" ganha Hora início/fim ao lado de Data desejada — reaproveita "Instituição / local" já existente como Local do evento, em vez de campos novos só na hora de fechar | [2.55](#255-orçamento--hora-no-card-evento-v3280) |
 | v3.27.0 | 2026-11-11 | Contrato Digital — 3 correções pós-teste: e-mail do cliente com fallback pro Orçamento, Local/Hora início/fim exigidos ao fechar o lead (iam em branco pro contrato), e exclusão de lead agora remove o evento órfão (evitava colisão de contrato "já assinado" por reaproveitamento de ID) | [2.54](#254-contrato-digital--correções-pós-teste-v3270) |
@@ -1560,3 +1561,13 @@ O usuário reportou que, mesmo criando um orçamento novo, o link gerado continu
 - Como agora um lead pode ter mais de um contrato ao longo do tempo, o card "Contrato" em CRM · Orçamentos (`contratoDoLead_`) passa a mostrar sempre o **mais recente** (maior ID Contrato), em vez do primeiro que encontrasse.
 
 Sem migration — ajuste só de lógica (`pbContratos.js`, `modules/leadForm.js`, `crm.html`).
+
+### 2.57 Orçamento — CPF e endereço completo no card "Cliente" (v3.30.0)
+
+Muitos leads nascem direto em CRM · Orçamentos (sem passar pela tela Clientes), que só pede Nome/WhatsApp/E-mail — CPF e endereço completo nunca eram coletados ali, então saíam em branco no Contrato Digital (ver cláusula de Qualificação das Partes).
+
+- O card "Cliente" do Orçamento ganhou CPF + endereço completo (Rua, Número, Complemento, Bairro, Cidade, UF), preenchidos a partir do cadastro real do cliente quando o lead já existe (`clientes`, buscado por `ID Cliente` — o lead só guarda uma cópia de Nome/WhatsApp/E-mail).
+- Ao salvar, esses campos vão para o **cadastro do cliente** (`atualizarCliente`), não para o lead — tanto para lead novo quanto editando um existente.
+- **Corrigido um bug real no caminho**: `pbAtualizarCliente`/`clienteFormToPb` fazia um *replace* completo do registro em vez de um patch parcial — chamar com só CPF/endereço apagaria Nome/WhatsApp/E-mail/Instagram/Observações do cliente com string vazia. Agora só grava as chaves realmente enviadas (mesmo padrão de `MAPA_LEAD`/`MAPA_EVENTO`), sem mudar o comportamento da tela Clientes (que já envia o formulário completo).
+
+Sem migration — os campos de endereço/CPF já existiam na coleção `clientes` desde a Fase 1. Arquivos: `pbClientes.js`, `modules/leadForm.js`, `crm.html`.

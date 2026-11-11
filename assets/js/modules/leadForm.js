@@ -29,6 +29,12 @@ function renderLeadForm(main){
   const cfg = lead ? orcConfigDoLead_(lead) : orcConfigVazia_();
   lfEst = { cfg, lead, versaoAtual: lead ? Number(lead['Orçamento versão'] || 0) : 0, hashAtual: lead ? String(lead['Orçamento hash'] || '') : '' };
   const v = k => esc(editando ? lead[k] : '');
+  // Cadastro do cliente (CPF/endereço) — muitos leads nascem direto por aqui,
+  // sem passar pela tela Clientes, então esses dados ficavam sempre em branco
+  // no Contrato Digital. vc() busca no cadastro real do cliente (array global
+  // `clientes`), não no lead (que só tem Cliente/WhatsApp/E-mail copiados).
+  const clienteDoLead_ = editando ? (clientes || []).find(c => Number(c['ID Cliente']) === Number(lead['ID Cliente'])) : null;
+  const vc = k => esc(clienteDoLead_ ? (clienteDoLead_[k] || '') : '');
 
   main.innerHTML = `
   <div class="lf-wrap">
@@ -52,6 +58,18 @@ function renderLeadForm(main){
         <div class="col-md-3 field"><label>WhatsApp</label><input id="f_whatsapp" placeholder="(41) 90000-0000"></div>
         <div class="col-md-4 field"><label>E-mail (opcional)</label><input id="f_email"></div>
       </div>`}
+      <p class="text-muted" style="font-size:12px;margin:10px 0 6px;">CPF e endereço completo <small>(vão para o cadastro do cliente e para o Contrato Digital)</small></p>
+      <div class="row g-3">
+        <div class="col-md-3 field"><label>CPF</label><input id="f_cpfCliente" placeholder="000.000.000-00" value="${vc('CPF/CNPJ')}"></div>
+        <div class="col-md-5 field"><label>Rua</label><input id="f_ruaCliente" value="${vc('Rua')}"></div>
+        <div class="col-md-2 field"><label>Número</label><input id="f_numeroCliente" value="${vc('Número')}"></div>
+        <div class="col-md-2 field"><label>Complemento</label><input id="f_complementoCliente" value="${vc('Complemento')}"></div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-4 field"><label>Bairro</label><input id="f_bairroCliente" value="${vc('Bairro')}"></div>
+        <div class="col-md-4 field"><label>Cidade</label><input id="f_cidadeCliente" value="${vc('Cidade')}"></div>
+        <div class="col-md-2 field"><label>UF</label><input id="f_ufCliente" maxlength="2" value="${vc('UF')}"></div>
+      </div>
     </div>
 
     <div class="lf-card">
@@ -303,6 +321,9 @@ function lfLer_(){
     servico: g('f_servico'), origem: g('f_origem'),
     etapa: document.getElementById('f_etapa').value,
     proximoContato: g('f_proximoContato'), observacoes: g('f_obs'), cfg: lfEst.cfg,
+    cpfCliente: g('f_cpfCliente'), ruaCliente: g('f_ruaCliente'), numeroCliente: g('f_numeroCliente'),
+    complementoCliente: g('f_complementoCliente'), bairroCliente: g('f_bairroCliente'),
+    cidadeCliente: g('f_cidadeCliente'), ufCliente: g('f_ufCliente'),
   };
 }
 function lfHash_(c, nomeCliente){
@@ -511,14 +532,27 @@ async function lfSalvar_(){
   }
   let pdfErro = null;
   try {
-    let idLead = leadFormId, cliente;
+    let idLead = leadFormId, cliente, idClienteSalvar;
     if (idLead){
       await apiCall('atualizarLead', Object.assign({ idLead }, dados));
       cliente = { nome: lfEst.lead['Cliente'], whatsapp: lfEst.lead['WhatsApp'], email: lfEst.lead['E-mail'] };
+      idClienteSalvar = lfEst.lead['ID Cliente'];
     } else {
       const rec = await apiCall('criarLead', Object.assign({ nome: c.nome, whatsapp: c.whatsapp, email: c.email }, dados));
       idLead = rec.id_lead || rec.idLead || rec['ID Lead'];
       cliente = { nome: rec.cliente || c.nome, whatsapp: rec.whatsapp || c.whatsapp, email: rec.email || c.email };
+      idClienteSalvar = rec.id_cliente || rec.idCliente || rec['ID Cliente'];
+    }
+    // CPF e endereço completo são do CADASTRO DO CLIENTE, não do lead — muitos
+    // leads nascem direto por aqui (sem passar pela tela Clientes), e essas
+    // informações ficavam sempre em branco no Contrato Digital.
+    if (idClienteSalvar){
+      try {
+        await apiCall('atualizarCliente', {
+          idCliente: idClienteSalvar, cpf: c.cpfCliente, rua: c.ruaCliente, numero: c.numeroCliente,
+          complemento: c.complementoCliente, bairro: c.bairroCliente, cidade: c.cidadeCliente, uf: c.ufCliente,
+        });
+      } catch (e){ console.error('lfSalvar_: atualizar CPF/endereço do cliente falhou (segue): ' + e); }
     }
     if (precisa){
       const versao = lfEst.versaoAtual + 1;

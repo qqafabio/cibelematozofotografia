@@ -39,22 +39,22 @@ function pbRecordToCliente(rec){
   };
 }
 // Form (camelCase, como salvarCliente monta) → campos do PocketBase.
+// PATCH PARCIAL: só grava as chaves presentes em `dados` (mesmo padrão de
+// MAPA_LEAD/MAPA_EVENTO) — essencial pra quem atualiza só um subconjunto dos
+// campos (ex.: CPF/endereço a partir de CRM · Orçamentos) não apagar o resto
+// do cadastro do cliente com string vazia.
+const MAPA_CLIENTE_ = {
+  nome: 'nome', whatsapp: 'whatsapp', email: 'email', cpf: 'cpf', cidade: 'cidade',
+  rua: 'endereco_rua', numero: 'endereco_numero', complemento: 'endereco_complemento',
+  bairro: 'endereco_bairro', uf: 'endereco_uf', instagram: 'instagram', canal: 'canal',
+  observacoes: 'observacoes',
+};
 function clienteFormToPb(dados){
-  return {
-    nome: (dados.nome || '').trim(),
-    whatsapp: (dados.whatsapp || '').trim(),
-    email: (dados.email || '').trim(),
-    cpf: (dados.cpf || '').trim(),
-    cidade: (dados.cidade || '').trim(),
-    endereco_rua: (dados.rua || '').trim(),
-    endereco_numero: (dados.numero || '').trim(),
-    endereco_complemento: (dados.complemento || '').trim(),
-    endereco_bairro: (dados.bairro || '').trim(),
-    endereco_uf: (dados.uf || '').trim(),
-    instagram: (dados.instagram || '').trim(),
-    canal: (dados.canal || '').trim(),
-    observacoes: (dados.observacoes || '').trim(),
-  };
+  const patch = {};
+  for (const k of Object.keys(MAPA_CLIENTE_)){
+    if (dados[k] !== undefined) patch[MAPA_CLIENTE_[k]] = String(dados[k] || '').trim();
+  }
+  return patch;
 }
 // 'Qtd. eventos' é calculada: os eventos continuam vindo do Apps Script.
 function contarEventosDoCliente(idCliente){
