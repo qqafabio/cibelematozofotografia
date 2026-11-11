@@ -491,6 +491,40 @@ const PB_SCHEMA = {
       ['Data assinatura', 'data_assinatura', 'text'],
     ],
   },
+
+  /* Assinaturas de contrato (v3.25 — Fase 3) — 1 linha por assinatura enviada
+     pela página pública do Contrato Digital. Só o CLIENTE cria (createRule
+     pública por token, igual padrão da Vitrine de Fotos); quem marca o
+     contrato como "Assinado" é o pb_hook assinar_contrato.pb.js (privilégio
+     de servidor), nunca o próprio cliente — por isso 'contratos.updateRule'
+     continua auth-only. 'id_contrato' é relation nativa (igual
+     vitrine_fotos.id_vitrine) para a regra pública poder expandir
+     id_contrato.token/.status sem duplicar esses campos aqui. */
+  contratoAssinaturas: {
+    collection: 'contrato_assinaturas',
+    migrationTs: 1793000501,
+    somentePB: true,
+    id: { label: 'ID Assinatura', pb: 'id_assinatura' },
+    rules: {
+      listRule: `@request.auth.id != ""`,
+      viewRule: `@request.auth.id != ""`,
+      createRule: `@request.auth.id != "" || (id_contrato.token != "" && id_contrato.token = @request.query.token && id_contrato.status != "Cancelado" && id_contrato.status != "Assinado")`,
+      updateRule: `@request.auth.id != ""`,
+      deleteRule: `@request.auth.id != ""`,
+    },
+    fields: [
+      ['ID Contrato', 'id_contrato', 'relation:contratos'],
+      ['Autorização imagem', 'autorizacao_imagem', 'text'],   // 'autorizo' | 'nao_autorizo'
+      ['Declarações', 'declaracoes', 'text'],                 // JSON { d1: true, d2: true, ... }
+      ['Método assinatura', 'metodo_assinatura', 'text'],     // 'desenho' | 'aceite'
+      ['Nome assinatura', 'nome_assinatura', 'text'],
+      ['Assinatura arquivo', 'assinatura_arquivo', 'file'],   // PNG do traço (vazio quando método = 'aceite')
+      ['Ensaio local', 'ensaio_local', 'text'],               // '' quando o pacote não inclui ensaio pré-evento
+      ['Ensaio endereço', 'ensaio_endereco', 'text'],
+      ['Modalidade vídeo', 'modalidade_video', 'text'],       // '' quando não há filmagem contratada
+      ['Data assinatura', 'data_assinatura', 'text'],
+    ],
+  },
 };
 
 /* Listas (menus suspensos): modelada à parte porque no app vira um OBJETO

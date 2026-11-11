@@ -368,10 +368,7 @@ function contratoDoLead_(idLead){
   return (typeof contratos !== 'undefined' ? contratos : [])
     .find(c => Number(c['ID Lead']) === Number(idLead));
 }
-function contratoLinkPublico_(token){
-  const base = String(typeof CONTRATO_PUBLIC_BASE_URL !== 'undefined' ? CONTRATO_PUBLIC_BASE_URL : '').replace(/\/?$/, '/');
-  return base + '?token=' + token;
-}
+// contratoLinkPublico_ vem de pbContratos.js (carregado antes neste crm.html) — reaproveitado aqui.
 function lfDesenharContrato_(){
   const card = document.getElementById('lfContratoCard');
   if (!card) return;
