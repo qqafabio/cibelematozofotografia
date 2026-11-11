@@ -95,33 +95,46 @@ async function pbMontarSnapshotContrato_(evento, cliente, lead){
   };
 }
 
-// Gera (ou devolve o já existente) o contrato do evento criado a partir deste
-// lead. Idempotente: um evento nunca acumula 2 contratos pendentes/assinados
-// (reconfirma no próprio banco, não só no estado em memória — mesmo cuidado
-// de leadJaGerouEvento_ em pbLeads.js).
-async function pbGerarContrato_(dados){
-  await pbAuthGarantir();
-  if (!dados.idLead) throw new Error('idLead é obrigatório.');
-  const idLead = Number(dados.idLead);
-
+// Núcleo compartilhado por "Gerar contrato" (botão, criarSeNaoExistir=true) e
+// pelo "Salvar" normal do Orçamento (criarSeNaoExistir=false, chamado para
+// TODO lead salvo — silencioso, não cria nada sozinho). Resolve 3 casos:
+//   1) Sem contrato ainda: só cria se criarSeNaoExistir (botão explícito).
+//   2) Contrato "Pendente" já existe: ATUALIZA o snapshot em cima do MESMO
+//      registro (mesmo token/link) — é a correção pedida pelo usuário: editar
+//      cliente/evento e salvar o Orçamento de novo tem que refletir no link
+//      já enviado, sem precisar reenviar outro. Nunca mexe num contrato
+//      "Assinado" (imutável, igual um documento já assinado de verdade).
+//   3) Já existe mas está "Assinado"/"Cancelado": só gera um novo se foi
+//      pedido explicitamente (botão) — um salvamento qualquer do Orçamento
+//      não deve criar contrato novo sozinho.
+async function pbRefrescarOuGerarContrato_(idLead, criarSeNaoExistir){
   const evento = await PB.collection('eventos').getFirstListItem('id_lead=' + idLead).catch(() => null);
-  if (!evento) throw new Error('Nenhum evento encontrado para este lead — confirme que ele já foi fechado.');
+  if (!evento){
+    if (criarSeNaoExistir) throw new Error('Nenhum evento encontrado para este lead — confirme que ele já foi fechado.');
+    return null;
+  }
+
+  const existentes = await PB.collection('contratos').getList(1, 1, { filter: 'id_evento=' + Number(evento.id_evento) });
+  const existente = existentes.items[0] || null;
+
+  if (existente && existente.status === 'Pendente'){
+    const cli = await pbAcharPorIdCliente(evento.id_cliente);
+    if (!cli) return existente;
+    const lead = await PB.collection('leads').getFirstListItem('id_lead=' + idLead).catch(() => null);
+    const snapshot = await pbMontarSnapshotContrato_(evento, cli, lead);
+    return PB.collection('contratos').update(existente.id, { dados_snapshot: JSON.stringify(snapshot) });
+  }
+  if (existente) return criarSeNaoExistir ? pbCriarContratoNovo_(idLead, evento) : existente;
+  return criarSeNaoExistir ? pbCriarContratoNovo_(idLead, evento) : null;
+}
+
+async function pbCriarContratoNovo_(idLead, evento){
   if (!String(evento.local || '').trim() || !String(evento.hora_inicio || '').trim() || !String(evento.hora_fim || '').trim()){
     throw new Error('Complete o local e o horário (início/fim) do evento antes de gerar o contrato — no Orçamento ("Instituição / local" + Hora início/fim) ou direto na tela Eventos.');
   }
-
-  // Só reaproveita um contrato já existente enquanto ele ainda está "Pendente"
-  // (evita duplicar um link que o cliente ainda não assinou). Se o contrato
-  // anterior já foi "Assinado" (ou "Cancelado"), gera um novo — útil quando o
-  // evento foi corrigido depois (local/horário, por exemplo) ou precisa
-  // recontratar; o contrato antigo continua no histórico, não é apagado.
-  const existentes = await PB.collection('contratos').getList(1, 1, { filter: 'id_evento=' + Number(evento.id_evento) + ' && status="Pendente"' });
-  if (existentes.items.length) return existentes.items[0];
-
   const cli = await pbAcharPorIdCliente(evento.id_cliente);
   if (!cli) throw new Error('Cliente do evento não encontrado.');
   const lead = await PB.collection('leads').getFirstListItem('id_lead=' + idLead).catch(() => null);
-
   const snapshot = await pbMontarSnapshotContrato_(evento, cli, lead);
 
   return PB.collection('contratos').create({
@@ -135,6 +148,28 @@ async function pbGerarContrato_(dados){
     data_criacao: hojeBR_(),
     data_assinatura: '',
   });
+}
+
+// Botão "Gerar contrato": cria se não existir; se já existe "Pendente",
+// atualiza o snapshot nele; se já está "Assinado"/"Cancelado", cria um novo.
+async function pbGerarContrato_(dados){
+  await pbAuthGarantir();
+  if (!dados.idLead) throw new Error('idLead é obrigatório.');
+  return pbRefrescarOuGerarContrato_(Number(dados.idLead), true);
+}
+
+// Chamado pelo "Salvar" normal do Orçamento (lfSalvar_, leadForm.js) depois de
+// salvar o lead/cliente — silencioso e fail-soft: só atualiza um contrato
+// "Pendente" que já existia; não cria nem avisa de erro (o salvamento do
+// lead não pode travar por causa disso).
+async function pbAtualizarContratoPendenteDoLead_(idLead){
+  try {
+    await pbAuthGarantir();
+    return await pbRefrescarOuGerarContrato_(Number(idLead), false);
+  } catch (e){
+    console.error('pbAtualizarContratoPendenteDoLead_: falhou (segue): ' + e);
+    return null;
+  }
 }
 
 Object.assign(window.PB_ACTIONS, {

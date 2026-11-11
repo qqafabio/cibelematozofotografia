@@ -554,6 +554,14 @@ async function lfSalvar_(){
         });
       } catch (e){ console.error('lfSalvar_: atualizar CPF/endereço do cliente falhou (segue): ' + e); }
     }
+    // Se este lead já tiver um Contrato Digital "Pendente" (ainda não
+    // assinado), atualiza o snapshot dele com os dados recém-salvos — assim
+    // uma correção no cliente/evento aparece no mesmo link já enviado, sem
+    // esperar o cliente assinar com dado desatualizado. Silencioso e
+    // fail-soft (não cria contrato novo nem avisa erro).
+    if (typeof pbAtualizarContratoPendenteDoLead_ === 'function'){
+      pbAtualizarContratoPendenteDoLead_(idLead);
+    }
     if (precisa){
       const versao = lfEst.versaoAtual + 1;
       const hash = lfHash_(c, cliente.nome);

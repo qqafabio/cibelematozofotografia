@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.31.0 | 2026-11-11 | Contrato Digital — corrige dados do contrato "Pendente" congelados mesmo depois de corrigir cliente/evento e salvar o Orçamento de novo; agora o próprio "Salvar" atualiza o snapshot do contrato pendente, mantendo o mesmo link | [2.58](#258-contrato-digital--contrato-pendente-acompanha-correções-no-orçamento-v3310) |
 | v3.30.0 | 2026-11-11 | Orçamento: CPF e endereço completo ganham campos no card "Cliente" — gravam direto no cadastro do cliente (corrige esses dados saindo em branco no Contrato Digital para leads criados direto pela tela de Orçamentos) | [2.57](#257-orçamento--cpf-e-endereço-completo-no-card-cliente-v3300) |
 | v3.29.0 | 2026-11-11 | Contrato Digital — "Gerar contrato" só reaproveita um contrato existente enquanto ele está "Pendente"; se já foi "Assinado", gera um novo (link/token novos) em vez de devolver o antigo | [2.56](#256-contrato-digital--gerar-contrato-novo-após-assinado-v3290) |
 | v3.28.0 | 2026-11-11 | Orçamento: card "Evento" ganha Hora início/fim ao lado de Data desejada — reaproveita "Instituição / local" já existente como Local do evento, em vez de campos novos só na hora de fechar | [2.55](#255-orçamento--hora-no-card-evento-v3280) |
@@ -1571,3 +1572,12 @@ Muitos leads nascem direto em CRM · Orçamentos (sem passar pela tela Clientes)
 - **Corrigido um bug real no caminho**: `pbAtualizarCliente`/`clienteFormToPb` fazia um *replace* completo do registro em vez de um patch parcial — chamar com só CPF/endereço apagaria Nome/WhatsApp/E-mail/Instagram/Observações do cliente com string vazia. Agora só grava as chaves realmente enviadas (mesmo padrão de `MAPA_LEAD`/`MAPA_EVENTO`), sem mudar o comportamento da tela Clientes (que já envia o formulário completo).
 
 Sem migration — os campos de endereço/CPF já existiam na coleção `clientes` desde a Fase 1. Arquivos: `pbClientes.js`, `modules/leadForm.js`, `crm.html`.
+
+### 2.58 Contrato Digital — contrato "Pendente" acompanha correções no Orçamento (v3.31.0)
+
+O usuário reportou: corrige dados do cliente/evento, salva o Orçamento de novo, mas o contrato (ainda não assinado) continua mostrando os dados antigos. Causa: o snapshot era congelado só na criação — correto para um contrato já **assinado** (registro legal imutável), mas errado para um ainda **pendente**, que deveria acompanhar as correções.
+
+- `pbGerarContrato_` virou um núcleo compartilhado (`pbRefrescarOuGerarContrato_`): sem contrato ainda → cria; contrato **"Pendente"** já existe → atualiza o snapshot no mesmo registro (mesmo token/link, nada muda pro cliente que já recebeu o link); contrato já **"Assinado"/"Cancelado"** → só gera um novo quando pedido explicitamente (botão), nunca sozinho.
+- O **"Salvar"** normal do Orçamento (`lfSalvar_`) agora chama isso depois de salvar o lead/cliente — silencioso e best-effort (não trava nem avisa erro se falhar): qualquer contrato pendente daquele lead já sai atualizado, sem precisar clicar em nada a mais.
+
+Sem migration — ajuste só de lógica (`pbContratos.js`, `modules/leadForm.js`, `crm.html`).
