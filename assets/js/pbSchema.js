@@ -522,6 +522,7 @@ const PB_SCHEMA = {
       ['Ensaio local', 'ensaio_local', 'text'],               // '' quando o pacote não inclui ensaio pré-evento
       ['Ensaio endereço', 'ensaio_endereco', 'text'],
       ['Modalidade vídeo', 'modalidade_video', 'text'],       // '' quando não há filmagem contratada
+      ['PDF arquivo', 'pdf_arquivo', 'file'],                 // PDF gerado no navegador do cliente ao assinar (v3.26 — Fase 4)
       ['Data assinatura', 'data_assinatura', 'text'],
     ],
   },

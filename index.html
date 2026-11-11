@@ -132,6 +132,9 @@
 <div class="price-pill" id="pricePill" hidden>Total <b id="pricePillValue"></b></div>
 
 <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.5/dist/pocketbase.umd.js"></script>
+<!-- jsPDF (v3.26 — Fase 4): gera o PDF do contrato assinado no navegador do
+     cliente, mesma versão já usada pelo Orçamento (orcamentoPdf.js). -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="assets/js/config.js?v=3.23.0"></script>
 <script src="assets/js/pbCore.js?v=3.15.1"></script>
 <script>
@@ -576,6 +579,108 @@ function renderFinal(el){
   `;
   el.querySelector('#submitBtn').addEventListener('click', onSubmit);
 }
+/* ============================================================
+   PDF DO CONTRATO ASSINADO (v3.26 — Fase 4) — gerado no navegador do
+   cliente com jsPDF, mesmo estilo visual de orcamentoPdf.js (creme/dourado/
+   preto, serifada nos títulos). Gerado só na hora de assinar: inclui as
+   cláusulas já lidas, as declarações marcadas e a assinatura (desenho ou
+   aceite eletrônico). Baixa automaticamente para o cliente e também segue
+   anexado no registro de contrato_assinaturas (campo pdf_arquivo).
+   ============================================================ */
+const CONTRATO_PDF_COR = {
+  paper: [251, 249, 244], ink: [34, 31, 28], soft: [107, 100, 89],
+  rule: [220, 212, 196], gold: [168, 121, 30], goldSoft: [241, 230, 204],
+};
+function contratoSlug_(s){
+  return String(s||'cliente').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'cliente';
+}
+function contratoGerarPdf_(clauses, protocolo){
+  if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Biblioteca de PDF (jsPDF) não carregou. Verifique a conexão e recarregue a página.');
+  const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, H = 297, M = 18, CW = W - 2 * M, FOOT = 18;
+  const C = CONTRATO_PDF_COR;
+  let y = 0;
+
+  const fill = c => doc.setFillColor(c[0], c[1], c[2]);
+  const stroke = c => doc.setDrawColor(c[0], c[1], c[2]);
+  const color = c => doc.setTextColor(c[0], c[1], c[2]);
+  const serif = (sz, bold) => { doc.setFont('times', bold ? 'bold' : 'normal'); doc.setFontSize(sz); };
+  const sans = (sz, bold) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(sz); };
+
+  function fundo(){ fill(C.paper); doc.rect(0, 0, W, H, 'F'); }
+  function cabecalho(){
+    fundo();
+    color(C.ink); sans(10.5, true);
+    doc.text('CIBELE MATOZO FOTOGRAFIA', M, 14, { charSpace: 0.4 });
+    color(C.soft); sans(8, false);
+    doc.text(`Contrato nº CMF-${new Date().getFullYear()}-${protocolo}`, W - M, 11, { align: 'right' });
+    doc.text(`Assinado em ${hojePontual_()}`, W - M, 15, { align: 'right' });
+    stroke(C.rule); doc.setLineWidth(0.3); doc.line(M, 19, W - M, 19);
+    y = 28;
+  }
+  function garantir(h){ if (y + h > H - FOOT){ doc.addPage(); cabecalho(); } }
+  function tituloClausula(t){
+    garantir(12);
+    color(C.gold); serif(11.5, true);
+    const linhas = doc.splitTextToSize(t, CW);
+    linhas.forEach(ln => { garantir(6); doc.text(ln, M, y); y += 5.2; });
+    y += 1.5;
+  }
+  function paragrafo(texto){
+    sans(9.5, false); color(C.ink);
+    const linhas = doc.splitTextToSize(String(texto), CW);
+    const lh = 4.4;
+    for (const ln of linhas){ garantir(lh + 1); sans(9.5, false); color(C.ink); doc.text(ln, M, y); y += lh; }
+    y += 2.5;
+  }
+
+  cabecalho();
+  color(C.ink); serif(18, true);
+  doc.text('Contrato de prestação de serviços', M, y); y += 9;
+  stroke(C.gold); doc.setLineWidth(0.4); doc.line(M, y, M + 32, y); y += 8;
+
+  clauses.forEach(c => {
+    tituloClausula(c.t);
+    c.b.split('\n\n').forEach(p => { p.split('\n').forEach(paragrafo); });
+    y += 1.5;
+  });
+
+  tituloClausula('DECLARAÇÕES CONFIRMADAS PELO CONTRATANTE');
+  Object.keys(DECLARACOES_TXT).forEach(k => { if (state.declaracoes[k]) paragrafo('✓ ' + DECLARACOES_TXT[k]); });
+
+  tituloClausula('ASSINATURA');
+  garantir(40);
+  if (state.metodoAssinatura === 'desenho' && state.assinaturaPNG){
+    paragrafo('Assinatura por desenho, registrada eletronicamente:');
+    garantir(34);
+    try { doc.addImage(state.assinaturaPNG, 'PNG', M, y, 70, 28); } catch(e){ /* segue sem a imagem se o navegador recusar */ }
+    y += 32;
+    paragrafo(SNAP.contratante.nome);
+  } else {
+    paragrafo('Aceite eletrônico — o CONTRATANTE declarou que o nome abaixo corresponde à sua assinatura e que está de acordo com todas as condições deste contrato:');
+    serif(13, true); color(C.ink); garantir(8); doc.text(state.aceiteNome || SNAP.contratante.nome, M, y); y += 8;
+  }
+  paragrafo(`Protocolo CMF-${new Date().getFullYear()}-${protocolo} · assinado em ${hojePontual_()}`);
+
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++){
+    doc.setPage(i);
+    stroke(C.rule); doc.setLineWidth(0.3); doc.line(M, H - 14, W - M, H - 14);
+    color(C.soft); sans(7.5, false);
+    doc.text('Cibele Matozo Fotografia · MEI · CNPJ 69.546.199/0001-54 · (41) 99602-5409 · cibelematozofotografia@gmail.com', M, H - 9.5);
+    doc.text(`Página ${i} de ${total}`, W - M, H - 9.5, { align: 'right' });
+  }
+  return doc;
+}
+function contratoNomeArquivoPdf_(){
+  return `Contrato-${contratoSlug_(SNAP.contratante.nome)}-${new Date().getFullYear()}.pdf`;
+}
+function contratoBaixarPdf_(clauses, protocolo){
+  contratoGerarPdf_(clauses, protocolo).save(contratoNomeArquivoPdf_());
+}
+function contratoArquivoPdf_(clauses, protocolo){
+  return new File([contratoGerarPdf_(clauses, protocolo).output('blob')], contratoNomeArquivoPdf_(), { type: 'application/pdf' });
+}
 async function dataUrlParaBlob_(dataUrl){
   const res = await fetch(dataUrl);
   return res.blob();
@@ -586,6 +691,7 @@ function hojePontual_(){
 async function onSubmit(){
   const btn = document.getElementById('submitBtn');
   btn.disabled = true; btn.textContent = 'Enviando…';
+  const protocolo = String(Date.now()).slice(-6);
   try{
     const payload = {
       id_contrato: REC.id,
@@ -601,8 +707,11 @@ async function onSubmit(){
     if (state.metodoAssinatura==='desenho' && state.assinaturaPNG){
       payload.assinatura_arquivo = await dataUrlParaBlob_(state.assinaturaPNG);
     }
-    const protocolo = await PB.collection('contrato_assinaturas').create(payload, { token: TOKEN });
-    showResult(protocolo.id_assinatura || protocolo.id);
+    const clauses = buildClauses();
+    payload.pdf_arquivo = contratoArquivoPdf_(clauses, protocolo);
+    await PB.collection('contrato_assinaturas').create(payload, { token: TOKEN });
+    try { contratoBaixarPdf_(clauses, protocolo); } catch(e){ /* upload já aconteceu; download local é só conveniência */ }
+    showResult(protocolo);
   } catch(err){
     showResult(null, (err && err.message) || String(err));
   }

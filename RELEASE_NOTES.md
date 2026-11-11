@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.26.0 | 2026-11-11 | Fase 4 da integração CRM↔Contrato Digital: PDF do contrato gerado no navegador do cliente ao assinar (anexado + baixado automaticamente) e notificação por e-mail (Resend) para cliente e fotógrafa — ⚠️ migration + pb_hook | [2.53](#253-fase-4-da-integração-crmcontrato-digital-v3260) |
 | v3.25.0 | 2026-11-11 | Fase 3 da integração CRM↔Contrato Digital: `index.html` reescrito como página pública data-driven (lê `?token=`, sem formulário de dados — só ensaio/vídeo/imagem/declarações/assinatura) — ⚠️ migration + pb_hook | [2.52](#252-fase-3-da-integração-crmcontrato-digital-v3250) |
 | v3.24.0 | 2026-11-11 | Fase 2 da integração CRM↔Contrato Digital: nova coleção `contratos` + botão "Gerar contrato" em CRM · Orçamentos (lead "Fechado") — ⚠️ migration + pb_hook | [2.51](#251-fase-2-da-integração-crmcontrato-digital-v3240) |
 | v3.23.0 | 2026-11-11 | Fase 1 da integração CRM↔Contrato Digital: endereço completo em Clientes, "Serviço contratado"/"Forma de pagamento combinada" em Eventos, corrige cascata do lead "Fechado" que não repassava o serviço contratado — ⚠️ migrations | [2.50](#250-fase-1-da-integração-crmcontrato-digital-v3230) |
@@ -1513,3 +1514,14 @@ Terceira fase: `index.html` deixou de ser um formulário fixo para aniversário 
 - **Revisão jurídica pendente**: os textos das cláusulas foram redigidos por mim como rascunho técnico (não sou advogado) — **precisam da validação da Cibele antes de considerar o contrato definitivo**, especialmente a cláusula de direito de imagem e a de pagamento (que perdeu as condições fixas por pacote do texto antigo).
 
 ⚠️ Exige aplicar a migration `1793000501_create_contrato_assinaturas.js` + os hooks `auto_id.pb.js` (regenerado) e `assinar_contrato.pb.js` (novo) na VM antes do deploy do front. Arquivos: `pbSchema.js`, `pbContratos.js`, `index.html` (reescrito), `gerador-de-link.html` (aviso), `crm.html`, `pb_migrations/1793000501_create_contrato_assinaturas.js`, `pb_hooks/auto_id.pb.js`, `pb_hooks/assinar_contrato.pb.js` (novo).
+
+### 2.53 Fase 4 da integração CRM↔Contrato Digital (v3.26.0)
+
+Última fase do plano: fecha o laço do Contrato Digital com o PDF assinado e o aviso por e-mail, sem precisar reativar o Apps Script que o `index.html` antigo usava.
+
+- **PDF gerado no navegador do cliente** (`index.html`), no momento da assinatura — jsPDF (mesma versão já usada em `orcamentoPdf.js`), mesmo estilo visual creme/dourado/dos demais PDFs do sistema. Inclui todas as cláusulas já lidas, as declarações marcadas e a assinatura (imagem do traço via `doc.addImage`, ou nome + "aceite eletrônico"). Baixa automaticamente para o cliente **e** vai anexado no mesmo `create()` de `contrato_assinaturas` (campo novo `pdf_arquivo`).
+- **Protocolo**: para não depender da ordem "criar registro → saber o id → gerar PDF com esse id", o número de protocolo agora é gerado no navegador *antes* do envio (não é mais o `id_assinatura` do banco) — simplifica o fluxo e evita uma segunda chamada à API só para anexar o PDF depois.
+- **E-mail (Resend)**: `assinar_contrato.pb.js` ganhou o mesmo envio já usado em `notificar_selecao.pb.js` — ao marcar `contratos.status = "Assinado"`, manda um e-mail para a fotógrafa e outro para o cliente (endereço vem do `dados_snapshot`), cada um com um link direto para baixar o PDF. Mesma ressalva de sempre: enquanto `RESEND_API_KEY` não for trocada pela chave real **na cópia que roda na VM**, o hook pula o envio (mas continua marcando o contrato como assinado normalmente). **Nota**: conferi a cópia já rodando na VM e a chave da Resend também ainda não foi configurada para `notificar_selecao.pb.js` (da Vitrine de Fotos) — os e-mails dessa feature também estão pulando o envio hoje.
+- Link do PDF não exige token (arquivos do PocketBase nesta versão não são protegidos por regra de acesso — mesmo nível de confiança que a Vitrine de Fotos já aceita para fotos/downloads).
+
+Com isso, as 4 fases do plano original estão implementadas. Arquivos: `pbSchema.js`, `index.html`, `crm.html`, `pb_migrations/1793000502_add_pdf_arquivo_contrato_assinaturas.js`, `pb_hooks/assinar_contrato.pb.js`.
