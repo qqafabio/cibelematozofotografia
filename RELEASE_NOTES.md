@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.32.0 | 2026-11-11 | ⚠️ Correção crítica: `contratos.listRule` estava auth-only (faltava a regra pública por token que a `viewRule` já tinha) — qualquer cliente externo via link do Contrato Digital recebia "Contrato não encontrado", mascarado nos testes porque o navegador da fotógrafa já tinha login do CRM salvo | [2.59](#259-correção-crítica--contratoslistrule-bloqueava-cliente-externo-v3320) |
 | v3.31.0 | 2026-11-11 | Contrato Digital — corrige dados do contrato "Pendente" congelados mesmo depois de corrigir cliente/evento e salvar o Orçamento de novo; agora o próprio "Salvar" atualiza o snapshot do contrato pendente, mantendo o mesmo link | [2.58](#258-contrato-digital--contrato-pendente-acompanha-correções-no-orçamento-v3310) |
 | v3.30.0 | 2026-11-11 | Orçamento: CPF e endereço completo ganham campos no card "Cliente" — gravam direto no cadastro do cliente (corrige esses dados saindo em branco no Contrato Digital para leads criados direto pela tela de Orçamentos) | [2.57](#257-orçamento--cpf-e-endereço-completo-no-card-cliente-v3300) |
 | v3.29.0 | 2026-11-11 | Contrato Digital — "Gerar contrato" só reaproveita um contrato existente enquanto ele está "Pendente"; se já foi "Assinado", gera um novo (link/token novos) em vez de devolver o antigo | [2.56](#256-contrato-digital--gerar-contrato-novo-após-assinado-v3290) |
@@ -1572,6 +1573,17 @@ Muitos leads nascem direto em CRM · Orçamentos (sem passar pela tela Clientes)
 - **Corrigido um bug real no caminho**: `pbAtualizarCliente`/`clienteFormToPb` fazia um *replace* completo do registro em vez de um patch parcial — chamar com só CPF/endereço apagaria Nome/WhatsApp/E-mail/Instagram/Observações do cliente com string vazia. Agora só grava as chaves realmente enviadas (mesmo padrão de `MAPA_LEAD`/`MAPA_EVENTO`), sem mudar o comportamento da tela Clientes (que já envia o formulário completo).
 
 Sem migration — os campos de endereço/CPF já existiam na coleção `clientes` desde a Fase 1. Arquivos: `pbClientes.js`, `modules/leadForm.js`, `crm.html`.
+
+### 2.59 Correção crítica — `contratos.listRule` bloqueava cliente externo (v3.32.0)
+
+O usuário enviou o link do contrato para um cliente de verdade, e ele recebeu "Contrato não encontrado" ao abrir — mesmo com o token correto e o contrato existindo e "Pendente". Causa raiz: ao desenhar a regra de acesso público da coleção `contratos` (Fase 2), a cláusula pública por token foi escrita só na `viewRule` — a `listRule` ficou auth-only (`@request.auth.id != ""`), copiada por engano sem o `||` da regra pública.
+
+`index.html` busca o contrato via `getFirstListItem(...)`, que por baixo dos panos faz uma consulta de **lista** (`GET /api/collections/contratos/records?filter=...`), avaliada pela **listRule**, não pela viewRule. Com a listRule errada, qualquer requisição sem sessão autenticada do CRM recebia uma lista vazia (**200 OK, 0 itens** — não um erro visível), e a página pública mostrava a tela de "não encontrado". Isso nunca apareceu nos testes internos porque o navegador usado (da fotógrafa) já tinha um login do CRM salvo no `localStorage` da mesma origem (GitHub Pages) — o PocketBase via essa sessão como autenticada e liberava o acesso, mascarando o problema.
+
+- `listRule` de `contratos` corrigida para a mesma regra pública por token da `viewRule`.
+- Confirmado ao vivo: o token real do cliente, consultado sem nenhuma autenticação (simulando um dispositivo externo), agora retorna o contrato normalmente.
+
+⚠️ Exige aplicar a migration `1793000504_fix_listrule_contratos.js` na VM (já aplicada). Arquivos: `pbSchema.js`, `crm.html`, `pb_migrations/1793000504_fix_listrule_contratos.js`.
 
 ### 2.58 Contrato Digital — contrato "Pendente" acompanha correções no Orçamento (v3.31.0)
 

@@ -475,7 +475,13 @@ const PB_SCHEMA = {
     somentePB: true,
     id: { label: 'ID Contrato', pb: 'id_contrato' },
     rules: {
-      listRule: `@request.auth.id != ""`,
+      // v3.32: listRule precisa da MESMA regra pública da viewRule — getFirstListItem
+      // (usado por index.html pra buscar o contrato pelo token) faz uma consulta de
+      // LISTA por baixo dos panos, então é a listRule que vale, não a viewRule. Com
+      // listRule só auth-only, todo cliente externo (sem sessão do CRM) recebia uma
+      // lista vazia (200 OK, 0 itens) e a página mostrava "Contrato não encontrado" —
+      // só não aparecia nos testes porque o navegador já tinha login salvo do CRM.
+      listRule: `@request.auth.id != "" || (token != "" && token = @request.query.token && status != "Cancelado")`,
       viewRule: `@request.auth.id != "" || (token != "" && token = @request.query.token && status != "Cancelado")`,
       createRule: `@request.auth.id != ""`,
       updateRule: `@request.auth.id != ""`,
