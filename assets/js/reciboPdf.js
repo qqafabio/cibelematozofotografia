@@ -110,7 +110,11 @@ function reciboGerarPdf_(dados){
   color(C.soft); sans(10, false);
   doc.text(`Curitiba/PR, ${dados.dataPagamento || new Date().toLocaleDateString('pt-BR')}.`, M, y);
 
-  y += 26;
+  y += 6;
+  if (typeof ASSINATURA_CIBELE_DATAURL !== 'undefined'){
+    try { doc.addImage(ASSINATURA_CIBELE_DATAURL, 'PNG', M, y, 46, 32.9); } catch(e){ /* segue sem a imagem se não carregar */ }
+    y += 33;
+  }
   stroke(C.ink); doc.setLineWidth(0.35); doc.line(M, y, M + 80, y);
   y += 5;
   color(C.ink); serif(11, false);

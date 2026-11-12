@@ -135,6 +135,7 @@
 <!-- jsPDF (v3.26 — Fase 4): gera o PDF do contrato assinado no navegador do
      cliente, mesma versão já usada pelo Orçamento (orcamentoPdf.js). -->
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="assets/js/assinaturaCibele.js?v=3.34.0"></script>
 <script src="assets/js/config.js?v=3.23.0"></script>
 <script src="assets/js/pbCore.js?v=3.15.1"></script>
 <script>
@@ -648,18 +649,31 @@ function contratoGerarPdf_(clauses, protocolo){
   tituloClausula('DECLARAÇÕES CONFIRMADAS PELO CONTRATANTE');
   Object.keys(DECLARACOES_TXT).forEach(k => { if (state.declaracoes[k]) paragrafo('✓ ' + DECLARACOES_TXT[k]); });
 
-  tituloClausula('ASSINATURA');
-  garantir(40);
-  if (state.metodoAssinatura === 'desenho' && state.assinaturaPNG){
-    paragrafo('Assinatura por desenho, registrada eletronicamente:');
-    garantir(34);
-    try { doc.addImage(state.assinaturaPNG, 'PNG', M, y, 70, 28); } catch(e){ /* segue sem a imagem se o navegador recusar */ }
-    y += 32;
-    paragrafo(SNAP.contratante.nome);
-  } else {
-    paragrafo('Aceite eletrônico — o CONTRATANTE declarou que o nome abaixo corresponde à sua assinatura e que está de acordo com todas as condições deste contrato:');
-    serif(13, true); color(C.ink); garantir(8); doc.text(state.aceiteNome || SNAP.contratante.nome, M, y); y += 8;
+  tituloClausula('ASSINATURAS');
+  if (state.metodoAssinatura !== 'desenho'){
+    paragrafo('Aceite eletrônico — o CONTRATANTE declarou que o nome abaixo corresponde à sua assinatura e que está de acordo com todas as condições deste contrato.');
   }
+  garantir(50);
+  const assinaturaYBase = y;
+  const assinaturaColW = (CW - 10) / 2;
+  const assinaturaXEsq = M, assinaturaXDir = M + assinaturaColW + 10;
+  const assinaturaCibeleUrl = (typeof ASSINATURA_CIBELE_DATAURL !== 'undefined') ? ASSINATURA_CIBELE_DATAURL : null;
+
+  if (state.metodoAssinatura === 'desenho' && state.assinaturaPNG){
+    try { doc.addImage(state.assinaturaPNG, 'PNG', assinaturaXEsq, assinaturaYBase, 50, 20); } catch(e){ /* segue sem a imagem se o navegador recusar */ }
+    color(C.ink); serif(10, false); doc.text(SNAP.contratante.nome, assinaturaXEsq, assinaturaYBase + 26);
+  } else {
+    color(C.ink); serif(12, true); doc.text(state.aceiteNome || SNAP.contratante.nome, assinaturaXEsq, assinaturaYBase + 16);
+  }
+  color(C.soft); sans(8, false); doc.text('CONTRATANTE', assinaturaXEsq, assinaturaYBase + 33);
+
+  if (assinaturaCibeleUrl){
+    try { doc.addImage(assinaturaCibeleUrl, 'PNG', assinaturaXDir, assinaturaYBase, 46, 32.9); } catch(e){ /* segue sem a imagem se não carregar */ }
+  }
+  color(C.ink); serif(10, false); doc.text('Cibele Matozo de Lara', assinaturaXDir, assinaturaYBase + 36);
+  color(C.soft); sans(8, false); doc.text('CONTRATADA', assinaturaXDir, assinaturaYBase + 41);
+
+  y = assinaturaYBase + 46;
   paragrafo(`Protocolo CMF-${new Date().getFullYear()}-${protocolo} · assinado em ${hojePontual_()}`);
 
   const total = doc.getNumberOfPages();

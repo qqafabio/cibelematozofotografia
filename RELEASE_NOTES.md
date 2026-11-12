@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.34.0 | 2026-11-12 | Contrato Digital e Recibo: assinatura da fotógrafa (Cibele) passa a aparecer ao lado da assinatura do cliente no PDF do contrato, e também no PDF do recibo de quitação | [2.61](#261-contrato-digital-e-recibo--assinatura-da-fotógrafa-no-pdf-v3340) |
 | v3.33.0 | 2026-11-12 | Financeiro: botão "Gerar recibo" em parcelas/entrada quitadas (PDF com valor por extenso); Forma de pagamento combinada "Cartão de crédito" pede quantidade de parcelas e a conta do Financeiro já nasce dividida nessa forma de pagamento | [2.60](#260-financeiro--recibo-de-quitação-e-parcelamento-automático-no-cartão-v3330) |
 | v3.32.0 | 2026-11-11 | ⚠️ Correção crítica: `contratos.listRule` estava auth-only (faltava a regra pública por token que a `viewRule` já tinha) — qualquer cliente externo via link do Contrato Digital recebia "Contrato não encontrado", mascarado nos testes porque o navegador da fotógrafa já tinha login do CRM salvo | [2.59](#259-correção-crítica--contratoslistrule-bloqueava-cliente-externo-v3320) |
 | v3.31.0 | 2026-11-11 | Contrato Digital — corrige dados do contrato "Pendente" congelados mesmo depois de corrigir cliente/evento e salvar o Orçamento de novo; agora o próprio "Salvar" atualiza o snapshot do contrato pendente, mantendo o mesmo link | [2.58](#258-contrato-digital--contrato-pendente-acompanha-correções-no-orçamento-v3310) |
@@ -1574,6 +1575,12 @@ Muitos leads nascem direto em CRM · Orçamentos (sem passar pela tela Clientes)
 - **Corrigido um bug real no caminho**: `pbAtualizarCliente`/`clienteFormToPb` fazia um *replace* completo do registro em vez de um patch parcial — chamar com só CPF/endereço apagaria Nome/WhatsApp/E-mail/Instagram/Observações do cliente com string vazia. Agora só grava as chaves realmente enviadas (mesmo padrão de `MAPA_LEAD`/`MAPA_EVENTO`), sem mudar o comportamento da tela Clientes (que já envia o formulário completo).
 
 Sem migration — os campos de endereço/CPF já existiam na coleção `clientes` desde a Fase 1. Arquivos: `pbClientes.js`, `modules/leadForm.js`, `crm.html`.
+
+### 2.61 Contrato Digital e Recibo — assinatura da fotógrafa no PDF (v3.34.0)
+
+No index.html antigo (antes da reescrita data-driven da Fase 3), o contrato em PDF saía com a assinatura de ambas as partes — cliente e fotógrafa — enviado por e-mail aos dois. Na reescrita, a seção de assinatura ficou só com a do cliente. Correção: a assinatura da Cibele (imagem processada a partir de uma foto, fundo removido, recorte justo) agora é uma constante compartilhada (novo `assinaturaCibele.js`, carregado tanto no `index.html` quanto no `crm.html`) e a seção "ASSINATURAS" do contrato virou um layout de duas colunas: CONTRATANTE à esquerda (desenho ou aceite eletrônico, como já era) e CONTRATADA à direita, sempre com a assinatura da Cibele. O mesmo arquivo de assinatura foi reaproveitado no PDF do recibo de quitação (`reciboPdf.js`), ao lado do nome da Cibele.
+
+Sem migration — ajuste de front-end. Arquivos: `assinaturaCibele.js` (novo), `index.html`, `reciboPdf.js`, `crm.html`.
 
 ### 2.60 Financeiro — recibo de quitação e parcelamento automático no cartão (v3.33.0)
 
