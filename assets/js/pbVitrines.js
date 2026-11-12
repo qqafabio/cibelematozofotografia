@@ -221,10 +221,11 @@ async function pbUploadFotoVitrine(dados){
   // ligado (v3.20.1) — antes disso era gerado sempre e a decisão de servir
   // 'preview' ou 'arquivo' ficava só na vitrine pública; agora, desligado,
   // nem gasta o processamento no upload.
+  let tamanhoPreview = 0;
   if (dados.marcaDaguaHabilitada){
     try {
       const preview = await gerarPreviewComMarcaDagua_(dados.arquivo);
-      if (preview) fd.append('preview', preview, 'preview.jpg');
+      if (preview){ fd.append('preview', preview, 'preview.jpg'); tamanhoPreview = preview.size; }
     } catch (err){
       // Sem preview com marca d'água, a vitrine pública cai pro 'arquivo'
       // original (ver vitrine.html) — upload não trava por causa disso.
@@ -235,6 +236,10 @@ async function pbUploadFotoVitrine(dados){
   fd.append('nome_original', dados.arquivo.name || '');
   fd.append('categoria', dados.categoria ? String(dados.categoria).trim() : '');
   fd.append('data_upload', hojeBR_());
+  // Base do indicador de armazenamento usado (v3.20.13) — soma arquivo
+  // original + preview (quando gerado); fotos de antes dessa versão são
+  // preenchidas por um backfill à parte (não têm esse valor no upload).
+  fd.append('tamanho_bytes', String((dados.arquivo.size || 0) + tamanhoPreview));
   return PB.collection('vitrine_fotos').create(fd);
 }
 
@@ -242,6 +247,23 @@ async function pbExcluirFotoVitrine(dados){
   await pbAuthGarantir();
   await PB.collection('vitrine_fotos').delete(dados.id); // dados.id = id nativo do PB
   return { id: dados.id, deletado: true };
+}
+
+/* ---- Indicador de armazenamento usado (v3.20.13) ----
+   Soma `tamanho_bytes` de TODAS as fotos (de todas as vitrines) — campo
+   gravado no upload (pbUploadFotoVitrine) a partir de v3.20.13; fotos
+   enviadas antes disso foram preenchidas por um backfill rodado uma vez
+   direto na produção (não existe aqui no código, é manutenção pontual).
+   Limite é o da camada gratuita do Cloudflare R2 — ajustar esta constante se
+   a fotógrafa migrar de plano. `fields: 'tamanho_bytes'` minimiza o payload:
+   não baixa os arquivos, só esse número de cada registro. */
+const ARMAZENAMENTO_LIMITE_BYTES = 10 * 1000 * 1000 * 1000; // 10 GB (R2 free tier)
+
+async function pbArmazenamentoVitrines(){
+  await pbAuthGarantir();
+  const regs = await PB.collection('vitrine_fotos').getFullList({ fields: 'tamanho_bytes' });
+  const usadoBytes = regs.reduce((s, r) => s + Number(r.tamanho_bytes || 0), 0);
+  return { usadoBytes, limiteBytes: ARMAZENAMENTO_LIMITE_BYTES, percentual: Math.min(100, (usadoBytes / ARMAZENAMENTO_LIMITE_BYTES) * 100) };
 }
 
 /* ---- Seleção do cliente (v3.19 Fase 2) — só leitura, pro CRM conferir ---- */
@@ -255,6 +277,7 @@ Object.assign(window.PB_ACTIONS, {
   atualizarVitrine: (d) => perfTime('PB atualizarVitrine', pbAtualizarVitrine(d)),
   regerarTokenVitrine: (d) => perfTime('PB regerarTokenVitrine', pbRegerarTokenVitrine(d)),
   liberarEntrega: (d) => perfTime('PB liberarEntrega', pbLiberarEntrega(d)),
+  armazenamentoVitrines: () => perfTime('PB armazenamentoVitrines', pbArmazenamentoVitrines()),
   revogarEntrega: (d) => perfTime('PB revogarEntrega', pbRevogarEntrega(d)),
   deletarVitrine: (d) => perfTime('PB deletarVitrine', pbExcluirVitrine(d)),
   uploadFotoVitrine: (d) => perfTime('PB uploadFotoVitrine', pbUploadFotoVitrine(d)),

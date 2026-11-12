@@ -378,6 +378,7 @@ const PB_SCHEMA = {
       ['Ordem', 'ordem', 'number'],
       ['Nome original', 'nome_original', 'text'],
       ['Data upload', 'data_upload', 'text'],
+      ['Tamanho bytes', 'tamanho_bytes', 'number'], // soma de arquivo+preview no momento do upload (v3.20.13) — base do indicador de armazenamento usado na tela da Vitrine de Fotos
     ],
   },
 

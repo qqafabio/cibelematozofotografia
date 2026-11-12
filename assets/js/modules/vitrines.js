@@ -57,10 +57,46 @@ function renderVitrines(main){
       <div><h1>📸 Vitrine de Fotos</h1><p>${vitrines.length} vitrine${vitrines.length === 1 ? '' : 's'} criada${vitrines.length === 1 ? '' : 's'}</p></div>
       <button class="btn-primary" id="novaVitrineBtn">+ Nova vitrine</button>
     </div>
+    <div class="panel" id="armazenamentoVitrines" style="padding:14px 16px;">
+      <div class="empty-state" style="padding:0;">Calculando armazenamento usado…</div>
+    </div>
     <div id="listaVitrines"></div>
   `;
   document.getElementById('novaVitrineBtn').addEventListener('click', () => abrirFormVitrine(null));
   desenharListaVitrines();
+  atualizarArmazenamentoVitrines_();
+}
+
+// Indicador de "% do armazenamento gratuito do R2 já usado" (v3.20.13) — só
+// conta o que foi enviado direto no sistema (upload_proprio); o modo Google
+// Drive usa o armazenamento da própria conta do Drive da fotógrafa, não o R2.
+function formatarBytes_(bytes){
+  if (!bytes) return '0 MB';
+  const gb = bytes / 1e9;
+  if (gb >= 1) return gb.toFixed(2).replace('.', ',') + ' GB';
+  return (bytes / 1e6).toFixed(0) + ' MB';
+}
+async function atualizarArmazenamentoVitrines_(){
+  const cont = document.getElementById('armazenamentoVitrines');
+  if (!cont) return;
+  try {
+    const { usadoBytes, limiteBytes, percentual } = await apiCall('armazenamentoVitrines', {});
+    const pct = Math.round(percentual * 10) / 10;
+    const cor = pct >= 90 ? 'bg-danger' : (pct >= 70 ? 'bg-warning' : 'bg-success');
+    cont.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13.5px;">
+        <span>📦 Armazenamento usado (upload direto)</span>
+        <strong>${formatarBytes_(usadoBytes)} de ${formatarBytes_(limiteBytes)} (${pct}%)</strong>
+      </div>
+      <div class="progress" style="height:8px;">
+        <div class="progress-bar ${cor}" role="progressbar" style="width:${pct}%;" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      ${pct >= 90 ? `<p class="hint" style="color:var(--danger,#c0392b);margin:6px 0 0;">Armazenamento quase no limite da camada gratuita — considere excluir vitrines antigas ou usar o modo Google Drive para as próximas.</p>` : ''}
+    `;
+  } catch (err){
+    cont.innerHTML = `<div class="empty-state" style="padding:0;">Não foi possível calcular o armazenamento usado agora.</div>`;
+    console.error('atualizarArmazenamentoVitrines_: ' + err);
+  }
 }
 
 function desenharListaVitrines(){

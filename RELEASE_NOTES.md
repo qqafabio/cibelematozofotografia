@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.20.13 | 2026-11-12 | Vitrine de Fotos: indicador de % de armazenamento usado (upload direto) na tela de listagem | [2.47](#247-vitrine-de-fotos--indicador-de-armazenamento-usado-v32013) |
 | v3.34.0 | 2026-11-12 | Contrato Digital e Recibo: assinatura da fotógrafa (Cibele) passa a aparecer ao lado da assinatura do cliente no PDF do contrato, e também no PDF do recibo de quitação | [2.61](#261-contrato-digital-e-recibo--assinatura-da-fotógrafa-no-pdf-v3340) |
 | v3.33.0 | 2026-11-12 | Financeiro: botão "Gerar recibo" em parcelas/entrada quitadas (PDF com valor por extenso); Forma de pagamento combinada "Cartão de crédito" pede quantidade de parcelas e a conta do Financeiro já nasce dividida nessa forma de pagamento | [2.60](#260-financeiro--recibo-de-quitação-e-parcelamento-automático-no-cartão-v3330) |
 | v3.32.0 | 2026-11-11 | ⚠️ Correção crítica: `contratos.listRule` estava auth-only (faltava a regra pública por token que a `viewRule` já tinha) — qualquer cliente externo via link do Contrato Digital recebia "Contrato não encontrado", mascarado nos testes porque o navegador da fotógrafa já tinha login do CRM salvo | [2.59](#259-correção-crítica--contratoslistrule-bloqueava-cliente-externo-v3320) |
@@ -1610,3 +1611,15 @@ O usuário reportou: corrige dados do cliente/evento, salva o Orçamento de novo
 - O **"Salvar"** normal do Orçamento (`lfSalvar_`) agora chama isso depois de salvar o lead/cliente — silencioso e best-effort (não trava nem avisa erro se falhar): qualquer contrato pendente daquele lead já sai atualizado, sem precisar clicar em nada a mais.
 
 Sem migration — ajuste só de lógica (`pbContratos.js`, `modules/leadForm.js`, `crm.html`).
+
+### 2.47 Vitrine de Fotos — indicador de armazenamento usado (v3.20.13)
+
+O upload direto de fotos pela Vitrine de Fotos usa a camada gratuita do Cloudflare R2 (10GB). O usuário queria saber, direto na tela de listagem de vitrines, quanto desse espaço já está ocupado — pra decidir se dá pra subir mais fotos ou se precisa excluir uma vitrine antiga antes.
+
+A Cloudflare R2 não expõe isso de um jeito simples/gratuito pro navegador consultar sozinho (consultar o uso real exigiria um token de API novo da Cloudflare e uma rota própria no PocketBase só pra isso). Caminho escolhido com o usuário: cada foto passa a gravar o próprio tamanho em bytes (`vitrine_fotos.tamanho_bytes`, migration aditiva `1793000506`) no momento do upload — soma do arquivo original com o preview marcado, quando existir. A tela de Vitrine de Fotos busca todas as fotos (só esse campo, via `fields=tamanho_bytes` — não baixa nenhum arquivo) e soma, mostrando uma barra de progresso com "X GB de 10 GB usados (Y%)" logo acima da lista, ficando vermelha perto de 90% com um aviso sugerindo excluir vitrines antigas ou usar o modo Google Drive (que não ocupa esse espaço — fica no Drive da própria fotógrafa).
+
+Fotos enviadas **antes** desta versão não tinham esse campo gravado — rodado um backfill único direto em produção (HEAD request em cada arquivo/preview já existente via a própria API do PocketBase, somando o `Content-Length` de cada um) pra preencher o valor retroativamente: 79 fotos processadas, 0 falhas, ~0,87GB (8,67%) de uso real confirmado.
+
+Testado: migration aplicada e verificada localmente (PocketBase + cópia real das migrations/hooks de produção) antes de ir pra VM; depois aplicada e confirmada em produção; backfill rodado e conferido contra o schema real; consulta com `fields=tamanho_bytes` testada isoladamente (retorna só esse campo, soma bate certinho). Não exige testar no navegador além de conferir visualmente a barra — lógica de leitura/soma é simples o bastante pra não precisar.
+
+Arquivos: `pbSchema.js`, `pbVitrines.js`, `modules/vitrines.js`, `crm.html`, `infra/pb_migrations/1793000506_add_tamanho_bytes_vitrine_fotos.js`.
