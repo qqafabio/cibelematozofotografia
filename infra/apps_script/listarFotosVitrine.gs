@@ -17,13 +17,23 @@
    navegador do cliente, sem passar pelo Apps Script a cada foto) — só na
    PRIMEIRA vez (pula quando já está assim, ver pularSeJaCompartilhado_).
 
-   Cache (v3.19.4): resultado fica em cache por coleção/pasta por até 6h
-   (CacheService, teto do próprio Apps Script) — sem isso, TODA visita à
-   vitrine relistava a pasta inteira e reajustava a permissão de cada foto,
-   o que ficava perceptivelmente lento em pastas grandes. Some sozinho do
-   cache depois das 6h; novas fotos upadas aparecem assim que o cache vence
-   (ou imediatamente se a pasta mudou — ver `chaveCache_`, que inclui a
-   contagem de arquivos para invalidar o cache quando ela muda).
+   Cache (v3.20.14) — duas camadas, por pasta:
+   1) "compartilhados": quais arquivos já foram CONFIRMADOS com a permissão
+      certa — por até 6h (teto do CacheService). Cresce aos poucos: incluir
+      uma foto nova na pasta só exige checar ESSA foto, nunca refaz a
+      checagem (1 chamada à API do Drive por arquivo) das que já estavam ok.
+   2) "resultado": a lista pronta pra responder, por só 10 min — evita
+      relistar a pasta inteira em recarregamentos próximos (ex.: o botão
+      "Tentar novamente" da vitrine), sem precisar esperar 6h pra uma foto
+      nova aparecer.
+   Antes da v3.20.14, as duas coisas eram UM cache só, invalidado por inteiro
+   toda vez que a CONTAGEM de arquivos mudava — ou seja, subir mais uma foto
+   forçava reconferir a permissão de TODAS as fotos da pasta de novo, o que
+   podia demorar bastante numa pasta grande (uma chamada de rede por arquivo)
+   e, em rede celular, a conexão do cliente podia cair antes da resposta
+   chegar ("Load failed" no Safari/iOS, relatado por um cliente em produção
+   — a vitrine.html também ganhou retry automático pra esse cenário, mas o
+   certo é a causa raiz não demorar tanto a ponto de precisar disso).
    ============================================================ */
 
 function doGet(e) {
@@ -35,11 +45,13 @@ function doGet(e) {
     if (!folderId) return jsonVitrine_({ ok: false, error: 'Não encontrei o ID da pasta nesse link' });
 
     const cache = CacheService.getScriptCache();
-    const chaveContagem = 'vitrine_count_' + folderId;
-    const contagemAnterior = cache.get(chaveContagem);
-    const chave = 'vitrine_fotos_' + folderId + '_' + (contagemAnterior || '0');
-    const emCache = cache.get(chave);
+    const chaveResultado = 'vitrine_fotos_' + folderId;
+    const emCache = cache.get(chaveResultado);
     if (emCache) return jsonVitrine_({ ok: true, arquivos: JSON.parse(emCache), cache: true });
+
+    const chaveCompartilhados = 'vitrine_compartilhados_' + folderId;
+    let compartilhados = {};
+    try { compartilhados = JSON.parse(cache.get(chaveCompartilhados) || '{}'); } catch (parseErr) { /* cache vazio/corrompido: começa do zero */ }
 
     const folder = DriveApp.getFolderById(folderId);
     const arquivos = [];
@@ -47,8 +59,11 @@ function doGet(e) {
     while (it.hasNext()) {
       const file = it.next();
       if (file.getMimeType().indexOf('image/') !== 0) continue; // só fotos
-      pularSeJaCompartilhado_(file);
       const id = file.getId();
+      if (!compartilhados[id]) {
+        pularSeJaCompartilhado_(file);
+        compartilhados[id] = true;
+      }
       arquivos.push({
         id: id,
         nome: file.getName(),
@@ -58,9 +73,8 @@ function doGet(e) {
     }
 
     try {
-      const novaContagem = String(arquivos.length);
-      cache.put(chaveContagem, novaContagem, 21600); // 6h (teto do CacheService)
-      cache.put('vitrine_fotos_' + folderId + '_' + novaContagem, JSON.stringify(arquivos), 21600);
+      cache.put(chaveResultado, JSON.stringify(arquivos), 600); // 10 min
+      cache.put(chaveCompartilhados, JSON.stringify(compartilhados), 21600); // 6h (teto do CacheService)
     } catch (cacheErr) {
       // Pasta grande demais para o cache (teto de 100KB por chave) — segue
       // sem cache; só fica mais lento, não quebra a vitrine.

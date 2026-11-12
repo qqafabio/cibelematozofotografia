@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.20.14 | 2026-11-12 | Vitrine de Fotos (Drive): corrige "Load failed" no celular ao abrir a galeria — retry no cliente + cache do Apps Script deixa de refazer tudo quando uma foto nova é adicionada ⚠️ reimplantar Apps Script | [2.48](#248-vitrine-de-fotos--load-failed-no-modo-google-drive-v32014) |
 | v3.20.13 | 2026-11-12 | Vitrine de Fotos: indicador de % de armazenamento usado (upload direto) na tela de listagem | [2.47](#247-vitrine-de-fotos--indicador-de-armazenamento-usado-v32013) |
 | v3.34.0 | 2026-11-12 | Contrato Digital e Recibo: assinatura da fotógrafa (Cibele) passa a aparecer ao lado da assinatura do cliente no PDF do contrato, e também no PDF do recibo de quitação | [2.61](#261-contrato-digital-e-recibo--assinatura-da-fotógrafa-no-pdf-v3340) |
 | v3.33.0 | 2026-11-12 | Financeiro: botão "Gerar recibo" em parcelas/entrada quitadas (PDF com valor por extenso); Forma de pagamento combinada "Cartão de crédito" pede quantidade de parcelas e a conta do Financeiro já nasce dividida nessa forma de pagamento | [2.60](#260-financeiro--recibo-de-quitação-e-parcelamento-automático-no-cartão-v3330) |
@@ -1623,3 +1624,15 @@ Fotos enviadas **antes** desta versão não tinham esse campo gravado — rodado
 Testado: migration aplicada e verificada localmente (PocketBase + cópia real das migrations/hooks de produção) antes de ir pra VM; depois aplicada e confirmada em produção; backfill rodado e conferido contra o schema real; consulta com `fields=tamanho_bytes` testada isoladamente (retorna só esse campo, soma bate certinho). Não exige testar no navegador além de conferir visualmente a barra — lógica de leitura/soma é simples o bastante pra não precisar.
 
 Arquivos: `pbSchema.js`, `pbVitrines.js`, `modules/vitrines.js`, `crm.html`, `infra/pb_migrations/1793000506_add_tamanho_bytes_vitrine_fotos.js`.
+
+### 2.48 Vitrine de Fotos — "Load failed" no modo Google Drive (v3.20.14)
+
+Uma cliente relatou que, ao abrir o link da vitrine no celular, depois de um tempo carregando as fotos aparecia um erro genérico ("Load failed") no lugar da galeria — mesmo o usuário tendo testado o mesmo link no desktop pouco antes, sem problema. Reproduzido: no desktop funcionou, no celular (rede móvel) o mesmo erro apareceu.
+
+**Causa raiz**: o Apps Script que lista a pasta do Drive (`listarFotosVitrine.gs`) guardava o resultado em cache por até 6h, mas a chave do cache incluía a **contagem de arquivos da pasta** — assim que a fotógrafa adiciona mais uma foto à pasta (coisa comum fazer depois de já ter testado o link), o cache inteiro vira outro, e o Apps Script precisa reconferir a permissão de **todos** os arquivos de novo (uma chamada à API do Drive por arquivo, não só os novos) — em pastas com muitas fotos, isso pode levar bastante tempo. Rede celular costuma derrubar uma conexão parada por tempo demais esperando resposta, antes dela chegar — exatamente o "Load failed" (é a mensagem padrão do Safari/WebKit para esse tipo de falha de rede). O trabalho no Apps Script continua rodando e fica salvo no cache mesmo que a conexão do cliente morra no meio do caminho — só que a vitrine não tentava de novo sozinha.
+
+**Duas correções, uma em cada ponta:**
+- `vitrine.html` (publicado automaticamente): a busca da lista de fotos do Drive agora tenta até 3 vezes (2s e 4s de intervalo) antes de desistir — como o trabalho pesado já ficou pronto no Apps Script na tentativa anterior, a nova tentativa tende a vir rápida. Se mesmo assim falhar, a tela de erro ganhou um botão **"Tentar novamente"** (antes não tinha nenhum jeito de recarregar sem dar refresh na página inteira).
+- `listarFotosVitrine.gs` ⚠️ **exige reimplantar o Apps Script manualmente** (Implantar → Gerenciar implantações → editar a implantação existente → Nova versão — mesma URL, nada muda pro cliente): o cache de "quais arquivos já foram confirmados compartilhados" deixou de ser invalidado pela contagem total — agora é por pasta e cresce aos poucos, então adicionar uma foto nova só exige checar **essa** foto, nunca refaz a checagem das que já estavam certas. Um segundo cache, curto (10 min), guarda o resultado pronto pra não relistar a pasta inteira em recarregamentos próximos (ex.: o novo botão "Tentar novamente").
+
+Testado via Node com mocks de `CacheService`/`DriveApp`/`ContentService`: confirmado que adicionar 1 foto a uma pasta de 3 só dispara 1 chamada de verificação de permissão (a nova), não 4; testado também o retry do cliente (sucesso na 3ª tentativa, falha total lança o erro original). Não exige migration. Arquivos: `vitrine.html`, `infra/apps_script/listarFotosVitrine.gs`.

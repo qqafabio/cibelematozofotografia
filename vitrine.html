@@ -139,11 +139,31 @@ async function buscarFotosProprio_(vitrinePbId, token, senhaHash){
     sort: 'ordem', token, senha_hash: senhaHash || '',
   });
 }
+// Lista a pasta do Drive via Apps Script. Com uma pasta grande e o cache do
+// Apps Script frio (ex.: a fotógrafa acabou de subir mais fotos), a resposta
+// pode demorar bastante (uma chamada à API do Drive por arquivo, pra checar
+// se já está compartilhado) — rede celular costuma derrubar uma conexão
+// parada por tempo demais antes da resposta chegar ("Load failed" no
+// Safari/iOS, confirmado por um cliente em produção). O trabalho no Apps
+// Script continua e fica em cache mesmo que a conexão do cliente morra no
+// meio do caminho — por isso tenta de novo (com um intervalo curto) antes de
+// desistir: a 2ª tentativa tende a já achar o cache quente e vir rápido.
+function esperarMsDrive_(ms){ return new Promise((r) => setTimeout(r, ms)); }
 async function buscarFotosDrive_(linkPasta){
-  const res = await fetch(CRM_API_URL + '?pasta=' + encodeURIComponent(linkPasta));
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || 'Não foi possível listar as fotos da pasta do Drive');
-  return json.arquivos;
+  const TENTATIVAS = 3;
+  let ultimoErro = null;
+  for (let t = 0; t < TENTATIVAS; t++){
+    if (t > 0) await esperarMsDrive_(2000 * t); // 2s, depois 4s
+    try {
+      const res = await fetch(CRM_API_URL + '?pasta=' + encodeURIComponent(linkPasta));
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'Não foi possível listar as fotos da pasta do Drive');
+      return json.arquivos;
+    } catch (err){
+      ultimoErro = err;
+    }
+  }
+  throw ultimoErro;
 }
 
 /* ---- Marca d'água opcional (v3.20.1) — mesmo algoritmo de pbVitrines.js
@@ -656,7 +676,7 @@ async function renderGaleria_(vitrine, senhaHash){
           </div>
         </div>
       ` : ''}
-      ${erroFonte ? `<div class="painel"><p class="erro" style="margin:0;">${escV(erroFonte)}</p></div>` : ''}
+      ${erroFonte ? `<div class="painel"><p class="erro" style="margin:0 0 10px;">${escV(erroFonte)}</p><button type="button" id="btnTentarNovamenteFonte">Tentar novamente</button></div>` : ''}
       ${!erroFonte && !fotos.length ? `<div class="painel"><p style="margin:0;opacity:.75;">Nenhuma foto disponível ainda nesta galeria.</p></div>` : ''}
       <div class="grid">
         ${fotos.map(f => `
@@ -669,6 +689,12 @@ async function renderGaleria_(vitrine, senhaHash){
       </div>
       ${montarSecaoEntrega_(entregaInfo, vitrine)}
   `;
+  const btnTentarNovamenteFonte = document.getElementById('btnTentarNovamenteFonte');
+  if (btnTentarNovamenteFonte) btnTentarNovamenteFonte.addEventListener('click', () => {
+    btnTentarNovamenteFonte.disabled = true;
+    btnTentarNovamenteFonte.textContent = 'Carregando…';
+    renderGaleria_(vitrine, senhaHash);
+  });
   app.querySelectorAll('.foto img').forEach(img => img.addEventListener('click', () => {
     if (img.closest('.foto').classList.contains('pendente-marca')){
       avisarVitrine_("Essa foto ainda está recebendo a marca d'água — aguarde alguns segundos e tente de novo.");
