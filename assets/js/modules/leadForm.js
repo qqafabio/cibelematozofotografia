@@ -99,6 +99,7 @@ function renderLeadForm(main){
         <div class="col-md-6 field"><label>Próximo contato</label><input id="f_proximoContato" data-picker="date" placeholder="DD/MM/AAAA" value="${v('Próximo contato')}"><small class="text-muted">Cria um lembrete de dia inteiro na Google Agenda.</small></div>
         <div class="col-12 field" id="lfPacoteFechadoWrap" style="display:none;"><label>Qual pacote foi fechado? <small class="text-muted">(o evento criado a partir deste lead usa este pacote)</small></label><select id="f_pacoteFechado"></select></div>
         <div class="col-md-6 field" id="lfFormaPagamentoWrap" style="display:none;"><label>Forma de pagamento combinada <small class="text-muted">(vai para o Contrato Digital)</small></label><select id="f_formaPagamentoCombinada">${opcoesSelect(listas['Forma pagamento'], '')}</select></div>
+        <div class="col-md-6 field" id="lfParcelasCartaoWrap" style="display:none;"><label>Quantas vezes (cartão) <small class="text-muted">(cria as parcelas no Financeiro já divididas)</small></label><input id="f_parcelasCartao" type="number" min="1" max="24" value="1"></div>
         <div class="col-12 field"><label>Observações</label><textarea id="f_obs" rows="3">${v('Observações')}</textarea></div>
       </div>
     </div>
@@ -146,6 +147,19 @@ function renderLeadForm(main){
     if (el){ el.addEventListener('input', lfAtualizarResumo_); el.addEventListener('change', lfAtualizarResumo_); }
   });
   document.getElementById('f_etapa').addEventListener('change', lfAtualizarPacoteFechado_);
+  const fpc = document.getElementById('f_formaPagamentoCombinada');
+  if (fpc) fpc.addEventListener('change', lfAtualizarParcelasCartao_);
+  lfAtualizarParcelasCartao_();
+}
+// Só pede "quantas vezes" quando a forma combinada é "Cartão de crédito" — as
+// parcelas da conta do Financeiro são criadas já divididas (pbCriarContaPendente_).
+function lfAtualizarParcelasCartao_(){
+  const fpc = document.getElementById('f_formaPagamentoCombinada');
+  const wrap = document.getElementById('lfParcelasCartaoWrap');
+  if (!fpc || !wrap) return;
+  const formaWrap = document.getElementById('lfFormaPagamentoWrap');
+  const visivel = formaWrap && formaWrap.style.display !== 'none';
+  wrap.style.display = (visivel && fpc.value === 'Cartão de crédito') ? '' : 'none';
 }
 
 /* Lista de pacotes do orçamento (v3.20): 1+ blocos, cada um com pacote do
@@ -236,6 +250,7 @@ function lfAtualizarPacoteFechado_(){
 
   const wrapForma = document.getElementById('lfFormaPagamentoWrap');
   if (wrapForma) wrapForma.style.display = fechando ? '' : 'none';
+  lfAtualizarParcelasCartao_();
 
   const wrap = document.getElementById('lfPacoteFechadoWrap');
   if (!wrap) return;
@@ -318,6 +333,7 @@ function lfLer_(){
     email: lead ? lead['E-mail'] : g('f_email'),
     tipoEvento: g('f_tipo'), dataDesejada: g('f_dataDesejada'), instituicao: g('f_instituicao'),
     horaInicio: g('f_horaInicio'), horaFim: g('f_horaFim'),
+    parcelasCartao: g('f_parcelasCartao'),
     servico: g('f_servico'), origem: g('f_origem'),
     etapa: document.getElementById('f_etapa').value,
     proximoContato: g('f_proximoContato'), observacoes: g('f_obs'), cfg: lfEst.cfg,
@@ -528,7 +544,9 @@ async function lfSalvar_(){
   }
   if (vaiFechar){
     dados.formaPagamentoCombinada = document.getElementById('f_formaPagamentoCombinada').value;
-
+    if (dados.formaPagamentoCombinada === 'Cartão de crédito'){
+      dados.parcelasCartao = document.getElementById('f_parcelasCartao').value;
+    }
   }
   let pdfErro = null;
   try {

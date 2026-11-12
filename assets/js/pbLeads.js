@@ -125,6 +125,7 @@ async function pbAtualizarLead(dados){
         tipoEvento: dados.tipoEvento !== undefined ? dados.tipoEvento : rec.tipo_evento,
         servicoContratado: dados.servico !== undefined ? dados.servico : rec.servico_interesse,
         formaPagamentoCombinada: dados.formaPagamentoCombinada || '',
+        parcelasCartao: dados.parcelasCartao || '',
         local: dados.instituicao !== undefined ? dados.instituicao : rec.instituicao,
         horaInicio: dados.horaInicio !== undefined ? dados.horaInicio : rec.hora_inicio,
         horaFim: dados.horaFim !== undefined ? dados.horaFim : rec.hora_fim,

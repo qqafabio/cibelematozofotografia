@@ -178,6 +178,9 @@ function abrirFormEvento(evento, preSelecaoCliente){
           <div class="field"><label>Serviço contratado</label><select id="f_servicoContratado">${opcoesSelect(listas['Serviço'], editando?evento['Serviço contratado']:'')}</select></div>
           <div class="field"><label>Forma de pagamento combinada</label><select id="f_formaPagamentoCombinada">${opcoesSelect(listas['Forma pagamento'], editando?evento['Forma de pagamento combinada']:'')}</select></div>
         </div>
+        <div class="row2" id="eventoParcelasCartaoWrap" style="display:none;">
+          <div class="field"><label>Quantas vezes (cartão)</label><input id="f_parcelasCartao" type="number" min="1" max="24" value="${esc(editando && evento['Parcelas (cartão)'] ? evento['Parcelas (cartão)'] : 1)}"></div>
+        </div>
         <div class="field"><label>Valor final</label><input id="f_valorFinal" type="number" step="0.01" value="${esc(editando?evento['Valor final']:'')}"></div>
         <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">Calculado como Valor pacote − Desconto. Você pode ajustar manualmente.</p>
         <div class="form-actions">
@@ -203,6 +206,14 @@ function abrirFormEvento(evento, preSelecaoCliente){
   document.getElementById('f_pacote').addEventListener('change', recalcularValorFinal);
   document.getElementById('f_valorPacote').addEventListener('input', recalcularValorFinal);
   document.getElementById('f_desconto').addEventListener('input', recalcularValorFinal);
+  // "Quantas vezes (cartão)" só aparece quando a forma combinada é "Cartão de
+  // crédito" — as parcelas da conta do Financeiro são criadas já divididas.
+  const atualizarParcelasCartaoWrap = () => {
+    const wrap = document.getElementById('eventoParcelasCartaoWrap');
+    wrap.style.display = document.getElementById('f_formaPagamentoCombinada').value === 'Cartão de crédito' ? '' : 'none';
+  };
+  document.getElementById('f_formaPagamentoCombinada').addEventListener('change', atualizarParcelasCartaoWrap);
+  atualizarParcelasCartaoWrap();
 }
 /* Abre/fecha o painel de busca do cliente e liga a busca+paginação.
    Chamada toda vez que o form de evento é (re)montado. */
@@ -283,6 +294,7 @@ async function salvarEvento(idEvento){
     valorFinal: Number(document.getElementById('f_valorFinal').value || 0),
     servicoContratado: document.getElementById('f_servicoContratado').value.trim(),
     formaPagamentoCombinada: document.getElementById('f_formaPagamentoCombinada').value.trim(),
+    parcelasCartao: document.getElementById('f_parcelasCartao').value.trim(),
     observacoes: evAtual ? (evAtual['Observações'] || '') : '',
   };
   const btn = document.getElementById('salvarEvento'); btn.disabled = true; btn.textContent = 'Salvando…';

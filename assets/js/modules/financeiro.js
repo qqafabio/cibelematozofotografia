@@ -153,6 +153,8 @@ function abrirFormConta(conta){
           <div class="field"><label>Forma pagamento</label><select id="f_entradaForma">${opcoesSelect(listas['Forma pagamento'], entradaExistente ? entradaExistente['Forma pagamento'] : '')}</select></div>
           <div class="field"><label>Data do recebimento</label><input id="f_entradaDataPagamento" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(entradaExistente ? entradaExistente['Data pagamento'] : '')}"></div>
         </div>
+        ${entradaExistente && entradaExistente['Status'] === 'Recebido' ? `
+        <button class="btn-ghost btn-sm" type="button" data-recibo-entrada="1" style="margin:-10px 0 14px;"><i class="bi bi-receipt"></i> Gerar recibo da entrada</button>` : ''}
  
         <hr style="border:none;border-top:1px solid var(--rule);margin:20px 0;">
  
@@ -176,11 +178,39 @@ function abrirFormConta(conta){
   if (editando){
     document.getElementById('excluirConta').addEventListener('click', () => excluirContaComConfirmacao(conta));
   }
-  document.getElementById('f_totalParcelas').addEventListener('input', () => renderLinhasParcelas(parcelasRestantes));
+  document.getElementById('f_totalParcelas').addEventListener('input', () => renderLinhasParcelas(parcelasRestantes, conta));
   document.getElementById('f_entradaValor').addEventListener('input', atualizarSaldoEventoInfo);
   document.getElementById('f_descontoValor').addEventListener('input', atualizarSaldoEventoInfo);
   if (!editando) document.getElementById('f_idEvento').addEventListener('change', atualizarSaldoEventoInfo);
-  renderLinhasParcelas(parcelasRestantes);
+  const btnReciboEntrada = document.querySelector('[data-recibo-entrada]');
+  if (btnReciboEntrada){
+    btnReciboEntrada.addEventListener('click', () => {
+      try {
+        const comuns = reciboInfoComuns_(conta || { idEvento: idEventoDoForm(), idCliente: '' });
+        reciboBaixarPdf_(Object.assign({}, comuns, {
+          descricao: 'Entrada', numero: 1, total: 1,
+          valor: Number(document.getElementById('f_entradaValor').value || 0),
+          formaPagamento: document.getElementById('f_entradaForma').value,
+          dataPagamento: document.getElementById('f_entradaDataPagamento').value.trim(),
+          protocolo: document.getElementById('f_entradaIdParcela').value || '',
+        }));
+      } catch (e){ showToast('❌ ' + e.message); }
+    });
+  }
+  renderLinhasParcelas(parcelasRestantes, conta);
+}
+// Dados comuns (cliente/CPF/evento) a partir da conta aberta — reaproveitado
+// pelo recibo da Entrada e de cada parcela.
+function reciboInfoComuns_(conta){
+  const evento = (eventos || []).find(e => String(e['ID Evento']) === String(conta.idEvento));
+  const idClienteBusca = conta.idCliente || (evento ? evento['ID Cliente'] : '');
+  const cli = (clientes || []).find(c => Number(c['ID Cliente']) === Number(idClienteBusca));
+  return {
+    cliente: conta.cliente || (evento ? evento['Cliente / Responsável'] : '') || '',
+    cpf: cli ? cli['CPF/CNPJ'] : '',
+    tipoEvento: evento ? evento['Tipo de evento'] : '',
+    dataEvento: evento ? evento['Data do evento'] : '',
+  };
 }
 function idEventoDoForm(){
   const hidden = document.getElementById('f_idEvento');
@@ -202,7 +232,7 @@ function atualizarSaldoEventoInfo(){
   info.textContent = `Valor do evento: ${formatBRL(valorFinal)} · entrada: ${formatBRL(entrada)} · parcelas: ${formatBRL(somaParcelas)}${descTxt} · restante: ${formatBRL(restante)}`;
   info.style.color = restante < 0 ? 'var(--error)' : 'var(--ink-soft)';
 }
-function renderLinhasParcelas(parcelasExistentes){
+function renderLinhasParcelas(parcelasExistentes, contaRef){
   const total = Math.max(0, Number(document.getElementById('f_totalParcelas').value) || 0);
   const wrap = document.getElementById('parcelasLista');
   const jaTemLinhas = wrap.querySelectorAll('.linha-parcela').length > 0;
@@ -240,10 +270,30 @@ function renderLinhasParcelas(parcelasExistentes){
         <div class="field"><label>Forma pagamento</label><select class="p-forma">${opcoesSelect(listas['Forma pagamento'], ant.forma||'')}</select></div>
         <div class="field"><label>Data do recebimento</label><input class="p-dataPagamento" data-picker="date" placeholder="DD/MM/AAAA" value="${esc(ant.dataPagamento||'')}"></div>
       </div>
+      ${ant.idParcela && ant.status === 'Recebido' ? `
+      <button class="btn-ghost btn-sm" type="button" data-recibo-parcela="${esc(ant.idParcela)}" style="margin-bottom:10px;"><i class="bi bi-receipt"></i> Gerar recibo desta parcela</button>` : ''}
       <div class="field"><label>Valor recebido</label><input class="p-valorPago" type="number" step="0.01" value="${esc(ant.valorPago||'')}"></div>
     </div>`;
   }).join('');
   wrap.querySelectorAll('.p-valor').forEach(inp => inp.addEventListener('input', atualizarSaldoEventoInfo));
+  wrap.querySelectorAll('[data-recibo-parcela]').forEach(btn => btn.addEventListener('click', () => {
+    const linha = btn.closest('.linha-parcela');
+    try {
+      const idEvento = (contaRef && contaRef.idEvento) || idEventoDoForm();
+      const idCliente = (contaRef && contaRef.idCliente) || '';
+      const comuns = reciboInfoComuns_({ idEvento, idCliente, cliente: contaRef ? contaRef.cliente : '' });
+      const partesTotal = Array.from(wrap.querySelectorAll('.linha-parcela')).length;
+      const indice = Array.from(wrap.querySelectorAll('.linha-parcela')).indexOf(linha) + 1;
+      reciboBaixarPdf_(Object.assign({}, comuns, {
+        descricao: linha.querySelector('.p-tipo').value || 'Parcela',
+        numero: indice, total: partesTotal,
+        valor: Number(linha.querySelector('.p-valorPago').value || linha.querySelector('.p-valor').value || 0),
+        formaPagamento: linha.querySelector('.p-forma').value,
+        dataPagamento: linha.querySelector('.p-dataPagamento').value.trim(),
+        protocolo: btn.dataset.reciboParcela,
+      }));
+    } catch (e){ showToast('❌ ' + e.message); }
+  }));
   atualizarSaldoEventoInfo();
 }
 async function salvarConta(contaExistente){

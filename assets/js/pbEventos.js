@@ -21,11 +21,12 @@ const MAPA_EVENTO = {
   tipoEvento: 'tipo_evento', servicoContratado: 'servico_contratado', local: 'local', cidade: 'cidade',
   pacote: 'pacote', valorPacote: 'valor_pacote', valorFotoExtra: 'valor_foto_extra', desconto: 'desconto',
   valorFinal: 'valor_final', prazoEntrega: 'prazo_entrega', formaPagamentoCombinada: 'forma_pagamento_combinada',
+  parcelasCartao: 'parcelas_cartao',
   contrato: 'contrato', linkContrato: 'link_contrato',
   linkBriefing: 'link_briefing', linkPasta: 'link_pasta_drive', equipe: 'equipe', observacoes: 'observacoes',
   organizador: 'organizador',
 };
-const CAMPOS_NUM_EVENTO = { valor_pacote: 1, valor_foto_extra: 1, desconto: 1, valor_final: 1 };
+const CAMPOS_NUM_EVENTO = { valor_pacote: 1, valor_foto_extra: 1, desconto: 1, valor_final: 1, parcelas_cartao: 1 };
 
 // Cria a linha de Produção do evento (1:1), com as 11 etapas em "Não iniciado"
 // (espelha criarProducaoParaEvento_, backend 846-860). id_evento herdado do pai.
@@ -48,22 +49,58 @@ async function pbCriarContaPendente_(ev){
   const existentes = await PB.collection('financeiro').getFullList({ filter: 'id_evento=' + Number(ev.id_evento) });
   if (existentes.length) return existentes[0];
   const valorFinal = Number(ev.valor_final || 0);
-  return PB.collection('financeiro').create({
-    id_evento: Number(ev.id_evento),
-    id_cliente: ev.id_cliente || '',
-    cliente: ev.cliente_responsavel || '',
-    tipo_cobranca: 'Saldo do evento',
-    num_parcela: 1,
-    total_parcelas: 1,
-    vencimento: '',
-    valor_previsto: valorFinal,
-    forma_pagamento: '',
-    status: 'Pendente',
-    data_pagamento: '',
-    valor_pago: 0,
-    saldo: valorFinal,
-    // sem id_parcela → hook atribui
-  });
+  const formaPagamento = ev.forma_pagamento_combinada || '';
+  // Só divide em parcelas quando a forma combinada é "Cartão de crédito" e a
+  // fotógrafa informou quantas vezes (v3.33) — qualquer outra forma (PIX,
+  // Dinheiro...) ou cartão à vista (1x) cria uma única conta, como sempre,
+  // mas agora já com a forma de pagamento preenchida em vez de ficar em branco.
+  const nParcelas = formaPagamento === 'Cartão de crédito' ? Math.max(1, Number(ev.parcelas_cartao || 1)) : 1;
+
+  if (nParcelas <= 1){
+    return PB.collection('financeiro').create({
+      id_evento: Number(ev.id_evento),
+      id_cliente: ev.id_cliente || '',
+      cliente: ev.cliente_responsavel || '',
+      tipo_cobranca: 'Saldo do evento',
+      num_parcela: 1,
+      total_parcelas: 1,
+      vencimento: '',
+      valor_previsto: valorFinal,
+      forma_pagamento: formaPagamento,
+      status: 'Pendente',
+      data_pagamento: '',
+      valor_pago: 0,
+      saldo: valorFinal,
+      // sem id_parcela → hook atribui
+    });
+  }
+
+  // Divide em N parcelas iguais, com o ajuste de centavos concentrado na
+  // última para a soma bater exatamente com o valor final.
+  const valorParcela = Math.floor((valorFinal / nParcelas) * 100) / 100;
+  let primeira = null;
+  for (let i = 0; i < nParcelas; i++){
+    const ultima = i === nParcelas - 1;
+    const valor = ultima ? Number((valorFinal - valorParcela * (nParcelas - 1)).toFixed(2)) : valorParcela;
+    const criada = await PB.collection('financeiro').create({
+      id_evento: Number(ev.id_evento),
+      id_cliente: ev.id_cliente || '',
+      cliente: ev.cliente_responsavel || '',
+      tipo_cobranca: 'Parcela',
+      num_parcela: i + 1,
+      total_parcelas: nParcelas,
+      vencimento: '',
+      valor_previsto: valor,
+      forma_pagamento: formaPagamento,
+      status: 'Pendente',
+      data_pagamento: '',
+      valor_pago: 0,
+      saldo: valor,
+      // sem id_parcela → hook atribui
+    });
+    if (!primeira) primeira = criada;
+  }
+  return primeira;
 }
 
 async function pbCriarEvento(dados){
@@ -89,6 +126,7 @@ async function pbCriarEvento(dados){
     valor_final: Number(dados.valorFinal || dados.valorPacote || 0),
     prazo_entrega: dados.prazoEntrega || '',
     forma_pagamento_combinada: dados.formaPagamentoCombinada || '',
+    parcelas_cartao: Number(dados.parcelasCartao || 0),
     contrato: dados.contrato || 'Não',
     link_contrato: dados.linkContrato || '',
     link_briefing: dados.linkBriefing || '',

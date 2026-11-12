@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.33.0 | 2026-11-12 | Financeiro: botão "Gerar recibo" em parcelas/entrada quitadas (PDF com valor por extenso); Forma de pagamento combinada "Cartão de crédito" pede quantidade de parcelas e a conta do Financeiro já nasce dividida nessa forma de pagamento | [2.60](#260-financeiro--recibo-de-quitação-e-parcelamento-automático-no-cartão-v3330) |
 | v3.32.0 | 2026-11-11 | ⚠️ Correção crítica: `contratos.listRule` estava auth-only (faltava a regra pública por token que a `viewRule` já tinha) — qualquer cliente externo via link do Contrato Digital recebia "Contrato não encontrado", mascarado nos testes porque o navegador da fotógrafa já tinha login do CRM salvo | [2.59](#259-correção-crítica--contratoslistrule-bloqueava-cliente-externo-v3320) |
 | v3.31.0 | 2026-11-11 | Contrato Digital — corrige dados do contrato "Pendente" congelados mesmo depois de corrigir cliente/evento e salvar o Orçamento de novo; agora o próprio "Salvar" atualiza o snapshot do contrato pendente, mantendo o mesmo link | [2.58](#258-contrato-digital--contrato-pendente-acompanha-correções-no-orçamento-v3310) |
 | v3.30.0 | 2026-11-11 | Orçamento: CPF e endereço completo ganham campos no card "Cliente" — gravam direto no cadastro do cliente (corrige esses dados saindo em branco no Contrato Digital para leads criados direto pela tela de Orçamentos) | [2.57](#257-orçamento--cpf-e-endereço-completo-no-card-cliente-v3300) |
@@ -1573,6 +1574,15 @@ Muitos leads nascem direto em CRM · Orçamentos (sem passar pela tela Clientes)
 - **Corrigido um bug real no caminho**: `pbAtualizarCliente`/`clienteFormToPb` fazia um *replace* completo do registro em vez de um patch parcial — chamar com só CPF/endereço apagaria Nome/WhatsApp/E-mail/Instagram/Observações do cliente com string vazia. Agora só grava as chaves realmente enviadas (mesmo padrão de `MAPA_LEAD`/`MAPA_EVENTO`), sem mudar o comportamento da tela Clientes (que já envia o formulário completo).
 
 Sem migration — os campos de endereço/CPF já existiam na coleção `clientes` desde a Fase 1. Arquivos: `pbClientes.js`, `modules/leadForm.js`, `crm.html`.
+
+### 2.60 Financeiro — recibo de quitação e parcelamento automático no cartão (v3.33.0)
+
+Duas melhorias pedidas para o módulo Financeiro:
+
+- **Recibo de quitação**: botão "Gerar recibo" aparece ao lado da Entrada (quando o Status dela é "Recebido") e de cada parcela já lançada com Status "Recebido". Gera um PDF (novo `reciboPdf.js`, mesmo estilo visual do Orçamento/Contrato) com valor em destaque, **valor por extenso** (função própria de número→texto em português, sem dependência externa), referência ao evento/parcela, forma de pagamento, data e a declaração padrão de quitação. Baixa direto no navegador, sem passar pelo PocketBase.
+- **Parcelamento automático no cartão**: quando "Forma de pagamento combinada" (lead fechado ou editando o Evento) é "Cartão de crédito", aparece ao lado um campo "Quantas vezes" (novo `eventos.parcelas_cartao`). `pbCriarContaPendente_` passa a usar essa informação: com Cartão de crédito + N > 1, a conta já nasce no Financeiro com as N parcelas lançadas (valor dividido igualmente, ajuste de centavos na última) e `Forma pagamento` preenchida; com qualquer outra forma (ou cartão à vista), continua sendo uma única conta — mas agora com a forma de pagamento já preenchida também, em vez de ficar em branco.
+
+⚠️ Exige aplicar a migration `1793000505_add_parcelas_cartao_eventos.js` na VM (já aplicada). Arquivos: `pbSchema.js`, `pbEventos.js`, `pbLeads.js`, `reciboPdf.js` (novo), `modules/leadForm.js`, `modules/eventos.js`, `modules/financeiro.js`, `crm.html`, `pb_migrations/1793000505_add_parcelas_cartao_eventos.js`.
 
 ### 2.59 Correção crítica — `contratos.listRule` bloqueava cliente externo (v3.32.0)
 

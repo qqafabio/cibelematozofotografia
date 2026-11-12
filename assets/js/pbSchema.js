@@ -62,6 +62,7 @@ const PB_SCHEMA = {
       ['Valor final', 'valor_final', 'number'],
       ['Prazo entrega', 'prazo_entrega', 'text'],
       ['Forma de pagamento combinada', 'forma_pagamento_combinada', 'text'], // v3.23: combinada no fechamento do lead (Contrato Digital) — distinta de financeiro.forma_pagamento (por parcela, só após o recebimento)
+      ['Parcelas (cartão)', 'parcelas_cartao', 'number'], // v3.33: só relevante quando forma_pagamento_combinada = "Cartão de crédito" — quantas vezes a conta do Financeiro é dividida ao criar
       ['Contrato', 'contrato', 'text'],
       ['Link contrato', 'link_contrato', 'text'],
       ['Link briefing', 'link_briefing', 'text'],
