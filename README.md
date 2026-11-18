@@ -1,10 +1,11 @@
 # Cibele Matozo Fotografia
 
-Duas ferramentas independentes da Cibele Matozo Fotografia, hospedadas de graça no GitHub Pages:
+Ferramentas hospedadas de graça no GitHub Pages — o Contrato Digital e o CRM são da Cibele Matozo Fotografia; o Contrato Digital da José Matozo Fotografia é um negócio independente que só compartilha a hospedagem:
 
 | Ferramenta | Arquivo(s) | Back-end |
 |---|---|---|
 | **Contrato Digital** — formulário que o cliente preenche (dados, pacote, cálculo automático, contrato e assinatura) | `index.html` (público) + `gerador-de-link.html` (uso interno, cria o link personalizado por cliente) | Apps Script próprio (existe só no editor do Apps Script — não fica neste repositório) |
+| **Contrato Digital — José Matozo Fotografia** — ferramenta independente (negócio separado da Cibele): fotógrafo descreve pacote/valor/forma de pagamento e gera um link; o cliente completa seus dados, lê o contrato e assina | `jose-matozo/contrato.html` (público) + `jose-matozo/gerador-de-link.html` (uso interno) | Apps Script próprio (`infra/apps_script/jose_matozo_contrato.gs`) |
 | **CRM** — leads, clientes, eventos, agenda, orçamentos, financeiro, cobranças, produção, custos e freelance | `crm.html` + `assets/` | PocketBase (leitura e escrita) + Apps Script enxuto para a Google Agenda |
 
 > 📋 **Histórico de versões:** veja o [RELEASE_NOTES.md](./RELEASE_NOTES.md). Toda versão implantada deve ser registrada lá — este README descreve só o estado atual do projeto.
@@ -23,6 +24,10 @@ Duas ferramentas independentes da Cibele Matozo Fotografia, hospedadas de graça
 ```
 index.html               Contrato Digital (público)
 gerador-de-link.html     gerador de link personalizado (interno)
+jose-matozo/             Contrato Digital da José Matozo Fotografia (negócio independente)
+  contrato.html          página pública do contrato
+  gerador-de-link.html   gerador de link personalizado (interno)
+  assets/js/config.js    URL do Apps Script próprio
 crm.html                 esqueleto do CRM: <head>, <body> e tags de carregamento
 assets/css/crm.css       estilo do CRM
 assets/js/
@@ -57,6 +62,16 @@ Regras de exclusão que protegem o rastro financeiro:
 3. No `index.html`, troque `APPS_SCRIPT_EXEC_URL` por essa URL.
 4. Publique pelo GitHub Pages (branch `main`, pasta `/root`). A URL do GitHub Pages — não a do Apps Script — é a que vai para o cliente e para o campo "Link da página do contrato" do `gerador-de-link.html`.
 5. Teste de ponta a ponta: a linha aparece na planilha, o PDF cai no Drive e os e-mails chegam. Se o envio falhar com erro de **CORS** no console, confira a URL (sem espaços) e o acesso "Qualquer pessoa".
+
+### Contrato Digital — José Matozo Fotografia
+
+Ferramenta independente (negócio separado da Cibele Matozo Fotografia), na pasta `jose-matozo/`.
+
+1. No [script.google.com](https://script.google.com), crie um **novo** projeto (pode ser na mesma conta Google) e cole `infra/apps_script/jose_matozo_contrato.gs` — o passo a passo de implantação está no topo do próprio arquivo.
+2. **Implantar → Nova implantação → App da Web** (executar como **Eu**, acesso **Qualquer pessoa** — não "Qualquer pessoa com Conta do Google", para o cliente nunca precisar fazer login) e copie a URL `.../exec`.
+3. Em `jose-matozo/assets/js/config.js`, troque `APPS_SCRIPT_URL` por essa URL.
+4. Publique pelo GitHub Pages (mesmo site deste repositório) — o link `jose-matozo/gerador-de-link.html` fica para uso interno; só o link gerado por ele (`jose-matozo/contrato.html?cond=...`) vai para o cliente.
+5. Teste de ponta a ponta assinando um contrato de teste: o PDF deve chegar por e-mail para o cliente e para `cibelematozofotografia@gmail.com`, e uma linha deve aparecer na aba "Contratos" da planilha vinculada ao Apps Script.
 
 ### CRM
 

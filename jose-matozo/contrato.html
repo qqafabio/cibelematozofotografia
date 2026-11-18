@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contrato Digital — José Matozo Fotografia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&family=Caveat:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBF9F4; --paper-raised:#FFFFFF; --ink:#221F1C; --ink-soft:#6B6459;
+    --rule:#DCD4C4; --gold:#A8791E; --gold-soft:#F1E6CC; --error:#B23B2E;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif;-webkit-font-smoothing:antialiased;}
+  .app{max-width:640px;margin:0 auto;padding:0 20px 90px;}
+  header{position:sticky;top:0;background:var(--paper);z-index:5;padding:18px 0 0;}
+  header .row{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--rule);}
+  header .wordmark{font-size:12.5px;letter-spacing:0.1em;color:var(--ink-soft);}
+  header .wordmark strong{color:var(--ink);}
+  .progress-track{height:3px;background:var(--rule);margin-top:14px;border-radius:2px;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--gold);transition:width .25s ease;width:0%;}
+  .progress-label{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+
+  main{padding-top:26px;min-height:60vh;}
+  .step{display:block;animation:fadeIn .2s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .step h2{font-family:'Fraunces',serif;font-weight:500;font-size:24px;margin:0 0 6px;}
+  .step .step-sub{font-size:14px;color:var(--ink-soft);line-height:1.55;margin:0 0 22px;max-width:52ch;}
+
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:6px;}
+  .field input, .field select, .field textarea{
+    width:100%;font-family:'Work Sans',sans-serif;font-size:15px;color:var(--ink);
+    background:var(--paper-raised);border:1px solid var(--rule);border-radius:3px;
+    padding:11px 12px;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold);}
+  .field .err{display:none;margin-top:5px;}
+  .field.has-error input, .field.has-error select, .field.has-error textarea{border-color:var(--error);}
+  .field.has-error .err{display:block;}
+  .field-row{display:flex;gap:12px;}
+  .field-row .field{flex:1;}
+
+  .yn-row{display:flex;gap:10px;}
+  .yn-btn{flex:1;border:1px solid var(--rule);border-radius:3px;padding:14px;text-align:center;font-size:14px;line-height:1.5;background:var(--paper-raised);cursor:pointer;}
+  .yn-btn.selected{border-color:var(--gold);background:var(--gold-soft);}
+  .yn-btn.autoriza.selected{border-color:#5C7A52;background:#E7EEE1;}
+  .yn-btn.naoautoriza.selected{border-color:var(--error);background:#F5E3E0;}
+
+  .summary-table{border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--paper-raised);}
+  .summary-table .li{display:flex;justify-content:space-between;gap:14px;padding:12px 16px;font-size:14.5px;border-bottom:1px solid var(--rule);}
+  .summary-table .li span:last-child{text-align:right;}
+  .summary-table .li:last-child{border-bottom:none;}
+  .summary-table .condicoes{padding:14px 16px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;}
+
+  .contract-pane{border:1px solid var(--rule);border-radius:3px;background:var(--paper-raised);max-height:360px;overflow-y:auto;padding:18px;font-size:13px;line-height:1.65;}
+  .contract-pane h3{font-family:'Fraunces',serif;font-size:14.5px;margin:18px 0 6px;}
+  .contract-pane h3:first-child{margin-top:0;}
+  .contract-pane p{margin:0 0 10px;color:var(--ink);}
+  .scroll-hint{font-size:12px;color:var(--gold);margin-top:8px;}
+  .scroll-hint.done{color:#5C7A52;}
+
+  .declare-list{display:flex;flex-direction:column;gap:12px;}
+  .declare-item{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.5;cursor:pointer;}
+  .declare-item input{margin-top:3px;}
+
+  .method-tabs{display:flex;gap:8px;margin-bottom:18px;}
+  .method-tab{flex:1;text-align:center;padding:10px;border:1px solid var(--rule);border-radius:3px;font-size:13.5px;cursor:pointer;background:var(--paper-raised);}
+  .method-tab.selected{border-color:var(--ink);background:var(--ink);color:var(--paper);}
+  .method-panel{display:none;}
+  .method-panel.active{display:block;}
+
+  .canvas-wrap{position:relative;border-bottom:1.5px solid var(--ink);background:#FDFCF9;}
+  #pad{display:block;width:100%;height:180px;touch-action:none;cursor:crosshair;}
+  .placeholder{position:absolute;left:0;right:0;top:0;bottom:12px;display:flex;align-items:center;justify-content:center;font-family:'Caveat',cursive;font-size:24px;color:#C6BFAF;pointer-events:none;transition:opacity .15s ease;}
+  .pad-actions{display:flex;gap:10px;margin-top:12px;}
+
+  button{font-family:'Work Sans',sans-serif;cursor:pointer;border-radius:3px;transition:opacity .15s ease;}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  .ghost-btn{background:transparent;border:1px solid var(--rule);color:var(--ink);font-size:13.5px;padding:9px 14px;}
+  .ghost-btn:not(:disabled):hover{border-color:var(--ink-soft);}
+
+  .nav-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:28px;padding-top:20px;border-top:1px solid var(--rule);}
+  .nav-btn{padding:12px 20px;font-size:14px;border:none;}
+  .btn-back{background:transparent;color:var(--ink-soft);}
+  .btn-next{background:var(--ink);color:var(--paper);margin-left:auto;}
+  .btn-next:not(:disabled):hover{opacity:.88;}
+
+  .err{color:var(--error);font-size:12.5px;}
+
+  .success-box{text-align:center;padding:10px 0;}
+  .success-box .check{font-size:38px;}
+  .success-box dl{display:inline-grid;grid-template-columns:auto 1fr;gap:6px 14px;text-align:left;font-size:13.5px;margin-top:18px;}
+  .success-box dt{color:var(--ink-soft);}
+  .success-box dd{margin:0;}
+
+  .pagina-erro{text-align:center;padding:70px 20px 40px;}
+  .pagina-erro h2{font-family:'Fraunces',serif;font-weight:500;font-size:22px;margin:0 0 10px;}
+  .pagina-erro p{color:var(--ink-soft);font-size:14px;line-height:1.6;max-width:44ch;margin:0 auto;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="row">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="7" width="20" height="14" rx="2" stroke="#221F1C" stroke-width="1.4"/>
+        <path d="M8 7L9.6 4.4H14.4L16 7" stroke="#221F1C" stroke-width="1.4" stroke-linejoin="round"/>
+        <circle cx="12" cy="14" r="4.2" stroke="#221F1C" stroke-width="1.4"/>
+      </svg>
+      <span class="wordmark"><strong>JOSÉ MATOZO</strong> · contrato digital</span>
+    </div>
+    <div class="progress-track" id="progressTrack" hidden><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-label" id="progressLabel"></div>
+  </header>
+  <main id="stepsContainer"></main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const CONDICOES = (params.get('cond') || '').trim();
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function enderecoResidencial_(s){
+  return `Rua ${s.rua}, nº ${s.numero}${s.complemento?(', '+s.complemento):''} — ${s.bairro}, ${s.cidade}/${s.uf}`;
+}
+const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+
+function maskCPF(v){
+  v = v.replace(/\D/g,'').slice(0,11);
+  v = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})\.(\d{3})(\d)/,'$1.$2.$3').replace(/(\d{3})\.(\d{3})\.(\d{3})(\d{1,2})/,'$1.$2.$3-$4');
+  return v;
+}
+function maskTelefone(v){
+  v = v.replace(/\D/g,'').slice(0,11);
+  if (v.length>10) v = v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');
+  else v = v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+  return v;
+}
+function maskData(v){
+  v = v.replace(/\D/g,'').slice(0,8);
+  v = v.replace(/(\d{2})(\d)/,'$1/$2').replace(/(\d{2})\/(\d{2})(\d)/,'$1/$2/$3');
+  return v;
+}
+function maskHora(v){
+  v = v.replace(/\D/g,'').slice(0,4);
+  v = v.replace(/(\d{2})(\d{1,2})/,'$1:$2');
+  return v;
+}
+
+function bindText(container, id, key, mask){
+  const input = container.querySelector('#'+id);
+  input.addEventListener('input', () => {
+    let v = input.value;
+    if (mask) { v = mask(v); input.value = v; }
+    state[key] = v;
+    const field = input.closest('.field'); if(field) field.classList.remove('has-error');
+  });
+}
+function requireField(el,id,condition,msg){
+  const input = el.querySelector('#'+id);
+  const field = input.closest('.field');
+  let err = field.querySelector('.err');
+  if(!err){ err=document.createElement('div'); err.className='err'; field.appendChild(err); }
+  if(!condition){ field.classList.add('has-error'); err.textContent = msg; return false; }
+  field.classList.remove('has-error'); return true;
+}
+function showTopError(el,msg){
+  let err = el.querySelector('.top-err');
+  if(!err){
+    err=document.createElement('div');
+    err.className='err top-err';
+    err.style.margin='14px 0 0';
+    const navRow = el.querySelector('.nav-row');
+    if(navRow) el.insertBefore(err, navRow); else el.appendChild(err);
+  }
+  err.textContent = msg;
+}
+function clearTopError(el){ const e=el.querySelector('.top-err'); if(e) e.remove(); }
+function requireStepChoice(el, condition, msg){
+  if(!condition){ showTopError(el,msg); return false; }
+  clearTopError(el); return true;
+}
+
+const state = {
+  nome:'', cpf:'', telefone:'', email:'',
+  rua:'', numero:'', complemento:'', bairro:'', cidade:'', uf:'',
+  enderecoEvento:'', dataEvento:'', horarioEvento:'',
+  autorizacaoImagem:null,
+  declaracoes:{d1:false,d2:false,d3:false,d4:false,d5:false,d6:false,d7:false},
+  contratoLido:false,
+  metodoAssinatura:'desenho',
+  aceiteNome:'', aceiteNomeConfirma:'', aceiteDeclara:false,
+  assinaturaPNG:null, temTraco:false,
+};
+
+const EMPRESA = {
+  nomeEmpresarial: 'José Matozo de Lara 30765161915',
+  cnpj: '43.083.998/0001-48',
+  cpf: '307.651.619-15',
+  enderecoRua: 'Rua Antonio Portela, 331, São Braz',
+  cidade: 'Curitiba',
+  uf: 'PR',
+  telefone: '(41) 99919-1498',
+  email: 'cibelematozofotografia@gmail.com',
+};
+
+function buildClauses(){
+  const imagemTxt = state.autorizacaoImagem==='autorizo'
+    ? 'AUTORIZO a utilização para portfólio, redes sociais, site, publicidade e materiais promocionais da José Matozo Fotografia.'
+    : 'NÃO AUTORIZO a utilização para essas finalidades.';
+  const condicoesLinhas = (CONDICOES || 'Condições a combinar diretamente com o CONTRATADO.')
+    .split('\n').map(l=>l.trim()).filter(Boolean);
+
+  const lista = [
+    { numerado:false, t:'QUALIFICAÇÃO DAS PARTES', b:`CONTRATADO: José Matozo de Lara, nome empresarial "${EMPRESA.nomeEmpresarial}", microempreendedor individual (MEI), inscrito no CNPJ sob o nº ${EMPRESA.cnpj}, CPF nº ${EMPRESA.cpf}, com endereço comercial na ${EMPRESA.enderecoRua}, ${EMPRESA.cidade}, ${EMPRESA.uf}, telefone/WhatsApp ${EMPRESA.telefone}, e-mail ${EMPRESA.email}, doravante denominado CONTRATADO.\n\nCONTRATANTE: ${state.nome}, CPF nº ${state.cpf}, residente e domiciliado(a) à ${enderecoResidencial_(state)}, telefone/WhatsApp ${state.telefone}, e-mail ${state.email}, doravante denominado(a) CONTRATANTE.` },
+    { t:'DO OBJETO DO CONTRATO', b:`O presente contrato tem por objeto a prestação de serviços profissionais de fotografia e/ou filmagem para o evento abaixo qualificado, conforme o pacote, os serviços e as condições descritos na cláusula seguinte.\n\nData do evento: ${state.dataEvento}   Horário: ${state.horarioEvento}\nLocal do evento: ${state.enderecoEvento}` },
+    { t:'DO PACOTE, DO VALOR E DA FORMA DE PAGAMENTO', b:`As condições abaixo foram combinadas diretamente entre o CONTRATANTE e o CONTRATADO antes da assinatura deste contrato:\n\n${condicoesLinhas.join('\n')}\n\nCartão de crédito, quando utilizado, poderá ser parcelado conforme definido entre as partes, com taxas da operadora sob responsabilidade do CONTRATANTE.` },
+    { t:'DA COBERTURA DO EVENTO', b:`A cobertura do evento será realizada conforme o pacote contratado e durante o período previamente acordado entre as partes.\n\nA expressão "cobertura completa do evento", quando utilizada na descrição do pacote, refere-se à cobertura realizada durante o período contratado, não representando obrigação de registro contínuo e ininterrupto de todos os segundos do evento.\n\nAtrasos decorrentes de responsabilidade do CONTRATANTE, convidados, familiares, cerimonial, buffet, espaço de eventos, fornecedores ou terceiros não implicarão automaticamente na extensão do período contratado. Horas adicionais poderão ser contratadas mediante disponibilidade e pagamento correspondente.` },
+    { t:'DA RESERVA DA DATA', b:`A data somente será considerada efetivamente reservada após a confirmação do pagamento da entrada ou do valor estabelecido para reserva. Enquanto não houver confirmação, a data poderá ser disponibilizada para outros interessados.` },
+    { t:'DO CANCELAMENTO, DESISTÊNCIA E REEMBOLSO', b:`O cancelamento deverá ser solicitado por escrito, preferencialmente por WhatsApp ou e-mail. Quando aplicável, será observado o direito de arrependimento previsto na legislação de proteção ao consumidor.\n\nCancelamento com antecedência igual ou superior a 60 dias: restituição de 80% dos valores pagos, com retenção de 20% pela reserva da data e custos administrativos. Entre 30 e 59 dias: restituição de 50%. Inferior a 30 dias: restituição de 20%, sem prejuízo da análise de custos comprovadamente realizados e não recuperáveis.\n\nEm caso de cancelamento imputável ao CONTRATADO, sem substituição por profissional compatível ou nova data acordada, serão restituídos os valores correspondentes aos serviços não prestados, observada a legislação aplicável.` },
+    { t:'DA REMARCAÇÃO DO EVENTO', b:`A remarcação dependerá de comunicação prévia e disponibilidade da agenda do CONTRATADO. Havendo disponibilidade, os valores pagos poderão ser aproveitados para a nova data. Em caso de caso fortuito ou força maior, as partes buscarão de boa-fé a realização do serviço em nova data.` },
+    { t:'DOS PRAZOS E DA ENTREGA DOS ARQUIVOS', b:`As fotografias serão entregues após seleção, tratamento e edição, no prazo informado pelo CONTRATADO no momento da contratação. Os arquivos digitais serão disponibilizados por link ou plataforma indicada pelo CONTRATADO.\n\nOs prazos poderão ser prorrogados quando houver atraso do CONTRATANTE em seleção, aprovação, fornecimento de informações ou outra etapa sob sua responsabilidade.` },
+    { t:'DA GUARDA, ARMAZENAMENTO E RESPONSABILIDADE PELOS ARQUIVOS', b:`Após a disponibilização dos arquivos, o CONTRATANTE será responsável pelo download e por manter cópias de segurança.\n\nO CONTRATADO manterá, sempre que tecnicamente possível, cópia de segurança dos arquivos finais entregues pelo período de 90 (noventa) dias, contado da disponibilização da entrega final. Encerrado o prazo, o CONTRATADO poderá excluir definitivamente os arquivos, sem necessidade de aviso adicional.\n\nRecomenda-se que o CONTRATANTE mantenha ao menos duas cópias de segurança dos materiais.` },
+    { t:'DA SELEÇÃO E EDIÇÃO DAS FOTOGRAFIAS', b:`As fotografias serão selecionadas e tratadas conforme critérios técnicos e artísticos do CONTRATADO. Fotografias tecnicamente inadequadas, duplicadas, testes, fora de foco, com olhos fechados ou sem qualidade compatível poderão não integrar a entrega.\n\nArquivos RAW, originais de câmera, arquivos de projeto e materiais intermediários não fazem parte da entrega, salvo contratação expressa.` },
+    { t:'DO ÁLBUM FOTOGRÁFICO (QUANDO INCLUSO)', b:`Nos pacotes com álbum fotográfico, o CONTRATANTE receberá os arquivos digitais editados e deverá selecionar, dentre eles, as imagens para composição do álbum. O prazo para seleção será de 20 (vinte) dias corridos a partir da disponibilização dos arquivos.\n\nApós 20 dias, poderá ser concedido prazo adicional de 10 dias. Persistindo a ausência de seleção, o CONTRATADO poderá, mediante comunicação, selecionar as imagens segundo critérios técnicos e artísticos.` },
+    { t:'DOS SERVIÇOS DE VÍDEO (QUANDO CONTRATADOS)', b:`Quando o pacote incluir filmagem, o material será entregue editado, organizado e buscando contemplar os momentos relevantes registrados pela equipe, conforme a modalidade descrita na cláusula do pacote contratado. Isso não representa entrega de arquivos brutos, salvo contratação expressa.` },
+    { t:'DOS DIREITOS AUTORAIS', b:`As fotografias e vídeos produzidos constituem obras protegidas pela legislação de direitos autorais. A contratação concede ao CONTRATANTE direito de uso pessoal e não comercial dos materiais entregues. Compartilhamento em redes sociais para fins pessoais é permitido. Comercialização, licenciamento ou revenda dependem de autorização expressa do CONTRATADO.` },
+    { t:'DO DIREITO DE IMAGEM', b:`A cobertura poderá registrar o(s) titular(es) do evento, familiares e convidados.\n\nQuando o(s) participante(s) retratado(s) nas imagens objeto deste contrato for(em) menor(es) de idade, a autorização abaixo é prestada pelo responsável legal, na qualidade de CONTRATANTE qualificado(a) na abertura deste instrumento.\n\n${imagemTxt}` },
+    { t:'DA PROTEÇÃO DE DADOS PESSOAIS', b:`Os dados pessoais serão tratados para execução do contrato, comunicação, cobrança, prestação dos serviços, entrega dos materiais e cumprimento de obrigações legais.\n\nNo tratamento de dados pessoais de crianças, será observado o melhor interesse da criança e, quando aplicável, consentimento específico de pelo menos um dos pais ou responsável legal.` },
+    { t:'DAS RESPONSABILIDADES DO CONTRATANTE', b:`Fornecer informações corretas; comunicar alterações; garantir acesso da equipe; informar restrições do local; cumprir pagamentos; realizar seleções e aprovações nos prazos; baixar e guardar os arquivos; e comunicar solicitações especiais.` },
+    { t:'DAS RESPONSABILIDADES DO CONTRATADO', b:`Prestar os serviços com zelo e profissionalismo; disponibilizar profissionais e equipamentos compatíveis; realizar tratamento e edição; entregar os materiais previstos; e cumprir os prazos, ressalvadas as hipóteses previstas neste contrato.` },
+    { t:'DA EQUIPE E SUBSTITUIÇÃO DE PROFISSIONAIS', b:`Em situações excepcionais, o CONTRATADO poderá substituir fotógrafo ou outro profissional da equipe por pessoa de qualificação compatível, especialmente em casos de doença, acidente, emergência, impedimento, caso fortuito ou força maior.` },
+    { t:'DE FALHAS TÉCNICAS E PERDA DE MATERIAL', b:`O CONTRATADO adotará procedimentos técnicos e medidas razoáveis para preservação dos arquivos. Em caso de falha técnica imprevisível, defeito, corrupção de arquivos ou outro evento alheio à sua vontade, serão adotadas medidas tecnicamente possíveis para recuperação.` },
+    { t:'DO CASO FORTUITO E DA FORÇA MAIOR', b:`Nenhuma parte será considerada inadimplente quando o cumprimento for impossibilitado por acontecimento imprevisível ou inevitável, alheio à sua vontade. As partes buscarão de boa-fé solução que possibilite a realização do serviço em nova data.` },
+    { t:'DA ALIMENTAÇÃO E DOS INTERVALOS DA EQUIPE', b:`Em eventos de duração prolongada, o CONTRATANTE ou responsável deverá disponibilizar alimentação adequada à equipe, conforme a duração da cobertura e as condições do evento.` },
+    { t:'DOS SERVIÇOS ADICIONAIS', b:`Serviços, produtos ou horas não previstos poderão ser contratados separadamente, mediante disponibilidade e concordância quanto aos valores.` },
+    { t:'DAS OBSERVAÇÕES E CONDIÇÕES ESPECIAIS', b:`As condições especiais desta contratação, quando houver, estão descritas na cláusula "Do Pacote, do Valor e da Forma de Pagamento".` },
+    { t:'DA COMUNICAÇÃO ENTRE AS PARTES', b:`Telefone/WhatsApp e e-mail informados neste instrumento serão considerados meios válidos de comunicação relacionados à execução do contrato. Alterações relevantes deverão, preferencialmente, ser registradas por escrito.` },
+    { t:'DAS DISPOSIÇÕES GERAIS', b:`Este contrato representa o acordo entre as partes. Alterações deverão ser acordadas entre as partes. A tolerância eventual não implica renúncia de direitos.` },
+    { t:'DO FORO', b:`Fica eleito o foro competente nos termos da legislação aplicável para dirimir questões decorrentes deste contrato, sem prejuízo dos direitos legalmente assegurados ao CONTRATANTE quando caracterizada relação de consumo.` },
+    { t:'DA ACEITAÇÃO E ASSINATURA', b:`O CONTRATANTE declara ter lido integralmente este contrato, compreendido suas cláusulas e condições e estar de acordo com os serviços, valores, prazos e demais condições.\n\nAs partes reconhecem a validade da assinatura física ou eletrônica deste instrumento, quando realizada por meio legalmente admitido e apto a identificar o signatário e demonstrar sua manifestação de vontade.` },
+  ];
+
+  let n = 0;
+  return lista.map(item => item.numerado === false
+    ? { t: item.t, b: item.b }
+    : { t: `CLÁUSULA ${++n}ª – ${item.t}`, b: item.b });
+}
+
+const STEPS = [
+  {id:'intro',        render:renderIntro,        validate:()=>true},
+  {id:'dadosPessoais',render:renderDadosPessoais, validate:validateDadosPessoais},
+  {id:'dadosEvento',  render:renderDadosEvento,   validate:validateDadosEvento},
+  {id:'condicoes',    render:renderCondicoes,     validate:()=>true},
+  {id:'imagem',       render:renderImagem,        validate:(el)=>requireStepChoice(el, !!state.autorizacaoImagem, 'Escolha AUTORIZO ou NÃO AUTORIZO para continuar.')},
+  {id:'contrato',     render:renderContrato,      validate:(el)=>{ if(!state.contratoLido){ showTopError(el,'Role o contrato até o final antes de continuar.'); return false;} clearTopError(el); return true; }},
+  {id:'declaracoes',  render:renderDeclaracoes,   validate:(el)=>{ const ok=Object.values(state.declaracoes).every(Boolean); if(!ok) showTopError(el,'Marque todas as declarações para continuar.'); else clearTopError(el); return ok; }},
+  {id:'assinatura',   render:renderAssinatura,    validate:validateAssinatura},
+  {id:'final',        render:renderFinal,         validate:()=>true},
+];
+
+let currentIndex = 0;
+function renderIntro(el){
+  el.innerHTML = `
+    <h2 style="font-size:29px;max-width:18ch;">Contrato digital de prestação de serviços</h2>
+    <p class="step-sub">José Matozo Fotografia. Antes de assinar, você vai conferir os seus dados, as condições combinadas, ler o contrato e assinar eletronicamente. Leva de 3 a 6 minutos.</p>
+  `;
+}
+function renderDadosPessoais(el){
+  el.innerHTML = `
+    <h2>Seus dados</h2>
+    <p class="step-sub">Preencha seus dados pessoais exatamente como devem constar no contrato.</p>
+    <div class="field"><label>Nome completo</label><input type="text" id="f_nome" value="${esc(state.nome)}"></div>
+    <div class="field-row">
+      <div class="field"><label>CPF</label><input type="text" id="f_cpf" value="${esc(state.cpf)}" inputmode="numeric"></div>
+      <div class="field"><label>Telefone/WhatsApp</label><input type="text" id="f_telefone" value="${esc(state.telefone)}" inputmode="numeric"></div>
+    </div>
+    <div class="field"><label>E-mail</label><input type="email" id="f_email" value="${esc(state.email)}"></div>
+    <div class="field"><label>Endereço residencial — Rua</label><input type="text" id="f_rua" value="${esc(state.rua)}"></div>
+    <div class="field-row">
+      <div class="field"><label>Número</label><input type="text" id="f_numero" value="${esc(state.numero)}"></div>
+      <div class="field"><label>Complemento (opcional)</label><input type="text" id="f_complemento" value="${esc(state.complemento)}"></div>
+    </div>
+    <div class="field"><label>Bairro</label><input type="text" id="f_bairro" value="${esc(state.bairro)}"></div>
+    <div class="field-row">
+      <div class="field"><label>Cidade</label><input type="text" id="f_cidade" value="${esc(state.cidade)}"></div>
+      <div class="field"><label>UF</label>
+        <select id="f_uf">
+          <option value="">—</option>
+          ${UFS.map(uf=>`<option value="${uf}" ${state.uf===uf?'selected':''}>${uf}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  `;
+  bindText(el,'f_nome','nome');
+  bindText(el,'f_cpf','cpf',maskCPF);
+  bindText(el,'f_telefone','telefone',maskTelefone);
+  bindText(el,'f_email','email');
+  bindText(el,'f_rua','rua');
+  bindText(el,'f_numero','numero');
+  bindText(el,'f_complemento','complemento');
+  bindText(el,'f_bairro','bairro');
+  bindText(el,'f_cidade','cidade');
+  el.querySelector('#f_uf').addEventListener('change', e=>{ state.uf = e.target.value; e.target.closest('.field').classList.remove('has-error'); });
+}
+function validateDadosPessoais(el){
+  let ok = true;
+  ok = requireField(el,'f_nome', state.nome.trim().length>2,'Informe o nome completo.') && ok;
+  ok = requireField(el,'f_cpf', state.cpf.replace(/\D/g,'').length===11,'Informe um CPF válido.') && ok;
+  ok = requireField(el,'f_telefone', state.telefone.replace(/\D/g,'').length>=10,'Informe um telefone válido.') && ok;
+  ok = requireField(el,'f_email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email.trim()),'Informe um e-mail válido.') && ok;
+  ok = requireField(el,'f_rua', state.rua.trim().length>0,'Informe a rua.') && ok;
+  ok = requireField(el,'f_numero', state.numero.trim().length>0,'Informe o número.') && ok;
+  ok = requireField(el,'f_bairro', state.bairro.trim().length>0,'Informe o bairro.') && ok;
+  ok = requireField(el,'f_cidade', state.cidade.trim().length>0,'Informe a cidade.') && ok;
+  ok = requireField(el,'f_uf', !!state.uf,'Selecione a UF.') && ok;
+  return ok;
+}
+function renderDadosEvento(el){
+  el.innerHTML = `
+    <h2>Dados do evento</h2>
+    <p class="step-sub">Informações do evento que será coberto pelo José Matozo Fotografia.</p>
+    <div class="field"><label>Endereço do evento</label><input type="text" id="f_enderecoEvento" value="${esc(state.enderecoEvento)}"></div>
+    <div class="field-row">
+      <div class="field"><label>Data do evento</label><input type="text" id="f_dataEvento" value="${esc(state.dataEvento)}" placeholder="DD/MM/AAAA" inputmode="numeric"></div>
+      <div class="field"><label>Horário do evento</label><input type="text" id="f_horarioEvento" value="${esc(state.horarioEvento)}" placeholder="HH:MM" inputmode="numeric"></div>
+    </div>
+  `;
+  bindText(el,'f_enderecoEvento','enderecoEvento');
+  bindText(el,'f_dataEvento','dataEvento',maskData);
+  bindText(el,'f_horarioEvento','horarioEvento',maskHora);
+}
+function validateDadosEvento(el){
+  let ok = true;
+  ok = requireField(el,'f_enderecoEvento', state.enderecoEvento.trim().length>3,'Informe o endereço do evento.') && ok;
+  ok = requireField(el,'f_dataEvento', /^\d{2}\/\d{2}\/\d{4}$/.test(state.dataEvento),'Informe a data no formato DD/MM/AAAA.') && ok;
+  ok = requireField(el,'f_horarioEvento', /^\d{2}:\d{2}$/.test(state.horarioEvento),'Informe o horário no formato HH:MM.') && ok;
+  return ok;
+}
+function renderCondicoes(el){
+  el.innerHTML = `
+    <h2>Confira as condições combinadas</h2>
+    <p class="step-sub">Pacote, valor e forma de pagamento combinados com José Matozo Fotografia antes deste link ser gerado. Encontrou algo errado? Avise pelo telefone/WhatsApp (41) 99919-1498 antes de assinar — estas condições não podem ser editadas aqui.</p>
+    <div class="summary-table"><div class="condicoes">${esc(CONDICOES || 'Condições a combinar diretamente com o CONTRATADO.')}</div></div>
+  `;
+}
+function renderImagem(el){
+  el.innerHTML = `
+    <h2>Autorização de uso da imagem</h2>
+    <p class="step-sub">A cobertura poderá registrar você, familiares e convidados do evento. Esta escolha é especificamente sobre usar essas imagens no portfólio e na divulgação da José Matozo Fotografia.</p>
+    <div class="yn-row">
+      <div class="yn-btn autoriza ${state.autorizacaoImagem==='autorizo'?'selected':''}" data-v="autorizo"><strong>AUTORIZO</strong><br><span style="font-size:12px;">Portfólio, redes sociais, site e materiais promocionais</span></div>
+      <div class="yn-btn naoautoriza ${state.autorizacaoImagem==='nao_autorizo'?'selected':''}" data-v="nao_autorizo"><strong>NÃO AUTORIZO</strong><br><span style="font-size:12px;">Uso restrito à entrega dos seus arquivos</span></div>
+    </div>
+  `;
+  el.querySelectorAll('.yn-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      state.autorizacaoImagem = b.dataset.v;
+      el.querySelectorAll('.yn-btn').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+      clearTopError(el);
+    });
+  });
+}
+function renderContrato(el){
+  const clauses = buildClauses();
+  window.__lastClauses = clauses;
+  el.innerHTML = `
+    <h2>Leia o contrato</h2>
+    <p class="step-sub">O contrato abaixo já está preenchido com os seus dados e as condições desta contratação. Role até o final para poder continuar.</p>
+    <div class="contract-pane" id="contractPane">
+      ${clauses.map(c=>`<h3>${esc(c.t)}</h3>${c.b.split('\n\n').map(p=>`<p>${esc(p).replace(/\n/g,'<br>')}</p>`).join('')}`).join('')}
+    </div>
+    <div class="scroll-hint" id="scrollHint">Role para baixo para ler o contrato completo…</div>
+  `;
+  const pane = el.querySelector('#contractPane');
+  const hint = el.querySelector('#scrollHint');
+  function checkScroll(){
+    const done = pane.scrollTop + pane.clientHeight >= pane.scrollHeight - 12;
+    if(done){ state.contratoLido = true; hint.textContent='Contrato lido até o final.'; hint.classList.add('done'); clearTopError(el); }
+  }
+  pane.addEventListener('scroll', checkScroll);
+  checkScroll();
+}
+const DECLARACOES_TXT = {
+  d1:'Declaro que as informações preenchidas neste contrato são verdadeiras e de minha responsabilidade.',
+  d2:'Declaro que li o contrato integralmente e compreendi suas condições.',
+  d3:'Declaro estar de acordo com o pacote, o valor e a forma de pagamento descritos na cláusula correspondente.',
+  d4:'Declaro estar ciente dos prazos de entrega informados pelo CONTRATADO.',
+  d5:'Declaro estar ciente de que, havendo álbum fotográfico incluso, terei prazo de 20 dias para seleção das imagens.',
+  d6:'Declaro estar ciente de que os arquivos serão mantidos pelo CONTRATADO por 90 dias após a entrega final, conforme previsto no contrato.',
+  d7:'Declaro possuir legitimidade para autorizar o tratamento e, quando aplicável, o uso de imagem de menores de idade participantes do evento.',
+};
+function renderDeclaracoes(el){
+  el.innerHTML = `
+    <h2>Declarações</h2>
+    <p class="step-sub">Confirme cada item abaixo para seguir para a assinatura.</p>
+    <div class="declare-list">
+      ${Object.entries(DECLARACOES_TXT).map(([k,txt])=>`
+        <label class="declare-item">
+          <input type="checkbox" id="dec_${k}" ${state.declaracoes[k]?'checked':''}>
+          <span>${txt}</span>
+        </label>`).join('')}
+    </div>
+  `;
+  Object.keys(DECLARACOES_TXT).forEach(k=>{
+    el.querySelector('#dec_'+k).addEventListener('change', e=>{ state.declaracoes[k]=e.target.checked; if(Object.values(state.declaracoes).every(Boolean)) clearTopError(el); });
+  });
+}
+function renderAssinatura(el){
+  el.innerHTML = `
+    <h2>Assinatura</h2>
+    <p class="step-sub">Escolha como deseja assinar o contrato.</p>
+    <div class="method-tabs">
+      <div class="method-tab" id="tabDesenho">Assinatura por desenho</div>
+      <div class="method-tab" id="tabAceite">Aceite eletrônico</div>
+    </div>
+    <div class="method-panel" id="panelDesenho">
+      <p class="step-sub" style="margin-bottom:14px;">Desenhe sua assinatura com o mouse (arraste segurando o botão esquerdo) ou com o dedo, no celular.</p>
+      <div class="canvas-wrap"><canvas id="pad"></canvas><span class="placeholder" id="placeholder">assine aqui</span></div>
+      <div class="pad-actions">
+        <button class="ghost-btn" id="undoBtn" type="button" disabled>Desfazer traço</button>
+        <button class="ghost-btn" id="clearBtn" type="button" disabled>Limpar</button>
+      </div>
+    </div>
+    <div class="method-panel" id="panelAceite">
+      <div class="field"><label>Nome completo</label><input type="text" id="f_aceiteNome" value="${esc(state.aceiteNome||state.nome)}"></div>
+      <div class="field"><label>Digite seu nome novamente para confirmar</label><input type="text" id="f_aceiteNomeConfirma" value="${esc(state.aceiteNomeConfirma)}"></div>
+      <label class="declare-item">
+        <input type="checkbox" id="f_aceiteDeclara" ${state.aceiteDeclara?'checked':''}>
+        <span>Declaro que o nome informado acima corresponde à minha assinatura e que estou de acordo com todas as condições deste contrato.</span>
+      </label>
+    </div>
+  `;
+  const tabD = el.querySelector('#tabDesenho'), tabA = el.querySelector('#tabAceite');
+  const panelD = el.querySelector('#panelDesenho'), panelA = el.querySelector('#panelAceite');
+  function selectMethod(m){
+    state.metodoAssinatura = m;
+    tabD.classList.toggle('selected', m==='desenho');
+    tabA.classList.toggle('selected', m==='aceite');
+    panelD.classList.toggle('active', m==='desenho');
+    panelA.classList.toggle('active', m==='aceite');
+    clearTopError(el);
+  }
+  tabD.addEventListener('click', ()=>selectMethod('desenho'));
+  tabA.addEventListener('click', ()=>selectMethod('aceite'));
+  selectMethod(state.metodoAssinatura||'desenho');
+
+  initSignaturePad(el);
+
+  bindText(el,'f_aceiteNome','aceiteNome');
+  bindText(el,'f_aceiteNomeConfirma','aceiteNomeConfirma');
+  el.querySelector('#f_aceiteDeclara').addEventListener('change', e=>{ state.aceiteDeclara=e.target.checked; clearTopError(el); });
+}
+function validateAssinatura(el){
+  if(state.metodoAssinatura==='desenho'){
+    if(!state.temTraco){ showTopError(el,'Desenhe sua assinatura antes de continuar.'); return false; }
+  } else {
+    let ok=true;
+    ok = requireField(el,'f_aceiteNome', state.aceiteNome.trim().length>2,'Informe o nome completo.') && ok;
+    ok = requireField(el,'f_aceiteNomeConfirma', state.aceiteNomeConfirma.trim().length>2 && state.aceiteNomeConfirma.trim().toLowerCase()===state.aceiteNome.trim().toLowerCase(), 'Os nomes digitados não coincidem.') && ok;
+    if(!state.aceiteDeclara){ showTopError(el,'Marque a declaração de aceite para continuar.'); ok=false; }
+    if(!ok) return false;
+  }
+  clearTopError(el);
+  return true;
+}
+function initSignaturePad(container){
+  const canvas = container.querySelector('#pad');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const placeholder = container.querySelector('#placeholder');
+  const undoBtn = container.querySelector('#undoBtn');
+  const clearBtn = container.querySelector('#clearBtn');
+  let strokes = [];
+  let currentStroke = null;
+  let drawing = false;
+
+  function resizeCanvas(){
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(rect.width*dpr);
+    canvas.height = Math.round(rect.height*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    redraw();
+  }
+  function getPos(e){
+    const rect = canvas.getBoundingClientRect();
+    return {x:e.clientX-rect.left, y:e.clientY-rect.top};
+  }
+  function redraw(){
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0,0,rect.width,rect.height);
+    ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=2.4; ctx.strokeStyle='#221F1C';
+    strokes.forEach(stroke=>{
+      if(stroke.length<2) return;
+      ctx.beginPath(); ctx.moveTo(stroke[0].x, stroke[0].y);
+      for(let i=1;i<stroke.length-1;i++){
+        const mx=(stroke[i].x+stroke[i+1].x)/2, my=(stroke[i].y+stroke[i+1].y)/2;
+        ctx.quadraticCurveTo(stroke[i].x, stroke[i].y, mx, my);
+      }
+      ctx.stroke();
+    });
+    refresh();
+  }
+  function hasInk(){ return strokes.some(s=>s.length>1); }
+  function refresh(){
+    placeholder.style.opacity = hasInk() ? '0':'1';
+    undoBtn.disabled = strokes.length===0;
+    clearBtn.disabled = strokes.length===0;
+    state.temTraco = hasInk();
+    state.assinaturaPNG = hasInk() ? canvas.toDataURL('image/png') : null;
+  }
+  canvas.addEventListener('pointerdown', e=>{
+    drawing=true; canvas.setPointerCapture(e.pointerId);
+    currentStroke=[getPos(e)]; strokes.push(currentStroke);
+  });
+  canvas.addEventListener('pointermove', e=>{ if(!drawing) return; currentStroke.push(getPos(e)); redraw(); });
+  function end(){ if(!drawing) return; drawing=false; currentStroke=null; refresh(); }
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('pointerleave', ()=>{ if(drawing) end(); });
+  clearBtn.addEventListener('click', ()=>{ strokes=[]; redraw(); });
+  undoBtn.addEventListener('click', ()=>{ strokes.pop(); redraw(); });
+  window.addEventListener('resize', ()=>{ clearTimeout(window.__rtSig); window.__rtSig=setTimeout(resizeCanvas,150); });
+  resizeCanvas();
+}
+function renderFinal(el){
+  el.innerHTML = `
+    <h2>Revisar e finalizar</h2>
+    <p class="step-sub">Confira o resumo abaixo. Ao confirmar, o contrato assinado é baixado no seu dispositivo e enviado por e-mail para você e para José Matozo Fotografia.</p>
+    <div class="summary-table">
+      <div class="li"><span>Contratante</span><span>${esc(state.nome)}</span></div>
+      <div class="li"><span>Evento</span><span>${esc(state.dataEvento)} · ${esc(state.horarioEvento)}</span></div>
+      <div class="li"><span>Local</span><span>${esc(state.enderecoEvento)}</span></div>
+      <div class="li"><span>Forma de assinatura</span><span>${state.metodoAssinatura==='desenho'?'Por desenho':'Aceite eletrônico'}</span></div>
+    </div>
+    <button class="nav-btn btn-next" id="submitBtn" style="width:100%;margin:20px 0 0;">Finalizar contratação</button>
+    <div id="finalResult"></div>
+  `;
+  el.querySelector('#submitBtn').addEventListener('click', onSubmit);
+}
+const CONTRATO_PDF_COR = {
+  paper: [251, 249, 244], ink: [34, 31, 28], soft: [107, 100, 89],
+  rule: [220, 212, 196], gold: [168, 121, 30], goldSoft: [241, 230, 204],
+};
+function contratoSlug_(s){
+  return String(s||'cliente').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'cliente';
+}
+function contratoGerarPdf_(clauses, protocolo){
+  if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Biblioteca de PDF (jsPDF) não carregou. Verifique a conexão e recarregue a página.');
+  const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, H = 297, M = 18, CW = W - 2 * M, FOOT = 18;
+  const C = CONTRATO_PDF_COR;
+  let y = 0;
+
+  const fill = c => doc.setFillColor(c[0], c[1], c[2]);
+  const stroke = c => doc.setDrawColor(c[0], c[1], c[2]);
+  const color = c => doc.setTextColor(c[0], c[1], c[2]);
+  const serif = (sz, bold) => { doc.setFont('times', bold ? 'bold' : 'normal'); doc.setFontSize(sz); };
+  const sans = (sz, bold) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(sz); };
+
+  function fundo(){ fill(C.paper); doc.rect(0, 0, W, H, 'F'); }
+  function cabecalho(){
+    fundo();
+    color(C.ink); sans(10.5, true);
+    doc.text('JOSÉ MATOZO FOTOGRAFIA', M, 14, { charSpace: 0.4 });
+    color(C.soft); sans(8, false);
+    doc.text(`Contrato nº JM-${new Date().getFullYear()}-${protocolo}`, W - M, 11, { align: 'right' });
+    doc.text(`Assinado em ${hojePontual_()}`, W - M, 15, { align: 'right' });
+    stroke(C.rule); doc.setLineWidth(0.3); doc.line(M, 19, W - M, 19);
+    y = 28;
+  }
+  function garantir(h){ if (y + h > H - FOOT){ doc.addPage(); cabecalho(); } }
+  function tituloClausula(t){
+    garantir(12);
+    color(C.gold); serif(11.5, true);
+    const linhas = doc.splitTextToSize(t, CW);
+    linhas.forEach(ln => { garantir(6); doc.text(ln, M, y); y += 5.2; });
+    y += 1.5;
+  }
+  function paragrafo(texto){
+    sans(9.5, false); color(C.ink);
+    const linhas = doc.splitTextToSize(String(texto), CW);
+    const lh = 4.4;
+    for (const ln of linhas){ garantir(lh + 1); sans(9.5, false); color(C.ink); doc.text(ln, M, y); y += lh; }
+    y += 2.5;
+  }
+
+  cabecalho();
+  color(C.ink); serif(18, true);
+  doc.text('Contrato de prestação de serviços', M, y); y += 9;
+  stroke(C.gold); doc.setLineWidth(0.4); doc.line(M, y, M + 32, y); y += 8;
+
+  clauses.forEach(c => {
+    tituloClausula(c.t);
+    c.b.split('\n\n').forEach(p => { p.split('\n').forEach(paragrafo); });
+    y += 1.5;
+  });
+
+  tituloClausula('DECLARAÇÕES CONFIRMADAS PELO CONTRATANTE');
+  Object.keys(DECLARACOES_TXT).forEach(k => { if (state.declaracoes[k]) paragrafo('✓ ' + DECLARACOES_TXT[k]); });
+
+  tituloClausula('ASSINATURAS');
+  if (state.metodoAssinatura !== 'desenho'){
+    paragrafo('Aceite eletrônico — o CONTRATANTE declarou que o nome abaixo corresponde à sua assinatura e que está de acordo com todas as condições deste contrato.');
+  }
+  garantir(50);
+  const assinaturaYBase = y;
+  const assinaturaColW = (CW - 10) / 2;
+  const assinaturaXEsq = M, assinaturaXDir = M + assinaturaColW + 10;
+
+  if (state.metodoAssinatura === 'desenho' && state.assinaturaPNG){
+    try { doc.addImage(state.assinaturaPNG, 'PNG', assinaturaXEsq, assinaturaYBase, 50, 20); } catch(e){ /* segue sem a imagem se o navegador recusar */ }
+    color(C.ink); serif(10, false); doc.text(state.nome, assinaturaXEsq, assinaturaYBase + 26);
+  } else {
+    color(C.ink); serif(12, true); doc.text(state.aceiteNome || state.nome, assinaturaXEsq, assinaturaYBase + 16);
+  }
+  color(C.soft); sans(8, false); doc.text('CONTRATANTE', assinaturaXEsq, assinaturaYBase + 33);
+
+  stroke(C.rule); doc.setLineWidth(0.3); doc.line(assinaturaXDir, assinaturaYBase + 16, assinaturaXDir + assinaturaColW, assinaturaYBase + 16);
+  color(C.ink); serif(10, false); doc.text('José Matozo de Lara', assinaturaXDir, assinaturaYBase + 22);
+  color(C.soft); sans(8, false); doc.text('CONTRATADO', assinaturaXDir, assinaturaYBase + 29);
+
+  y = assinaturaYBase + 46;
+  paragrafo(`Protocolo JM-${new Date().getFullYear()}-${protocolo} · assinado em ${hojePontual_()}`);
+
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++){
+    doc.setPage(i);
+    stroke(C.rule); doc.setLineWidth(0.3); doc.line(M, H - 14, W - M, H - 14);
+    color(C.soft); sans(7.5, false);
+    doc.text('José Matozo Fotografia · MEI · CNPJ 43.083.998/0001-48 · (41) 99919-1498 · cibelematozofotografia@gmail.com', M, H - 9.5);
+    doc.text(`Página ${i} de ${total}`, W - M, H - 9.5, { align: 'right' });
+  }
+  return doc;
+}
+function contratoNomeArquivoPdf_(){
+  return `Contrato-${contratoSlug_(state.nome)}-${new Date().getFullYear()}.pdf`;
+}
+function hojePontual_(){
+  return new Date().toLocaleDateString('pt-BR');
+}
+async function onSubmit(){
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  const protocolo = String(Date.now()).slice(-6);
+  try{
+    const clauses = buildClauses();
+    const doc = contratoGerarPdf_(clauses, protocolo);
+    const nomeArquivoPdf = contratoNomeArquivoPdf_();
+    try { doc.save(nomeArquivoPdf); } catch(e){ /* download é conveniência; o envio por e-mail segue abaixo mesmo se isso falhar */ }
+    const datauri = doc.output('datauristring');
+    const pdfBase64 = datauri.substring(datauri.indexOf(',') + 1);
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'enviarContratoAssinado', dados: {
+        protocolo,
+        emailCliente: state.email,
+        nomeCliente: state.nome,
+        tituloEvento: `${state.dataEvento} · ${state.enderecoEvento}`,
+        pdfBase64, nomeArquivo: nomeArquivoPdf,
+      }}),
+    });
+    showResult(protocolo);
+  } catch(err){
+    showResult(null, (err && err.message) || String(err));
+  }
+}
+function showResult(protocolo, error){
+  const box = document.getElementById('finalResult');
+  const btn = document.getElementById('submitBtn');
+  if(protocolo){
+    btn.style.display='none';
+    document.getElementById('progressTrack').hidden = true;
+    document.getElementById('progressLabel').textContent = '';
+    box.innerHTML = `
+      <div class="success-box">
+        <div class="check">✓</div>
+        <h2>Contrato assinado com sucesso!</h2>
+        <p class="step-sub" style="margin:0 auto;">O contrato foi baixado no seu dispositivo e enviado por e-mail para você e para José Matozo Fotografia. Qualquer dúvida, fale pelo telefone/WhatsApp (41) 99919-1498.</p>
+        <dl>
+          <dt>Protocolo</dt><dd>JM-${new Date().getFullYear()}-${esc(protocolo)}</dd>
+          <dt>Data/hora</dt><dd>${new Date().toLocaleString('pt-BR')}</dd>
+          <dt>Evento</dt><dd>${esc(state.dataEvento)} · ${esc(state.enderecoEvento)}</dd>
+        </dl>
+      </div>`;
+  } else {
+    btn.disabled=false; btn.textContent='Finalizar contratação';
+    box.innerHTML = `<p class="err">Não foi possível concluir agora. ${esc(error||'')} Tente novamente em instantes.</p>`;
+  }
+}
+function goToStep(idx){
+  currentIndex = Math.max(0, Math.min(idx, STEPS.length-1));
+  renderCurrentStep();
+}
+function renderCurrentStep(){
+  const step = STEPS[currentIndex];
+  const container = document.getElementById('stepsContainer');
+  container.innerHTML = '<div class="step" id="stepBody"></div>';
+  const body = document.getElementById('stepBody');
+  step.render(body);
+
+  const nav = document.createElement('div');
+  nav.className='nav-row';
+  nav.innerHTML = `
+    ${currentIndex>0 ? '<button class="nav-btn btn-back" id="backBtn">Voltar</button>' : '<span></span>'}
+    ${step.id!=='final' ? `<button class="nav-btn btn-next" id="nextBtn">${step.id==='intro'?'Começar':'Avançar'}</button>` : ''}
+  `;
+  body.appendChild(nav);
+  if(currentIndex>0) document.getElementById('backBtn').addEventListener('click', ()=>goToStep(currentIndex-1));
+  if(step.id!=='final'){
+    document.getElementById('nextBtn').addEventListener('click', ()=>{
+      if(step.validate(body)) goToStep(currentIndex+1);
+    });
+  }
+  updateProgress();
+  window.scrollTo(0,0);
+}
+function updateProgress(){
+  const pct = STEPS.length>1 ? Math.round((currentIndex/(STEPS.length-1))*100) : 0;
+  document.getElementById('progressTrack').hidden = false;
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('progressLabel').textContent = `Etapa ${currentIndex+1} de ${STEPS.length}`;
+}
+function mostrarErroPagina_(titulo, texto){
+  document.getElementById('progressTrack').hidden = true;
+  document.getElementById('stepsContainer').innerHTML = `
+    <div class="pagina-erro">
+      <h2>${esc(titulo)}</h2>
+      <p>${esc(texto)}</p>
+    </div>`;
+}
+function iniciar(){
+  if (!CONDICOES){
+    mostrarErroPagina_('Link incompleto', 'Este link não tem as condições combinadas com José Matozo Fotografia. Confira se você copiou o link inteiro, ou peça para ele reenviar.');
+    return;
+  }
+  goToStep(0);
+}
+iniciar();
+</script>
+</body>
+</html>
