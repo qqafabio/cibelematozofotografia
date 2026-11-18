@@ -1,5 +1,5 @@
 /* ============================================================
-   Contrato Digital — José Matozo Fotografia
+   Contrato Digital — Matozo Foto e Vídeo
    Apps Script independente do CRM da Cibele Matozo Fotografia
    (negócio diferente, backend próprio — não compartilha
    planilha nem implantação com o `backend.txt`/Código.gs do CRM).
@@ -19,7 +19,7 @@
    4) Copie a URL ".../exec" e cole em APPS_SCRIPT_URL, em
       jose-matozo/assets/js/config.js.
    5) Teste: abra a URL ".../exec" no navegador — deve responder
-      "José Matozo — Contrato Digital API online.". Depois teste de
+      "Matozo Foto e Vídeo — Contrato Digital API online.". Depois teste de
       ponta a ponta assinando um contrato de teste.
    6) Toda alteração neste arquivo exige **Nova implantação** (não só
       salvar) para valer no link já publicado.
@@ -40,7 +40,7 @@ const ABA_CONTRATOS = 'Contratos';
 /* ============ ROTEAMENTO ============ */
 function doGet(e) {
   return ContentService
-    .createTextOutput('José Matozo — Contrato Digital API online.')
+    .createTextOutput('Matozo Foto e Vídeo — Contrato Digital API online.')
     .setMimeType(ContentService.MimeType.TEXT);
 }
 
@@ -90,18 +90,18 @@ function enviarContratoAssinado_(dados) {
     Utilities.base64Decode(pdfBase64), 'application/pdf', nomeArquivo
   );
 
-  const assunto = 'Contrato assinado — José Matozo Fotografia' +
+  const assunto = 'Contrato assinado — Matozo Foto e Vídeo' +
     (tituloEvento ? ' · ' + tituloEvento : '');
   const corpoCliente = 'Olá, ' + nomeCliente + '!\n\n' +
     'Segue em anexo o contrato de prestação de serviços fotográficos, assinado ' +
-    'eletronicamente.\n\nQualquer dúvida, fale com José Matozo Fotografia pelo ' +
+    'eletronicamente.\n\nQualquer dúvida, fale com Matozo Foto e Vídeo pelo ' +
     'telefone/WhatsApp (41) 99919-1498.\n\nProtocolo: JM-' + new Date().getFullYear() + '-' + protocolo;
   const corpoFotografo = 'Contrato assinado por ' + nomeCliente + ' (' + emailCliente + ').\n\n' +
     'Evento: ' + (tituloEvento || '—') + '\n' +
     'Protocolo: JM-' + new Date().getFullYear() + '-' + protocolo;
 
-  GmailApp.sendEmail(emailCliente, assunto, corpoCliente, { attachments: [pdfBlob], name: 'José Matozo Fotografia' });
-  GmailApp.sendEmail(EMAIL_FOTOGRAFO, assunto, corpoFotografo, { attachments: [pdfBlob], name: 'José Matozo Fotografia — Contratos' });
+  GmailApp.sendEmail(emailCliente, assunto, corpoCliente, { attachments: [pdfBlob], name: 'Matozo Foto e Vídeo' });
+  GmailApp.sendEmail(EMAIL_FOTOGRAFO, assunto, corpoFotografo, { attachments: [pdfBlob], name: 'Matozo Foto e Vídeo — Contratos' });
 
   let linkDrive = '';
   if (PASTA_DRIVE_ID) {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Contrato Digital — José Matozo Fotografia</title>
+<title>Contrato Digital — Matozo Foto e Vídeo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&family=Caveat:wght@500&display=swap" rel="stylesheet">
 <style>
@@ -109,7 +109,7 @@
         <path d="M8 7L9.6 4.4H14.4L16 7" stroke="#221F1C" stroke-width="1.4" stroke-linejoin="round"/>
         <circle cx="12" cy="14" r="4.2" stroke="#221F1C" stroke-width="1.4"/>
       </svg>
-      <span class="wordmark"><strong>JOSÉ MATOZO</strong> · contrato digital</span>
+      <span class="wordmark"><strong>MATOZO FOTO E VÍDEO</strong> · contrato digital</span>
     </div>
     <div class="progress-track" id="progressTrack" hidden><div class="progress-fill" id="progressFill"></div></div>
     <div class="progress-label" id="progressLabel"></div>
@@ -201,6 +201,7 @@ const EMPRESA = {
   nomeEmpresarial: 'José Matozo de Lara 30765161915',
   cnpj: '43.083.998/0001-48',
   cpf: '307.651.619-15',
+  nomeFantasia: 'Matozo Foto e Vídeo',
   enderecoRua: 'Rua Antonio Portela, 331, São Braz',
   cidade: 'Curitiba',
   uf: 'PR',
@@ -210,13 +211,13 @@ const EMPRESA = {
 
 function buildClauses(){
   const imagemTxt = state.autorizacaoImagem==='autorizo'
-    ? 'AUTORIZO a utilização para portfólio, redes sociais, site, publicidade e materiais promocionais da José Matozo Fotografia.'
+    ? 'AUTORIZO a utilização para portfólio, redes sociais, site, publicidade e materiais promocionais da Matozo Foto e Vídeo.'
     : 'NÃO AUTORIZO a utilização para essas finalidades.';
   const condicoesLinhas = (CONDICOES || 'Condições a combinar diretamente com o CONTRATADO.')
     .split('\n').map(l=>l.trim()).filter(Boolean);
 
   const lista = [
-    { numerado:false, t:'QUALIFICAÇÃO DAS PARTES', b:`CONTRATADO: José Matozo de Lara, nome empresarial "${EMPRESA.nomeEmpresarial}", microempreendedor individual (MEI), inscrito no CNPJ sob o nº ${EMPRESA.cnpj}, CPF nº ${EMPRESA.cpf}, com endereço comercial na ${EMPRESA.enderecoRua}, ${EMPRESA.cidade}, ${EMPRESA.uf}, telefone/WhatsApp ${EMPRESA.telefone}, e-mail ${EMPRESA.email}, doravante denominado CONTRATADO.\n\nCONTRATANTE: ${state.nome}, CPF nº ${state.cpf}, residente e domiciliado(a) à ${enderecoResidencial_(state)}, telefone/WhatsApp ${state.telefone}, e-mail ${state.email}, doravante denominado(a) CONTRATANTE.` },
+    { numerado:false, t:'QUALIFICAÇÃO DAS PARTES', b:`CONTRATADO: José Matozo de Lara, nome empresarial "${EMPRESA.nomeEmpresarial}" (nome fantasia ${EMPRESA.nomeFantasia}), microempreendedor individual (MEI), inscrito no CNPJ sob o nº ${EMPRESA.cnpj}, CPF nº ${EMPRESA.cpf}, com endereço comercial na ${EMPRESA.enderecoRua}, ${EMPRESA.cidade}, ${EMPRESA.uf}, telefone/WhatsApp ${EMPRESA.telefone}, e-mail ${EMPRESA.email}, doravante denominado CONTRATADO.\n\nCONTRATANTE: ${state.nome}, CPF nº ${state.cpf}, residente e domiciliado(a) à ${enderecoResidencial_(state)}, telefone/WhatsApp ${state.telefone}, e-mail ${state.email}, doravante denominado(a) CONTRATANTE.` },
     { t:'DO OBJETO DO CONTRATO', b:`O presente contrato tem por objeto a prestação de serviços profissionais de fotografia e/ou filmagem para o evento abaixo qualificado, conforme o pacote, os serviços e as condições descritos na cláusula seguinte.\n\nData do evento: ${state.dataEvento}   Horário: ${state.horarioEvento}\nLocal do evento: ${state.enderecoEvento}` },
     { t:'DO PACOTE, DO VALOR E DA FORMA DE PAGAMENTO', b:`As condições abaixo foram combinadas diretamente entre o CONTRATANTE e o CONTRATADO antes da assinatura deste contrato:\n\n${condicoesLinhas.join('\n')}\n\nCartão de crédito, quando utilizado, poderá ser parcelado conforme definido entre as partes, com taxas da operadora sob responsabilidade do CONTRATANTE.` },
     { t:'DA COBERTURA DO EVENTO', b:`A cobertura do evento será realizada conforme o pacote contratado e durante o período previamente acordado entre as partes.\n\nA expressão "cobertura completa do evento", quando utilizada na descrição do pacote, refere-se à cobertura realizada durante o período contratado, não representando obrigação de registro contínuo e ininterrupto de todos os segundos do evento.\n\nAtrasos decorrentes de responsabilidade do CONTRATANTE, convidados, familiares, cerimonial, buffet, espaço de eventos, fornecedores ou terceiros não implicarão automaticamente na extensão do período contratado. Horas adicionais poderão ser contratadas mediante disponibilidade e pagamento correspondente.` },
@@ -267,7 +268,7 @@ let currentIndex = 0;
 function renderIntro(el){
   el.innerHTML = `
     <h2 style="font-size:29px;max-width:18ch;">Contrato digital de prestação de serviços</h2>
-    <p class="step-sub">José Matozo Fotografia. Antes de assinar, você vai conferir os seus dados, as condições combinadas, ler o contrato e assinar eletronicamente. Leva de 3 a 6 minutos.</p>
+    <p class="step-sub">Matozo Foto e Vídeo. Antes de assinar, você vai conferir os seus dados, as condições combinadas, ler o contrato e assinar eletronicamente. Leva de 3 a 6 minutos.</p>
   `;
 }
 function renderDadosPessoais(el){
@@ -323,7 +324,7 @@ function validateDadosPessoais(el){
 function renderDadosEvento(el){
   el.innerHTML = `
     <h2>Dados do evento</h2>
-    <p class="step-sub">Informações do evento que será coberto pelo José Matozo Fotografia.</p>
+    <p class="step-sub">Informações do evento que será coberto pelo Matozo Foto e Vídeo.</p>
     <div class="field"><label>Endereço do evento</label><input type="text" id="f_enderecoEvento" value="${esc(state.enderecoEvento)}"></div>
     <div class="field-row">
       <div class="field"><label>Data do evento</label><input type="text" id="f_dataEvento" value="${esc(state.dataEvento)}" placeholder="DD/MM/AAAA" inputmode="numeric"></div>
@@ -344,14 +345,14 @@ function validateDadosEvento(el){
 function renderCondicoes(el){
   el.innerHTML = `
     <h2>Confira as condições combinadas</h2>
-    <p class="step-sub">Pacote, valor e forma de pagamento combinados com José Matozo Fotografia antes deste link ser gerado. Encontrou algo errado? Avise pelo telefone/WhatsApp (41) 99919-1498 antes de assinar — estas condições não podem ser editadas aqui.</p>
+    <p class="step-sub">Pacote, valor e forma de pagamento combinados com Matozo Foto e Vídeo antes deste link ser gerado. Encontrou algo errado? Avise pelo telefone/WhatsApp (41) 99919-1498 antes de assinar — estas condições não podem ser editadas aqui.</p>
     <div class="summary-table"><div class="condicoes">${esc(CONDICOES || 'Condições a combinar diretamente com o CONTRATADO.')}</div></div>
   `;
 }
 function renderImagem(el){
   el.innerHTML = `
     <h2>Autorização de uso da imagem</h2>
-    <p class="step-sub">A cobertura poderá registrar você, familiares e convidados do evento. Esta escolha é especificamente sobre usar essas imagens no portfólio e na divulgação da José Matozo Fotografia.</p>
+    <p class="step-sub">A cobertura poderá registrar você, familiares e convidados do evento. Esta escolha é especificamente sobre usar essas imagens no portfólio e na divulgação da Matozo Foto e Vídeo.</p>
     <div class="yn-row">
       <div class="yn-btn autoriza ${state.autorizacaoImagem==='autorizo'?'selected':''}" data-v="autorizo"><strong>AUTORIZO</strong><br><span style="font-size:12px;">Portfólio, redes sociais, site e materiais promocionais</span></div>
       <div class="yn-btn naoautoriza ${state.autorizacaoImagem==='nao_autorizo'?'selected':''}" data-v="nao_autorizo"><strong>NÃO AUTORIZO</strong><br><span style="font-size:12px;">Uso restrito à entrega dos seus arquivos</span></div>
@@ -532,7 +533,7 @@ function initSignaturePad(container){
 function renderFinal(el){
   el.innerHTML = `
     <h2>Revisar e finalizar</h2>
-    <p class="step-sub">Confira o resumo abaixo. Ao confirmar, o contrato assinado é baixado no seu dispositivo e enviado por e-mail para você e para José Matozo Fotografia.</p>
+    <p class="step-sub">Confira o resumo abaixo. Ao confirmar, o contrato assinado é baixado no seu dispositivo e enviado por e-mail para você e para Matozo Foto e Vídeo.</p>
     <div class="summary-table">
       <div class="li"><span>Contratante</span><span>${esc(state.nome)}</span></div>
       <div class="li"><span>Evento</span><span>${esc(state.dataEvento)} · ${esc(state.horarioEvento)}</span></div>
@@ -568,7 +569,7 @@ function contratoGerarPdf_(clauses, protocolo){
   function cabecalho(){
     fundo();
     color(C.ink); sans(10.5, true);
-    doc.text('JOSÉ MATOZO FOTOGRAFIA', M, 14, { charSpace: 0.4 });
+    doc.text('MATOZO FOTO E VÍDEO', M, 14, { charSpace: 0.4 });
     color(C.soft); sans(8, false);
     doc.text(`Contrato nº JM-${new Date().getFullYear()}-${protocolo}`, W - M, 11, { align: 'right' });
     doc.text(`Assinado em ${hojePontual_()}`, W - M, 15, { align: 'right' });
@@ -634,7 +635,7 @@ function contratoGerarPdf_(clauses, protocolo){
     doc.setPage(i);
     stroke(C.rule); doc.setLineWidth(0.3); doc.line(M, H - 14, W - M, H - 14);
     color(C.soft); sans(7.5, false);
-    doc.text('José Matozo Fotografia · MEI · CNPJ 43.083.998/0001-48 · (41) 99919-1498 · cibelematozofotografia@gmail.com', M, H - 9.5);
+    doc.text('Matozo Foto e Vídeo · MEI · CNPJ 43.083.998/0001-48 · (41) 99919-1498 · cibelematozofotografia@gmail.com', M, H - 9.5);
     doc.text(`Página ${i} de ${total}`, W - M, H - 9.5, { align: 'right' });
   }
   return doc;
@@ -682,7 +683,7 @@ function showResult(protocolo, error){
       <div class="success-box">
         <div class="check">✓</div>
         <h2>Contrato assinado com sucesso!</h2>
-        <p class="step-sub" style="margin:0 auto;">O contrato foi baixado no seu dispositivo e enviado por e-mail para você e para José Matozo Fotografia. Qualquer dúvida, fale pelo telefone/WhatsApp (41) 99919-1498.</p>
+        <p class="step-sub" style="margin:0 auto;">O contrato foi baixado no seu dispositivo e enviado por e-mail para você e para Matozo Foto e Vídeo. Qualquer dúvida, fale pelo telefone/WhatsApp (41) 99919-1498.</p>
         <dl>
           <dt>Protocolo</dt><dd>JM-${new Date().getFullYear()}-${esc(protocolo)}</dd>
           <dt>Data/hora</dt><dd>${new Date().toLocaleString('pt-BR')}</dd>
@@ -737,7 +738,7 @@ function mostrarErroPagina_(titulo, texto){
 }
 function iniciar(){
   if (!CONDICOES){
-    mostrarErroPagina_('Link incompleto', 'Este link não tem as condições combinadas com José Matozo Fotografia. Confira se você copiou o link inteiro, ou peça para ele reenviar.');
+    mostrarErroPagina_('Link incompleto', 'Este link não tem as condições combinadas com Matozo Foto e Vídeo. Confira se você copiou o link inteiro, ou peça para ele reenviar.');
     return;
   }
   goToStep(0);
