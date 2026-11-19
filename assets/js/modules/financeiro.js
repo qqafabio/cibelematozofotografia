@@ -29,6 +29,8 @@ async function excluirContaComConfirmacao(conta){
 }
 /* ============ FINANCEIRO ============ */
 let financeiroBusca = '';
+let financeiroStatus = '';
+const FINANCEIRO_STATUS_CONTA = ['Pendente', 'Parcial', 'Vencida', 'Quitado'];
 let financeiroPagina = 1;
 const FINANCEIRO_POR_PAGINA = 10;
 function agruparContas(){
@@ -60,32 +62,70 @@ function agruparContas(){
     return Object.assign(g, { totalPrevisto, totalPago, desconto, saldo, status, parcelasReais });
   });
 }
+// Contas após busca por cliente + filtro de status (fonte única da tabela, dos KPIs e do relatório).
+function contasFiltradasFinanceiro(){
+  const f = financeiroBusca.trim().toLowerCase();
+  return agruparContas().filter(c =>
+    (!f || String(c.cliente||'').toLowerCase().includes(f)) &&
+    (!financeiroStatus || c.status === financeiroStatus));
+}
+function descricaoFiltrosFinanceiro(){
+  const partes = [financeiroStatus ? 'Status: ' + financeiroStatus : 'Todos os status'];
+  if (financeiroBusca.trim()) partes.push('Busca: "' + financeiroBusca.trim() + '"');
+  return partes.join(' · ');
+}
+async function exportarFinanceiroXlsx(btn){
+  const rotulo = btn.innerHTML;
+  btn.disabled = true; btn.textContent = 'Gerando…';
+  try{
+    await exportarRelatorioFinanceiro(contasFiltradasFinanceiro(), descricaoFiltrosFinanceiro());
+    showToast('Relatório gerado.');
+  } catch(err){
+    showToast('❌ ' + err.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = rotulo;
+  }
+}
 function renderFinanceiro(main){
   const contas = agruparContas();
-  const totalPrevisto = contas.reduce((s,c) => s + c.totalPrevisto, 0);
-  const totalPago = contas.reduce((s,c) => s + c.totalPago, 0);
   main.innerHTML = `
     <div class="view-header">
       <div><h1>Financeiro</h1><p>${contas.length} conta${contas.length===1?'':'s'}, ${financeiro.length} parcela${financeiro.length===1?'':'s'} no total.</p></div>
       <button class="btn-primary" id="novaContaBtn">+ Nova conta</button>
     </div>
     <div class="kpi-row">
-      <div class="kpi-card"><div class="kpi-label">Total previsto</div><div class="kpi-value">${formatBRL(totalPrevisto)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Total recebido</div><div class="kpi-value">${formatBRL(totalPago)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total previsto</div><div class="kpi-value" id="kpiFinPrevisto"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Total recebido</div><div class="kpi-value" id="kpiFinRecebido"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Saldo a receber</div><div class="kpi-value" id="kpiFinSaldo"></div></div>
     </div>
-    <div class="search-box"><input type="text" id="buscaFinanceiro" placeholder="Buscar por cliente…" value="${esc(financeiroBusca)}"></div>
+    <div class="list-toolbar">
+      <div class="search-box"><input type="text" id="buscaFinanceiro" placeholder="Buscar por cliente…" value="${esc(financeiroBusca)}"></div>
+      <select class="list-filter" id="filtroStatusFinanceiro" aria-label="Filtrar por status da conta">
+        <option value="">Todos os status</option>
+        ${FINANCEIRO_STATUS_CONTA.map(s => `<option value="${s}"${financeiroStatus===s?' selected':''}>${s}</option>`).join('')}
+      </select>
+      <button class="btn-ghost" id="exportarFinanceiroBtn" title="Exporta as contas filtradas na tela"><i class="bi bi-file-earmark-excel"></i> Exportar Excel</button>
+    </div>
     <div class="panel panel-list"><div id="tabelaFinanceiro"></div></div>
   `;
   document.getElementById('novaContaBtn').addEventListener('click', () => abrirFormConta(null));
   document.getElementById('buscaFinanceiro').addEventListener('input', e => { financeiroBusca = e.target.value; financeiroPagina = 1; desenharTabelaFinanceiro(); });
+  document.getElementById('filtroStatusFinanceiro').addEventListener('change', e => { financeiroStatus = e.target.value; financeiroPagina = 1; desenharTabelaFinanceiro(); });
+  document.getElementById('exportarFinanceiroBtn').addEventListener('click', e => exportarFinanceiroXlsx(e.currentTarget));
   desenharTabelaFinanceiro();
 }
 function desenharTabelaFinanceiro(){
   const el = document.getElementById('tabelaFinanceiro');
   const contas = agruparContas();
+  const filtradas = contasFiltradasFinanceiro();
+  // KPIs acompanham o filtro, para bater com o que será exportado.
+  const previsto = filtradas.reduce((s,c) => s + c.totalPrevisto, 0);
+  const recebido = filtradas.reduce((s,c) => s + c.totalPago, 0);
+  const saldoAberto = filtradas.reduce((s,c) => s + Math.max(0, c.saldo), 0);
+  document.getElementById('kpiFinPrevisto').textContent = formatBRL(previsto);
+  document.getElementById('kpiFinRecebido').textContent = formatBRL(recebido);
+  document.getElementById('kpiFinSaldo').textContent = formatBRL(saldoAberto);
   if (!contas.length){ el.innerHTML = `<div class="empty-state">Nenhuma conta lançada ainda.</div>`; return; }
-  const f = financeiroBusca.trim().toLowerCase();
-  const filtradas = f ? contas.filter(c => String(c.cliente||'').toLowerCase().includes(f)) : contas;
   if (!filtradas.length){ el.innerHTML = `<div class="empty-state">Nenhuma conta encontrada com esse filtro.</div>`; return; }
   const ordenados = [...filtradas].sort((a,b) => Number(b.idEvento) - Number(a.idEvento));
   const totalPaginas = Math.max(1, Math.ceil(ordenados.length / FINANCEIRO_POR_PAGINA));

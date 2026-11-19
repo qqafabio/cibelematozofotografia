@@ -16,6 +16,7 @@ A cada versão implantada:
 
 | Versão | Data | Resumo | Seção |
 |---|---|---|---|
+| v3.35.0 | 2026-11-19 | Financeiro: filtro por status da conta (Pendente/Parcial/Vencida/Quitado) e botão "Exportar Excel" — relatório .xlsx formatado (abas Contas e Parcelas) com o que está filtrado na tela | [2.62](#262-financeiro--filtro-por-status-e-relatório-em-excel-v3350) |
 | v3.20.14 | 2026-11-12 | Vitrine de Fotos (Drive): corrige "Load failed" no celular ao abrir a galeria — retry no cliente + cache do Apps Script deixa de refazer tudo quando uma foto nova é adicionada ⚠️ reimplantar Apps Script | [2.48](#248-vitrine-de-fotos--load-failed-no-modo-google-drive-v32014) |
 | v3.20.13 | 2026-11-12 | Vitrine de Fotos: indicador de % de armazenamento usado (upload direto) na tela de listagem | [2.47](#247-vitrine-de-fotos--indicador-de-armazenamento-usado-v32013) |
 | v3.34.0 | 2026-11-12 | Contrato Digital e Recibo: assinatura da fotógrafa (Cibele) passa a aparecer ao lado da assinatura do cliente no PDF do contrato, e também no PDF do recibo de quitação | [2.61](#261-contrato-digital-e-recibo--assinatura-da-fotógrafa-no-pdf-v3340) |
@@ -1577,6 +1578,16 @@ Muitos leads nascem direto em CRM · Orçamentos (sem passar pela tela Clientes)
 - **Corrigido um bug real no caminho**: `pbAtualizarCliente`/`clienteFormToPb` fazia um *replace* completo do registro em vez de um patch parcial — chamar com só CPF/endereço apagaria Nome/WhatsApp/E-mail/Instagram/Observações do cliente com string vazia. Agora só grava as chaves realmente enviadas (mesmo padrão de `MAPA_LEAD`/`MAPA_EVENTO`), sem mudar o comportamento da tela Clientes (que já envia o formulário completo).
 
 Sem migration — os campos de endereço/CPF já existiam na coleção `clientes` desde a Fase 1. Arquivos: `pbClientes.js`, `modules/leadForm.js`, `crm.html`.
+
+### 2.62 Financeiro — filtro por status e relatório em Excel (v3.35.0)
+
+- **Filtro por status da conta** ao lado da busca por cliente: Pendente, Parcial, Vencida ou Quitado (mesma regra de status já usada na coluna "Status" da tabela). Os cartões de topo (Total previsto / Total recebido / novo **Saldo a receber**) agora acompanham o filtro, para bater com o que será exportado.
+- **Botão "Exportar Excel"**: gera `relatorio-financeiro-AAAA-MM-DD.xlsx` no navegador (biblioteca ExcelJS por CDN, sem passar pelo PocketBase) com as contas **filtradas na tela** (busca + status). Duas abas:
+  - **Contas** — 1 linha por conta: cliente, evento, data do evento, status da conta, nº de parcelas (inclui a entrada, como na tela), quantas recebidas / a receber / atrasadas, total previsto, desconto, total recebido e saldo a receber.
+  - **Parcelas** — 1 linha por entrada/parcela: nº (ex.: 2/6), tipo, vencimento, valor previsto, **situação** (Recebido, A receber, Parcial, Atrasada — colorida), forma e data de recebimento, valor recebido, saldo e dias em atraso.
+  - Cabeçalho colorido, painéis congelados, autofiltro, datas e valores em formato nativo do Excel, e linha TOTAL com `SUBTOTAL` (recalcula quando se filtra dentro do Excel). A linha "Desconto" não aparece em Parcelas — vira a coluna Desconto em Contas.
+
+Sem migration — ajuste de front-end. Arquivos: `modules/financeiro.js`, `financeiroRelatorio.js` (novo), `crm.html`.
 
 ### 2.61 Contrato Digital e Recibo — assinatura da fotógrafa no PDF (v3.34.0)
 
