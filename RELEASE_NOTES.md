@@ -1581,7 +1581,7 @@ Sem migration — os campos de endereço/CPF já existiam na coleção `clientes
 
 ### 2.62 Financeiro — filtro por status e relatório em Excel (v3.35.0)
 
-- **Filtro por status da conta** ao lado da busca por cliente: Pendente, Parcial, Vencida ou Quitado (mesma regra de status já usada na coluna "Status" da tabela). Os cartões de topo (Total previsto / Total recebido / novo **Saldo a receber**) agora acompanham o filtro, para bater com o que será exportado.
+- **Filtro por status da conta** ao lado da busca por cliente: Pendente, Parcial, Vencida ou Quitado (mesma regra de status já usada na coluna "Status" da tabela). Também há a opção **"Em aberto (exceto quitadas)"**, que reúne Pendente, Parcial e Vencida (ajuste v3.35.1). Os cartões de topo (Total previsto / Total recebido / novo **Saldo a receber**) agora acompanham o filtro, para bater com o que será exportado.
 - **Botão "Exportar Excel"**: gera `relatorio-financeiro-AAAA-MM-DD.xlsx` no navegador (biblioteca ExcelJS por CDN, sem passar pelo PocketBase) com as contas **filtradas na tela** (busca + status). Duas abas:
   - **Contas** — 1 linha por conta: cliente, evento, data do evento, status da conta, nº de parcelas (inclui a entrada, como na tela), quantas recebidas / a receber / atrasadas, total previsto, desconto, total recebido e saldo a receber.
   - **Parcelas** — 1 linha por entrada/parcela: nº (ex.: 2/6), tipo, vencimento, valor previsto, **situação** (Recebido, A receber, Parcial, Atrasada — colorida), forma e data de recebimento, valor recebido, saldo e dias em atraso.

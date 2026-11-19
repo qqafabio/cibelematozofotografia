@@ -31,6 +31,7 @@ async function excluirContaComConfirmacao(conta){
 let financeiroBusca = '';
 let financeiroStatus = '';
 const FINANCEIRO_STATUS_CONTA = ['Pendente', 'Parcial', 'Vencida', 'Quitado'];
+const FINANCEIRO_STATUS_ABERTAS = 'abertas'; // todas as contas, menos as quitadas
 let financeiroPagina = 1;
 const FINANCEIRO_POR_PAGINA = 10;
 function agruparContas(){
@@ -67,10 +68,10 @@ function contasFiltradasFinanceiro(){
   const f = financeiroBusca.trim().toLowerCase();
   return agruparContas().filter(c =>
     (!f || String(c.cliente||'').toLowerCase().includes(f)) &&
-    (!financeiroStatus || c.status === financeiroStatus));
+    (!financeiroStatus || (financeiroStatus === FINANCEIRO_STATUS_ABERTAS ? c.status !== 'Quitado' : c.status === financeiroStatus)));
 }
 function descricaoFiltrosFinanceiro(){
-  const partes = [financeiroStatus ? 'Status: ' + financeiroStatus : 'Todos os status'];
+  const partes = [financeiroStatus === FINANCEIRO_STATUS_ABERTAS ? 'Status: em aberto (exceto quitadas)' : (financeiroStatus ? 'Status: ' + financeiroStatus : 'Todos os status')];
   if (financeiroBusca.trim()) partes.push('Busca: "' + financeiroBusca.trim() + '"');
   return partes.join(' · ');
 }
@@ -102,6 +103,7 @@ function renderFinanceiro(main){
       <div class="search-box"><input type="text" id="buscaFinanceiro" placeholder="Buscar por cliente…" value="${esc(financeiroBusca)}"></div>
       <select class="list-filter" id="filtroStatusFinanceiro" aria-label="Filtrar por status da conta">
         <option value="">Todos os status</option>
+        <option value="${FINANCEIRO_STATUS_ABERTAS}"${financeiroStatus===FINANCEIRO_STATUS_ABERTAS?' selected':''}>Em aberto (exceto quitadas)</option>
         ${FINANCEIRO_STATUS_CONTA.map(s => `<option value="${s}"${financeiroStatus===s?' selected':''}>${s}</option>`).join('')}
       </select>
       <button class="btn-ghost" id="exportarFinanceiroBtn" title="Exporta as contas filtradas na tela"><i class="bi bi-file-earmark-excel"></i> Exportar Excel</button>
